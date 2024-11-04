@@ -7,7 +7,7 @@ with open('requirements.txt', encoding='utf-8') as f:
 
 setup(
     name='AutoReg-Mrpac6689',
-    version='4.2.1',
+    version='4.2.3',
     py_modules=['autoreg4'],  # Ajuste aqui para corresponder ao nome real do arquivo Python
     include_package_data=True,
     install_requires=requirements,
