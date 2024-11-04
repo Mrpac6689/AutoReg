@@ -37,7 +37,7 @@ jobs:
       # Criar ou atualizar Release no GitHub e enviar o executável
       - name: Upload Executable to Release
         id: create_release
-        uses: softprops/action-gh-release@v4  # Correção do uso da versão
+        uses: softprops/action-gh-release@v1  # Correção do uso da versão
         with:
           files: dist/AutoReg_v4_2_1.exe
           tag_name: "v4.2.1"  # Define uma tag para o release
