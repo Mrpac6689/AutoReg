@@ -26,14 +26,23 @@ Compilação para binário único:
 
    Windows: Arquivo .exe que inclui todas as dependências, eliminando a necessidade de instalação do Python e das bibliotecas.
 
-   MacOS: Versão beta para .app, com funcionalidades equivalentes, permitindo facilidade de instalação em diferentes plataformas. (ainda não publicado)
-
-# Utilização
+# Utilização - Aplicativo para Windows
 
 Baixe o último Release para windows pelo link abaixo, descompacte o .tar e execute o arquivo Autoreg_v4_2.exe. Certifique-se de ter o Google Chrome instalado, e de realizar a verificação de compatibilidade do Driver pelo menu superior 'Configurações'.
 
-https://github.com/Mrpac6689/AutoReg/releases/tag/v4.2.0
+      https://github.com/Mrpac6689/AutoReg/releases/tag/v4.2.0
 
+# Utilização - Script global
+
+Para desenvolvedores, o Script pode ser baixado utilizando Pypi com o comando abaixo, transformando-o em um comando global
+
+No terminal digite:
+      
+      pip install AutoReg-Mrpac6689
+
+Execute com:
+
+      autoreg
 
 # Novidades da Versão 4.0
   Funções de Internação:
@@ -50,11 +59,14 @@ https://github.com/Mrpac6689/AutoReg/releases/tag/v4.2.0
     Windows: Arquivo .exe que agrega todas as bibliotecas necessárias e imagens em Base64, permitindo executar sem necessidade de instalações adicionais.
     MacOS: Versão .app em fase beta com funcionalidades similares, trazendo praticidade.
     Splash Screen acrescentada com a ultima versão do Pyinstaller.
-   Versão 4.2.1:
-      - Ajustada função executar_multiplas_internacoes() - movidos excepts para o bloco de looping, evitando a quebra do processo em caso de erro ao internar.
-      - Pop-ups concentrados em três funções def - Conclusão, Erro e Alerta - Agora chamam uma janela toplevel temporária paraâncora, evitando arrastar a janela de seleção de modulos de volta ao topo, ou deixando o pop-up escondido atrás da janela ativa.
-      - Convertido .ico em base64
-   
+
+# Versão 4.2.1:
+   - Ajustada função executar_multiplas_internacoes() - movidos excepts para o bloco de looping, evitando a quebra do processo em caso de erro ao internar.
+   - Pop-ups concentrados em três funções def - Conclusão, Erro e Alerta - Agora chamam uma janela toplevel temporária paraâncora, evitando arrastar a janela de seleção de modulos de volta ao topo, ou deixando o pop-up escondido atrás da janela ativa.
+   - Convertido .ico em base64
+
+# Versão 4.2.3:
+   -Publicado em Pypi.org   
 
 # Novidades da Versão 3.0:
   Inclusão de função para extrair o código da internação SISREG para todos os pacientes internados no sistema.
@@ -67,8 +79,12 @@ https://github.com/Mrpac6689/AutoReg/releases/tag/v4.2.0
   Nova Interface Gráfica: A interface foi redesenhada com Tkinter para melhorar a interatividade e facilitar o uso do programa.
   Verificação de versão e documentação: O novo menu "Informações" inclui a opção de visualizar a versão do programa e acessar o conteúdo do arquivo README.md diretamente pela interface gráfica.
 
-# Dependências:
-Caso opte-se por não executar o programa já compilado, é necessário instalar as seguintes bibliotecas e ferramentas:
+# Clonando o Repostirório e instalando Dependências:
+Caso opte clonar o repositório, utilize o comando:
+
+      git clone https://github.com/Mrpac6689/AutoReg.git
+
+Nesse caso, é necessário instalar as seguintes bibliotecas e ferramentas:
 
   Python (versão 3.6 ou superior)
   Selenium: Biblioteca para automação de navegadores.
@@ -113,10 +129,13 @@ Caso opte-se por não executar o programa já compilado, é necessário instalar
       websocket-client==1.8.0
       wsproto==1.2.0
 
-# Como instalar as dependências:
 Abra o Prompt de Comando ou Terminal no diretório do programa e execute os seguintes comandos:
 
     pip install -r requirements.txt
+
+Para executar:
+     
+     python ./Autoreg4.py
 
 # Ferramentas externas necessárias:
   Google Chrome: O navegador utilizado para a automação.
@@ -140,14 +159,6 @@ Abra o Prompt de Comando ou Terminal no diretório do programa e execute os segu
 
   Salve o arquivo após adicionar suas credenciais.
   Agora você está pronto para executar o programa.
-
-Como executar o programa:
-    Compilado: Execute o arquivo Autoreg4.exe no Windows ou .app no MacOS.
-
-Como script Python:
-     No terminal, utilize:
-     
-     python ./Autoreg4.py
 
 # Erros Comuns e Soluções:
   Erro de versão do ChromeDriver:
