@@ -1,4 +1,4 @@
-﻿altgraph==0.17.4
+altgraph==0.17.4
 attrs==24.2.0
 beautifulsoup4==4.12.3
 bs4==0.0.2
