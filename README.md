@@ -28,7 +28,7 @@ Compilação para binário único:
 
 # Utilização - Aplicativo para Windows
 
-Baixe o último Release para windows pelo link abaixo, descompacte o .tar e execute o arquivo Autoreg_v4_2.exe. Certifique-se de ter o Google Chrome instalado, e de realizar a verificação de compatibilidade do Driver pelo menu superior 'Configurações'.
+Baixe o último Release para windows pelo link abaixo, descompacte os arquivos na mesma pasta e execute Autoreg_v4_2_4.exe. Certifique-se de ter o Google Chrome instalado, e de realizar a verificação de compatibilidade do Driver pelo menu superior 'Configurações'.
 
       https://github.com/Mrpac6689/AutoReg/releases/tag/v4.2.0
 
