@@ -1,14 +1,10 @@
 name: AUTOREG - Operação automatizada de Sistemas - SISREG & G-HOSP - por MrPaC6689
 
 on:
-  push:
-    branches:
-      - main
-  release:
-    types: [published]
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write  # Permissão necessária para fazer upload para release
 
 jobs:
   deploy:
@@ -23,7 +19,6 @@ jobs:
         with:
           python-version: '3.x'
 
-      # Instala o próprio pacote, o que cuida das dependências automaticamente
       - name: Install dependencies and package
         run: |
           python -m pip install --upgrade pip
@@ -39,18 +34,21 @@ jobs:
         run: |
           python setup.py sdist bdist_wheel
 
-      # Upload do executável para um Release do GitHub
+      # Criar ou atualizar Release no GitHub e enviar o executável
       - name: Upload Executable to Release
-        if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v1
+        id: create_release
+        uses: softprops/action-gh-release@v4_2_1
         with:
           files: dist/AutoReg_v4_2_1.exe
+          tag_name: "v4.2.1"  # Define uma tag para o release
+          release_name: "AutoReg v4.2.1 Release"  # Nome do release
+          draft: false  # Define se o release é um rascunho
+          prerelease: false  # Define se é um pré-lançamento
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TOKENAUTOREG }}
 
       # Upload da distribuição Python para o PyPI
       - name: Upload to PyPI
-        if: github.event_name == 'release'
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPIAPI }}
