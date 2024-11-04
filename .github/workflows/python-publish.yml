@@ -23,30 +23,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install .
-
-      # Compilar o executável usando o PyInstaller
-      - name: Build executable with PyInstaller
-        run: |
-          pyinstaller --onefile --noconsole --name "AutoReg_v4_2_1" --icon=icone.ico --splash splash_v4.png Autoreg4.py
-
+      
       # Cria a distribuição do Python para publicar no PyPI
       - name: Build wheel and source distribution
         run: |
           python setup.py sdist bdist_wheel
-
-      # Criar ou atualizar Release no GitHub e enviar o executável
-      - name: Upload Executable to Release
-        id: create_release
-        uses: softprops/action-gh-release@v1  # Correção do uso da versão
-        with:
-          files: dist/AutoReg_v4_2_1.exe
-          tag_name: "v4.2.1"  # Define uma tag para o release
-          release_name: "AutoReg v4.2.1 Release"  # Nome do release
-          draft: false  # Define se o release é um rascunho
-          prerelease: false  # Define se é um pré-lançamento
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      
      # Upload da distribuição Python para o PyPI
       - name: Upload to PyPI
         env:
