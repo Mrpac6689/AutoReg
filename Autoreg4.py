@@ -1,14 +1,15 @@
 #                   AUTOREG 4
 #    Operação automatizada de Sistemas - SISREG & G-HOSP
-#          Versão 4.2 - Novembro de 2024
+#          Versão 4.2.1 - Novembro de 2024
 #                 Autor: MrPaC6689
 #            Contato michelrpaes@gmail.com
 #         Desenvolvido com o apoio do ChatGPT em Python 3.2
 #         Informações em README.md. Repositório em Github  
 # 
-#  V.4.2 - Alterações:
+#  V.4.2.1 - Alterações:
 #  - Ajustada função executar_multiplas_internacoes() - movidos excepts para o bloco de looping, evitando a quebra do processo em caso de erro ao internar.
 #  - Pop-ups concentrados em três funções def - Conclusão, Erro e Alerta - Agora chamam uma janela toplevel temporária paraâncora, evitando arrastar a janela de seleção de modulos de volta ao topo, ou deixando o pop-up escondido atrás da janela ativa.
+#  - Convertidos .ico em base64
 
 ########################################################
 # Importação de funções externas e bibliotecas Python  #
@@ -36,6 +37,7 @@ import PyInstaller
 from tkinter import ttk, scrolledtext, messagebox, filedialog
 from tkinter import ttk, messagebox, filedialog, scrolledtext
 from tkinter.scrolledtext import ScrolledText
+from tkinter import PhotoImage
 from PIL import Image, ImageTk  # Biblioteca para manipular imagens
 import base64
 from io import BytesIO
@@ -52,6 +54,11 @@ from pathlib import Path
 ########################################
 #   DEFINIÇÕES DE FUNÇÕES GLOBAIS      #
 ########################################
+
+# String base64 gerada - icone janelas
+icone_base64 = """
+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
+"""
 
 # Popup CONCLUSÃO
 def mostrar_popup_conclusao(mensagem):
@@ -1095,7 +1102,7 @@ def verificar_atualizar_chromedriver():
 #Função com informações da versão
 def mostrar_versao():
     versao = "AUTOMATOR - AUTOREG\nOperação automatizada de Sistemas - SISREG & G-HOSP\nVersão 4.2 - Novembro de 2024\nAutor: Michel R. Paes\nGithub: MrPaC6689\nDesenvolvido com o apoio do ChatGPT 4o\nContato: michelrpaes@gmail.com"
-    mostrar_popup_alerta("AutoReg 4.2", versao)
+    mostrar_popup_alerta("AutoReg 4.2.1", versao)
 
 # Função para exibir o conteúdo do arquivo README.md
 def exibir_leia_me():
@@ -1485,15 +1492,19 @@ def criar_interface():
     # Cria a janela principal
     global janela  # Declara a variável 'janela' como global para ser acessada em outras funções
     janela = tk.Tk()
-    janela.iconbitmap('icone.ico')  # Define um ícone personalizado para a janela
-    janela.title("AutoReg - v.4.2 ")
+    # Decodifique a imagem em base64
+    icone_data = base64.b64decode(icone_base64)
+    # Crie uma PhotoImage para o ícone a partir dos dados decodificados
+    icone = PhotoImage(data=icone_data)    
+    janela.iconphoto(True, icone)
+    janela.title("AutoReg - v.4.2.1 ")
     janela.state('zoomed')  # Inicia a janela maximizada
     janela.configure(bg="#ffffff")  # Define uma cor de fundo branca
 
     # Adiciona texto explicativo ou outro conteúdo abaixo do título principal
     header_frame = tk.Frame(janela, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 4.2", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 4.2.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Sistema automatizado para captura de pacientes a dar alta - SISREG G-HOSP.\nPor Michel R. Paes - Outubro 2024\nEscolha uma das opções à esquerda", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -1622,15 +1633,19 @@ def criar_interface():
 def interface_internacao():
     global janela_internacao, frame_print_area, entry_data, navegador, btn_confirmar_internacao, log_area
     janela_internacao = tk.Tk()
-    janela_internacao.iconbitmap('icone.ico')
+    # Decodifique a imagem em base64
+    icone_data = base64.b64decode(icone_base64)
+    # Crie uma PhotoImage para o ícone a partir dos dados decodificados
+    icone = PhotoImage(data=icone_data)    
+    janela_internacao.iconphoto(True, icone)
     janela_internacao.state('zoomed')
-    janela_internacao.title("AutoReg - v.4.2 - Módulo de internação ")
+    janela_internacao.title("AutoReg - v.4.2.1 - Módulo de internação ")
     janela_internacao.configure(bg="#ffffff")
     
     # Frame para organizar a interface
     header_frame = tk.Frame(janela_internacao, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 4.2", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 4.2.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Sistema automatizado para captura de pacientes a dar alta - SISREG G-HOSP.\nPor Michel R. Paes - Outubro 2024\nMÓDULO INTERNAÇÃO", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -1742,11 +1757,12 @@ class RedirectOutputToGUI:
 def criar_janela_principal():
     global janela_principal, menubar 
     janela_principal = tk.Tk() 
-    if "nt" == os.name:
-        janela_principal.wm_iconbitmap(bitmap = "icone.ico")
-    else:
-        janela_principal.wm_iconbitmap(bitmap = "@icone.xbm")
-    janela_principal.title("AutoReg - v.4.2 ") 
+    # Decodifique a imagem em base64
+    icone_data = base64.b64decode(icone_base64)
+    # Crie uma PhotoImage para o ícone a partir dos dados decodificados
+    icone = PhotoImage(data=icone_data)
+    janela_principal.iconphoto(True, icone)
+    janela_principal.title("AutoReg - v.4.2.1 ") 
     janela_principal.configure(bg="#ffffff")
 
     janela_principal.protocol("WM_DELETE_WINDOW", lambda: fechar_modulo())
@@ -1754,7 +1770,7 @@ def criar_janela_principal():
     # Header da janela principal
     header_frame = tk.Frame(janela_principal, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 4.2", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 4.2.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Novembro 2024", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -1875,11 +1891,12 @@ def fechar_modulo():
 def criar_interface_modulo_alta():
     global janela, menubar  # Declara a variável 'janela' como global para ser acessada em outras funções
     janela = tk.Toplevel()
-    if "nt" == os.name:
-        janela.wm_iconbitmap(bitmap = "icone.ico")
-    else:
-        janela.wm_iconbitmap(bitmap = "@icone.xbm")
-    janela.title("AutoReg - v.4.2 ")
+    # Decodifique a imagem em base64
+    icone_data = base64.b64decode(icone_base64)    
+    # Crie uma PhotoImage para o ícone a partir dos dados decodificados
+    icone = PhotoImage(data=icone_data)    
+    janela.iconphoto(True, icone)
+    janela.title("AutoReg - v.4.2.1 ")
     janela.state('zoomed')  # Inicia a janela maximizada
     janela.configure(bg="#ffffff")  # Define uma cor de fundo branca
     janela.config(menu=menubar)
@@ -1895,7 +1912,7 @@ def criar_interface_modulo_alta():
     # Adiciona texto explicativo ou outro conteúdo abaixo do título principal
     header_frame = tk.Frame(janela, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 4.2", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 4.2.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Novembro 2024\nMÓDULO ALTA", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -2006,11 +2023,12 @@ def criar_interface_modulo_alta():
 def criar_interface_modulo_internacao():
     global janela_internacao, frame_print_area, entry_data, navegador, btn_confirmar_internacao, log_area, menubar
     janela_internacao = tk.Toplevel()
-    if "nt" == os.name:
-        janela_principal.wm_iconbitmap(bitmap = "icone.ico")
-    else:
-        janela_principal.wm_iconbitmap(bitmap = "@icone.xbm")
-    janela_internacao.title("AutoReg - v.4.2 - Módulo de Internação")
+    # Decodifique a imagem em base64
+    icone_data = base64.b64decode(icone_base64)
+    # Crie uma PhotoImage para o ícone a partir dos dados decodificados
+    icone = PhotoImage(data=icone_data)    
+    janela_internacao.iconphoto(True, icone)
+    janela_internacao.title("AutoReg - v.4.2.1 - Módulo de Internação")
     janela_internacao.state('zoomed')
     janela_internacao.configure(bg="#ffffff")
     janela_internacao.config(menu=menubar)
@@ -2027,7 +2045,7 @@ def criar_interface_modulo_internacao():
     # Frame para organizar a interface
     header_frame = tk.Frame(janela_internacao, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 4.2", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 4.2.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Novembro 2024\nMÓDULO INTERNAÇÃO", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -2118,10 +2136,11 @@ if getattr(sys, 'frozen', False):
     import pyi_splash
 
 if getattr(sys, 'frozen', False):
-    pyi_splash.update_text("AutoReg 4.2")
+    pyi_splash.update_text("AutoReg 4.2.1")
     pyi_splash.update_text("Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Novembro 2024")
     pyi_splash.close()
     pyi_splash.close()
+
 
 # Inicia a aplicação
 criar_janela_principal()
