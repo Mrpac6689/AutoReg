@@ -10,7 +10,7 @@ with open('README.md', encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='AutoReg',
+    name='AutoReg-MrPaC6689',
     version='4.2.1',
     packages=find_packages(),
     include_package_data=True,
