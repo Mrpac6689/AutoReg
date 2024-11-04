@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 # Lendo as dependências do arquivo requirements.txt
 with open('requirements.txt', encoding='utf-8') as f:
@@ -7,13 +7,13 @@ with open('requirements.txt', encoding='utf-8') as f:
 
 setup(
     name='AutoReg-Mrpac6689',
-    version='4.2.2',
-    py_modules=['autoreg4'],  # py_modules é usado quando os módulos estão na raiz
+    version='4.2.1',
+    py_modules=['autoreg4'],  # Ajuste aqui para corresponder ao nome real do arquivo Python
     include_package_data=True,
     install_requires=requirements,
     entry_points={
         'console_scripts': [
-            'autoreg=autoreg4:criar_janela_principal',  # Nome do comando para execução do seu programa
+            'autoreg=autoreg4:criar_janela_principal',  # Ajuste o nome do módulo
         ],
     },
     author='Michel Ribeiro Paes',
@@ -25,6 +25,6 @@ setup(
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
-    ],
+    },
     python_requires='>=3.7',
 )
