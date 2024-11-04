@@ -1,8 +1,9 @@
 name: AUTOREG - Operação automatizada de Sistemas - SISREG & G-HOSP - por MrPaC6689
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
