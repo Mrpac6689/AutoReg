@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # Permissão necessária para fazer upload para release
+  contents: read  # Permissão necessária apenas para leitura
 
 jobs:
   deploy:
@@ -23,13 +23,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install .
-      
+
       # Cria a distribuição do Python para publicar no PyPI
       - name: Build wheel and source distribution
         run: |
           python setup.py sdist bdist_wheel
-      
-     # Upload da distribuição Python para o PyPI
+
+      # Upload da distribuição Python para o PyPI
       - name: Upload to PyPI
         env:
           TWINE_USERNAME: __token__
