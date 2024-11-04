@@ -50,6 +50,11 @@ https://github.com/Mrpac6689/AutoReg/releases/tag/v4.2.0
     Windows: Arquivo .exe que agrega todas as bibliotecas necessárias e imagens em Base64, permitindo executar sem necessidade de instalações adicionais.
     MacOS: Versão .app em fase beta com funcionalidades similares, trazendo praticidade.
     Splash Screen acrescentada com a ultima versão do Pyinstaller.
+   Versão 4.2.1:
+      - Ajustada função executar_multiplas_internacoes() - movidos excepts para o bloco de looping, evitando a quebra do processo em caso de erro ao internar.
+      - Pop-ups concentrados em três funções def - Conclusão, Erro e Alerta - Agora chamam uma janela toplevel temporária paraâncora, evitando arrastar a janela de seleção de modulos de volta ao topo, ou deixando o pop-up escondido atrás da janela ativa.
+      - Convertido .ico em base64
+   
 
 # Novidades da Versão 3.0:
   Inclusão de função para extrair o código da internação SISREG para todos os pacientes internados no sistema.
