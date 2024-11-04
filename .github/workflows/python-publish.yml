@@ -9,7 +9,7 @@
 name: AUTOREG - Operação automatizada de Sistemas - SISREG & G-HOSP - por MrPaC6689
 
 on:
-  release: 4.2.1
+  release:
     types: [published]
 
 permissions:
@@ -32,7 +32,7 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
         pyinstaller --onefile --noconsole --name "AutoReg_v4_2_1" --icon=icone.ico --splash splash_v4.png  Autoreg4_2_1.py
-    - name: AUTOREG
+    - name: AUTOREG v4.2.1
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
       with:
         user: __token__
