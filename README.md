@@ -131,7 +131,7 @@ Abra o Prompt de Comando ou Terminal no diretório do programa e execute os segu
     [G-HOSP]
     usuario = seu_usuario_ghosp
     senha = sua_senha_ghosp
-    caminho = http://10.16.9.43  #entre com o endereço local do G-Hosp. As portas serão selecionadas automaticamente.
+    caminho = http://10.0.0.0  #entre com o endereço local do G-Hosp. As portas serão selecionadas automaticamente.
 
   Salve o arquivo após adicionar suas credenciais.
   Agora você está pronto para executar o programa.
