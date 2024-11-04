@@ -8,13 +8,13 @@ with open('requirements.txt', encoding='utf-8') as f:
 setup(
     name='AutoReg-Mrpac6689',
     version='4.2.3',
-    py_modules=['autoreg4'],  # Ajuste aqui para corresponder ao nome real do arquivo Python
+    py_modules=['autoreg4'],  # py_modules é usado para módulos na raiz do projeto
     include_package_data=True,
     install_requires=requirements,
     entry_points={
         'console_scripts': [
-            'autoreg=autoreg4:criar_janela_principal',  # Ajuste o nome do módulo
-        ],
+            'autoreg=autoreg4:criar_janela_principal'  # Nome do comando para execução do programa
+        ]
     },
     author='Michel Ribeiro Paes',
     description='AUTOREG - Operação automatizada de Sistemas - SISREG & G-HOSP',
@@ -25,6 +25,6 @@ setup(
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
-    },
+    ],
     python_requires='>=3.7',
 )
