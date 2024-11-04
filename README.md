@@ -45,13 +45,13 @@ Compilação para binário único:
     MacOS: Versão .app em fase beta com funcionalidades similares, trazendo praticidade.
     Splash Screen acrescentada com a ultima versão do Pyinstaller.
 
-# # Novidades da Versão 3.0:
+# Novidades da Versão 3.0:
   Inclusão de função para extrair o código da internação SISREG para todos os pacientes internados no sistema.
   Inclusão de função para ajustar o rol em .csv para correlacionar Nome, Motivo de Alta G-HOSP e Código SISREG.
   Incusão de função para dar alta automática no SISREG conforme motivo de alta capturado.
   Melhorada interface visual
 
-# # Novidades da Versão 2.0:
+# Novidades da Versão 2.0:
   Atualização automática do ChromeDriver: O programa agora detecta a versão do Google Chrome e baixa automaticamente a versão compatível do ChromeDriver a partir de um JSON fornecido pela Google.
   Nova Interface Gráfica: A interface foi redesenhada com Tkinter para melhorar a interatividade e facilitar o uso do programa.
   Verificação de versão e documentação: O novo menu "Informações" inclui a opção de visualizar a versão do programa e acessar o conteúdo do arquivo README.md diretamente pela interface gráfica.
@@ -105,12 +105,12 @@ Caso opte-se por não executar o programa já compilado, é necessário instalar
 # Como instalar as dependências:
 Abra o Prompt de Comando ou Terminal no diretório do programa e execute os seguintes comandos:
 
-      pip install -r requirements.txt
+    pip install -r requirements.txt
 
-# Ferramentas externas:
+# Ferramentas externas necessárias:
   Google Chrome: O navegador utilizado para a automação.
-  ChromeDriver: Ferramenta necessária para automatizar o Chrome. A versão correta do ChromeDriver será baixada automaticamente com base na versão do Google Chrome instalada.
-
+  ChromeDriver: Ferramenta necessária para automatizar o Chrome. Caso a versão disponivel neste repositório seja incompativel com seu navegador, a versão compativel do ChromeDriver pode ser baixada atraves da interface principal.
+  
 # Configuração de Credenciais:
   Antes de rodar o programa ou script, é necessário configurar suas credenciais de acesso ao SISREG e G-HOSP.
 
@@ -136,7 +136,7 @@ Como executar o programa:
 Como script Python:
      No terminal, utilize:
      
-           python ./Autoreg4.py
+     python ./Autoreg4.py
 
 # Erros Comuns e Soluções:
   Erro de versão do ChromeDriver:
