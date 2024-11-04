@@ -1,15 +1,17 @@
 from setuptools import setup, find_packages
 
-# Lendo as dependências do arquivo requirements.txt
-with open('requirements.txt') as f:
+# Lendo as dependências do arquivo requirements.txt, filtrando linhas vazias e caracteres não reconhecidos
+with open('requirements.txt', encoding='utf-8') as f:
     requirements = f.read().splitlines()
+    # Filtra apenas linhas que não estão vazias e que não são comentários
+    requirements = [line.strip() for line in requirements if line.strip() and not line.startswith("#")]
 
 setup(
     name='AutoReg',
     version='4.2.1',
     packages=find_packages(),
     include_package_data=True,
-    install_requires=requirements,  # Usa as dependências do requirements.txt
+    install_requires=requirements,  # Usa as dependências do requirements.txt limpas
     entry_points={
         'console_scripts': [
             'autoreg=autoreg4_2_1:main',  # Nome do comando para execução do seu programa
