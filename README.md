@@ -28,6 +28,12 @@ Compilação para binário único:
 
    MacOS: Versão beta para .app, com funcionalidades equivalentes, permitindo facilidade de instalação em diferentes plataformas. (ainda não publicado)
 
+# Utilização
+
+Baixe o último Release para windows pelo link abaixo, descompacte o .tar e execute o arquivo Autoreg_v4_2.exe. Certifique-se de ter o Google Chrome instalado, e de realizar a verificação de compatibilidade do Driver pelo menu superior 'Configurações'.
+
+https://github.com/Mrpac6689/AutoReg/releases/tag/v4.2.0
+
 
 # Novidades da Versão 4.0
   Funções de Internação:
