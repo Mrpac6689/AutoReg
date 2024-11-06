@@ -1,0 +1,22 @@
+config.ini
+bkp
+internados_ghosp.csv
+internados_sisreg.csv
+pacientes_de_alta_atualizados.csv
+pacientes_de_alta.csv
+restos_atualizado.csv
+restos.csv
+saida_manual.csv
+codigos_sisreg.csv
+codigos_internacao.csv
+trata_restos_alta bkp Funcional total.py
+trata_restos_alta bkp.py
+trata_restos_alta.py
+_config.ini
+imagens.cpython-313.pyc
+__pycache__
+.venv
+build
+dist
+AutoReg_v5.spec
+AutoReg_v5.exe

@@ -1,13 +1,14 @@
 # AutoReg
 Operação automatizada de Sistemas de Saúde- SISREG &amp; G-HOSP
 
-Versão 4.0 - Novembro de 2024
+Versão 5.0 - Novembro de 2024
 Autor: Michel Ribeiro Paes (MrPaC6689)
+Repo: https://github.com/Mrpac6689/AutoReg
 Contato michelrpaes@gmail.com
-Desenvolvido com o apoio do ChatGPT em Python 3.2
+Desenvolvido com o apoio do ChatGPT 4o em Python 3.13
 
 # Descrição:
-O AUTOREG 4.0 é um programa desenvolvido para automatizar o processo de internação e alta de pacientes nos sistemas SISREG e G-HOSP, proporcionando maior eficiência e reduzindo o tempo gasto em processos manuais. Utilizando Python 3.11, Selenium e Tkinter, o programa oferece uma interface amigável para operar de forma automática o fluxo de trabalho hospitalar.
+O AUTOREG é um programa desenvolvido para automatizar o processo de internação e alta de pacientes nos sistemas SISREG e G-HOSP, proporcionando maior eficiência e reduzindo o tempo gasto em processos manuais. Utilizando Python, Selenium e Tkinter, o programa oferece uma interface amigável para operar de forma automática o fluxo de trabalho hospitalar.
 
 A automação utiliza Selenium para navegação e manipulação de páginas web de forma automatizada. A interface gráfica foi implementada utilizando Tkinter, proporcionando uma experiência mais interativa e amigável.
 
@@ -28,9 +29,9 @@ Compilação para binário único:
 
 # Utilização - Aplicativo para Windows
 
-Baixe o último Release para windows pelo link abaixo, descompacte os arquivos na mesma pasta e execute Autoreg_v4_2_4.exe. Certifique-se de ter o Google Chrome instalado, e de realizar a verificação de compatibilidade do Driver pelo menu superior 'Configurações'.
+Baixe o último Release para windows pelo link abaixo, descompacte os arquivos na mesma pasta e execute Autoreg.exe. Certifique-se de ter o Google Chrome instalado, e de realizar a verificação de compatibilidade do Driver pelo menu superior 'Configurações'.
 
-      https://github.com/Mrpac6689/AutoReg/releases/tag/v4.2.0
+      https://github.com/Mrpac6689/AutoReg/releases/
 
 # Utilização - Script global
 
@@ -43,6 +44,13 @@ No terminal digite:
 Execute com:
 
       autoreg
+
+# Novidades da Versão 5.0
+ - Acrescentadas as funções captura_cns_restos_alta(), motivo_alta_cns(), executa_saidas_cns() para trabalhar os pacientes não capturados em primeiro momento a dar alta.
+ - Acrescentada estrutura de diretorios com versões anteriores
+ - Redesenhada interfaçe do módulo alta
+ - Redesenhada interfaçe do módulo principal
+ - Versão python atualizada para 3.13 de 7 de outubro de 2024
 
 # Novidades da Versão 4.0
   Funções de Internação:
@@ -86,12 +94,13 @@ Caso opte clonar o repositório, utilize o comando:
 
 Nesse caso, é necessário instalar as seguintes bibliotecas e ferramentas:
 
-  Python (versão 3.6 ou superior)
+  Python (versão 3 ou superior)
   Selenium: Biblioteca para automação de navegadores.
   ConfigParser: Para ler arquivos de configuração.
   Tkinter: Biblioteca gráfica para criar a interface (geralmente incluída com o Python)
 
     Bibliotecas e versões específicas
+      altgraph==0.17.4
       attrs==24.2.0
       beautifulsoup4==4.12.3
       bs4==0.0.2
@@ -101,32 +110,37 @@ Nesse caso, é necessário instalar as seguintes bibliotecas e ferramentas:
       configparser==7.1.0
       h11==0.14.0
       idna==3.10
-      numpy==2.1.2
+      numpy==2.1.3
       outcome==1.3.0.post0
       packaging==24.1
-      pandas==2.2.2
+      pandas==2.2.3
+      pathlib==1.0.1
+      pefile==2023.2.7
       pillow==11.0.0
       pycparser==2.22
       PyGetWindow==0.0.9
+      pyinstaller==6.11.0
+      pyinstaller-hooks-contrib==2024.9
       PyRect==0.2.0
       PySocks==1.7.1
       python-dateutil==2.9.0.post0
-      python-dotenv==1.0.1
       pytz==2024.2
-      requests==2.32.0
-      selenium==4.24.0
+      pywin32-ctypes==0.2.3
+      requests==2.32.3
+      selenium==4.26.1
+      setuptools==75.3.0
       six==1.16.0
       sniffio==1.3.1
       sortedcontainers==2.4.0
       soupsieve==2.6
+      tk==0.1.0
       trio==0.27.0
       trio-websocket==0.11.1
       typing_extensions==4.12.2
       tzdata==2024.2
-      Unidecode==1.3.8
       urllib3==2.2.3
-      webdriver-manager==4.0.2
       websocket-client==1.8.0
+      wheel==0.44.0
       wsproto==1.2.0
 
 Abra o Prompt de Comando ou Terminal no diretório do programa e execute os seguintes comandos:
@@ -135,7 +149,7 @@ Abra o Prompt de Comando ou Terminal no diretório do programa e execute os segu
 
 Para executar:
      
-     python ./Autoreg4.py
+     python ./autoreg.py
 
 # Ferramentas externas necessárias:
   Google Chrome: O navegador utilizado para a automação.
@@ -171,8 +185,8 @@ Créditos:
   Desenvolvimento: Michel Ribeiro Paes (Github MrPaC6689)
   Suporte técnico e IA de apoio: ChatGPT 4o
 Licença:
-  Este projeto foi desenvolvido para fins educacionais e não possui uma licença formal. Todos os direitos são reservados ao autor.
+  Este projeto foi desenvolvido para fins educacionais sob licença Creative Commons 1.0 Universal. Todos os direitos são reservados ao autor.
 
-Esperamos que o AUTOREG 4.0 continue a facilitar sua rotina e ajude no processo de internação e alta de pacientes!
+Esperamos que o AUTOREG continue a facilitar sua rotina e ajude no processo de internação e alta de pacientes!
 
 FIM DO LEIA-ME
