@@ -153,6 +153,8 @@ Nesse caso, é necessário instalar as seguintes bibliotecas e ferramentas:
 Abra o Prompt de Comando ou Terminal no diretório do programa e execute os seguintes comandos:
 
     pip install -r requirements.txt
+    pip install .
+    pip install setup.py install
 
 Para executar:
      
