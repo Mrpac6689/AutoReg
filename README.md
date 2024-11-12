@@ -52,6 +52,13 @@ Execute com:
  - Redesenhada interfaçe do módulo principal
  - Versão python atualizada para 3.13 de 7 de outubro de 2024
 
+# Versão 5.0.1
+ - Acrescentadas as funções captura_cns_restos_alta(), motivo_alta_cns(), executa_saidas_cns() para trabalhar os pacientes não capturados em primeiro momento a dar alta.
+ - Acrescentada estrutura de diretorios com versões anteriores
+ - Redesenhada interfaçe do módulo alta
+ - Redesenhada interfaçe do módulo principal
+ - Restaurada função trazer_terminal(), com o G-Hosp, o selenium não consegue trabalhar se a pagina não estiver visível. Assim, foi necessário utilizaer o drive como um serviço do windows e utilizar a função para trazer a janela principal do programa à frente apos rodar o driver.
+
 # Novidades da Versão 4.0
   Funções de Internação:
     Captura de pacientes a serem internados com nome e número de ficha.
@@ -114,7 +121,6 @@ Nesse caso, é necessário instalar as seguintes bibliotecas e ferramentas:
       outcome==1.3.0.post0
       packaging==24.1
       pandas==2.2.3
-      pathlib==1.0.1
       pefile==2023.2.7
       pillow==11.0.0
       pycparser==2.22
@@ -142,6 +148,7 @@ Nesse caso, é necessário instalar as seguintes bibliotecas e ferramentas:
       websocket-client==1.8.0
       wheel==0.44.0
       wsproto==1.2.0
+
 
 Abra o Prompt de Comando ou Terminal no diretório do programa e execute os seguintes comandos:
 

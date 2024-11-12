@@ -11,7 +11,7 @@ with open('README.md', encoding='utf-8') as f:
 
 setup(
     name='AutoReg-Mrpac6689',
-    version='5.0.0',
+    version='5.0.1',
     py_modules=['autoreg'],  
     include_package_data=True,
     install_requires=requirements,

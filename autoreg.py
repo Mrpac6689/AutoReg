@@ -1,5 +1,5 @@
 # Automated System Operation - SISREG & G-HOSP
-# Version 5.0.0 - November 2024
+# Version 5.0.1 - November 2024
 # Author: MrPaC6689
 # Repo: https://github.com/Mrpac6689/AutoReg
 # Contact: michelrpaes@gmail.com
@@ -26,7 +26,7 @@
 
 
 # Operação Automatizada de Sistemas - SISREG & G-HOSP
-# Versão 5.0.0 - Novembro de 2024
+# Versão 5.0.1 - Novembro de 2024
 # Autor: MrPaC6689
 # Repo: https://github.com/Mrpac6689/AutoReg
 # Contato: michelrpaes@gmail.com
@@ -47,11 +47,11 @@
 # junto com este programa. Caso contrário, consulte <https://www.gnu.org/licenses/>.
 #
 #
-#  Alterações da v5.0.0
-# - Acrescentadas as funções captura_cns_restos_alta(), motivo_alta_cns(), executa_saidas_cns() para trabalhar os pacientes não capturados em primeiro momento a dar alta.
-# - Acrescentada estrutura de diretorios com versões anteriores
-# - Redesenhada interfaçe do módulo alta
-# - Redesenhada interfaçe do módulo principal
+#  Alterações da v5.0.1
+# - Corrigida interpretação float do pandas, que estava causando erro na captura e execução do numero da ficha, na rotina de alta. Inclusa conversão para string e remoção do ".0" que causava erro.
+# - Acrescido log_area.see(tk.END) após as entradas de mensagens das defs CNS, fazendo o widget rolar automaticamente até o final do conteúdo
+# - Ajustada função motivo_alta() para reinicializar o driver em caso de excessão.
+# - Restaurada função trazer_terminal(), com o G-Hosp, o selenium não consegue trabalhar se a pagina não estiver visível. Assim, foi necessário utilizaer o drive como um serviço do windows e utilizar a função para trazer a janela principal do programa à frente apos rodar o driver.
 
 ########################################################
 # Importação de funções externas e bibliotecas Python  #
@@ -517,6 +517,16 @@ def internhosp():
     finally:
         driver.quit()
 
+def trazer_terminal():
+    # Obtenha o identificador da janela do terminal
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
+    hwnd = kernel32.GetConsoleWindow()
+    
+    if hwnd != 0:
+        user32.ShowWindow(hwnd, 5)  # 5 = SW_SHOW (Mostra a janela)
+        user32.SetForegroundWindow(hwnd)  # Traz a janela para frente
+
 ### Definições Herdadas do motivo_alta.py
 def motivo_alta():
         # Função para ler a lista de pacientes de alta do CSV
@@ -544,7 +554,7 @@ def motivo_alta():
         # Ajusta o zoom para 50%
         driver.execute_script("document.body.style.zoom='50%'")
         time.sleep(2)
-        #trazer_terminal()
+        trazer_terminal()
         
         # Localiza os campos visíveis de login
         email_field = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "email")))
@@ -747,13 +757,17 @@ def atualiza_csv():
 
     # Carregar os arquivos CSV como DataFrames
     pacientes_de_alta_df = pd.read_csv('pacientes_de_alta.csv', encoding='utf-8')
-    codigos_sisreg_df = pd.read_csv('codigos_sisreg.csv', encoding='utf-8')
+    codigos_sisreg_df = pd.read_csv('codigos_sisreg.csv', encoding='utf-8', dtype={'Número da Ficha': str})  # Forçar o campo 'Número da Ficha' como string
 
     # Atualizar os nomes dos pacientes para caixa alta
     pacientes_de_alta_df['Nome'] = pacientes_de_alta_df['Nome'].str.upper()
 
     # Mesclar os dois DataFrames com base no nome do paciente para adicionar o número da ficha
     pacientes_atualizados_df = pacientes_de_alta_df.merge(codigos_sisreg_df, left_on='Nome', right_on='Nome do Paciente', how='left')
+
+    # Garantir que a coluna com os números da ficha seja tratada como string (para evitar o '.0')
+    if 'Número da Ficha' in pacientes_atualizados_df.columns:
+        pacientes_atualizados_df['Número da Ficha'] = pacientes_atualizados_df['Número da Ficha'].astype(str)
 
     # Salvar o DataFrame atualizado em um novo arquivo CSV
     pacientes_atualizados_df.to_csv('pacientes_de_alta_atualizados.csv', index=False, encoding='utf-8')
@@ -815,56 +829,90 @@ def dar_alta(navegador, wait, motivo_alta, ficha):
 
 #Loop para rodar o webdriver e executar as altas
 def executa_saidas():
-    print("Iniciando o navegador Chrome...")
-    chrome_options = Options()
-    chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
-    navegador = webdriver.Chrome(options=chrome_options)
-    wait = WebDriverWait(navegador, 20)
+    def iniciar_navegador():
+        print("Iniciando o navegador Chrome...")
+        chrome_options = Options()
+        chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
+        navegador = webdriver.Chrome(options=chrome_options)
+        wait = WebDriverWait(navegador, 20)
+        return navegador, wait
 
-    print("Acessando o sistema SISREG...")
-    navegador.get("https://sisregiii.saude.gov.br")
+    def realizar_login(navegador, wait):
+        print("Acessando o sistema SISREG...")
+        navegador.get("https://sisregiii.saude.gov.br")
 
-    print("Tentando localizar o campo de usuário...")
-    usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
-    senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
-    usuario, senha = ler_credenciais()
-    usuario_field.send_keys(usuario)
-    senha_field.send_keys(senha)
+        print("Tentando localizar o campo de usuário...")
+        usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
+        senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
+        usuario, senha = ler_credenciais()
+        usuario_field.send_keys(usuario)
+        senha_field.send_keys(senha)
 
-    print("Tentando localizar o botão de login...")
-    login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
-    login_button.click()
+        print("Tentando localizar o botão de login...")
+        login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
+        login_button.click()
 
-    wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_saida_permanencia' and text()='saída/permanência']"))).click()
-    print("Login realizado e navegação para página de Saída/Permanência concluída!")
+        wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_saida_permanencia' and text()='saída/permanência']"))).click()
+        print("Login realizado e navegação para página de Saída/Permanência concluída!")
 
-    wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
-    print("Foco alterado para o iframe com sucesso!")
+        wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
+        print("Foco alterado para o iframe com sucesso!")
 
-    try:
-        botao_pesquisar_saida = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']")))
-        botao_pesquisar_saida.click()
-        print("Botão PESQUISAR clicado com sucesso!")
-    except TimeoutException as e:
-        print(f"Erro ao tentar localizar o botão PESQUISAR na página de Saída/Permanência: {e}")
-        navegador.quit()
+        try:
+            botao_pesquisar_saida = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']")))
+            botao_pesquisar_saida.click()
+            print("Botão PESQUISAR clicado com sucesso!")
+        except TimeoutException as e:
+            print(f"Erro ao tentar localizar o botão PESQUISAR na página de Saída/Permanência: {e}")
+            navegador.quit()
+            return False
+        return True
+
+    # Iniciar navegador e realizar login inicial
+    navegador, wait = iniciar_navegador()
+    if not realizar_login(navegador, wait):
         return
 
-    pacientes_atualizados_df = pd.read_csv('pacientes_de_alta_atualizados.csv', encoding='utf-8')
+    try:
+        pacientes_atualizados_df = pd.read_csv('pacientes_de_alta_atualizados.csv', encoding='utf-8')
+        for _, paciente in pacientes_atualizados_df.iterrows():
+            try:
+                nome_paciente = paciente.get('Nome', None)
+                motivo_alta = paciente.get('Motivo da Alta', None)
+                ficha = paciente.get('Número da Ficha', None)
 
-    for _, paciente in pacientes_atualizados_df.iterrows():
-        nome_paciente = paciente.get('Nome', None)
-        motivo_alta = paciente.get('Motivo da Alta', None)
-        ficha = paciente.get('Número da Ficha', None)
+                if nome_paciente is None or motivo_alta is None or ficha is None:
+                    print("Dados insuficientes para o paciente, pulando para o próximo...")
+                    continue
 
-        if nome_paciente is None or motivo_alta is None or ficha is None:
-            print("Dados insuficientes para o paciente, pulando para o próximo...")
-            continue
+                # Converter o número da ficha para string, garantindo que não haverá .0 no final
+                ficha = str(ficha).split('.')[0]
 
-        print(f"Processando alta para o paciente: {nome_paciente}")
-        dar_alta(navegador, wait, motivo_alta, ficha)
-        time.sleep(2)
+                print(f"Processando alta para o paciente: {nome_paciente}")
+                dar_alta(navegador, wait, motivo_alta, ficha)
+                time.sleep(2)
 
+            except Exception as e:
+                # Tratamento de erros específicos e reinicialização do navegador
+                if isinstance(e, NoSuchElementException):
+                    log_area.insert(tk.END, f"Erro: Elemento não encontrado - {str(e)}\nAGUARDE A REINICIALIZAÇÃO DO CHROMEDRIVER...\n")
+                elif isinstance(e, TimeoutException):
+                    log_area.insert(tk.END, f"Erro: Ocorreu um TimeoutException - {str(e)}\nAGUARDE A REINICIALIZAÇÃO DO CHROMEDRIVER...\n")
+                else:
+                    log_area.insert(tk.END, f"Erro inesperado: {str(e)}\nAGUARDE A REINICIALIZAÇÃO DO CHROMEDRIVER...\n")
+                
+                log_area.see(tk.END)
+                navegador.quit()
+
+                # Reiniciar o navegador e refazer o login
+                navegador, wait = iniciar_navegador()
+                if not realizar_login(navegador, wait):
+                    return
+
+    except Exception as e:
+        print(f"Erro geral na execução: {e}")
+
+    # Criar arquivo 'restos.csv' com pacientes que não possuem motivos de alta desejados
     pacientes_df = pd.read_csv('pacientes_de_alta_atualizados.csv', encoding='utf-8')
     motivos_desejados = [
         'PERMANENCIA POR OUTROS MOTIVOS',
@@ -978,6 +1026,7 @@ def captura_cns_restos_alta():
     # Função para realizar o login no SISREG
     def iniciar_navegador_cns():
         log_area.insert(tk.END, "Iniciando o navegador Chrome com melhorias de desempenho...\n")
+        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
         
         #Define opções do Driver
         chrome_options = Options()
@@ -999,6 +1048,7 @@ def captura_cns_restos_alta():
     
     def realizar_login_cns_alta(navegador, wait, usuario, senha):
         log_area.insert(tk.END, "Acessando a página do SISREG...\n")
+        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
         navegador.get("https://sisregiii.saude.gov.br")
         try:
             # Realiza o login
@@ -1023,9 +1073,11 @@ def captura_cns_restos_alta():
             navegador.execute_script("document.querySelector('#main_page > form > center > table > tbody > tr:nth-child(10) > td > input[name=pesquisar]').click()")
             
             log_area.insert(tk.END, "Login realizado com sucesso e botão 'Pesquisar' clicado.\n")
+            log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
             return True
         except TimeoutException:
             log_area.insert(tk.END, "Erro: Falha ao realizar login ou encontrar o botão 'Pesquisar'.\n")
+            log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
             navegador.quit()
             return False
 
@@ -1034,10 +1086,12 @@ def captura_cns_restos_alta():
         try:
             navegador.execute_script(f"configFicha('{ficha}')\n")
             log_area.insert(tk.END, f"Executando a função configFicha para a ficha: {ficha}\n")
+            log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
             time.sleep(1)  # Espera de 1 segundo para garantir a execução
             navegador.switch_to.default_content()  # Retorna ao frame principal após a execução
         except TimeoutException:
             log_area.insert(tk.END, "Erro: Frame 'f_main' não disponível no tempo esperado.\n")
+            log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
 
     # Inicializa o navegador e faz login
     navegador = iniciar_navegador_cns()
@@ -1059,9 +1113,9 @@ def captura_cns_restos_alta():
 
         for linha in leitor_csv:
             ficha = linha[3]  # Captura o número da ficha da quarta coluna
-            try:    
-                # Abre a ficha do paciente
-                executar_ficha_js(navegador, ficha)
+            try:                                                 
+                ficha = str(ficha).split('.')[0] # Converter o número da ficha para string, garantindo que não haverá .0 no final
+                executar_ficha_js(navegador, ficha) # Abre a ficha do paciente
                 
                 # Ajusta o foco para o frame correto
                 navegador.switch_to.frame("f_principal")
@@ -1074,19 +1128,23 @@ def captura_cns_restos_alta():
                     cns_paciente = navegador.find_element(By.XPATH, "//*[@id='main_page']/form/table[1]/tbody/tr[17]/td")
                     cns_texto = cns_paciente.text
                     log_area.insert(tk.END, f"CNS encontrado: {cns_texto}\n")
+                    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
                     
                     # Adiciona o CNS na linha atual
                     linha.append(cns_texto)
                     
                 except TimeoutException:
                     log_area.insert(tk.END, "Erro: Não foi possível localizar o CNS do paciente no tempo esperado.\n")
+                    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
                     linha.append("Erro ao localizar CNS")  # Marca erro na coluna CNS
+                    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
                 
                 # Adiciona a linha com o CNS ao conjunto de linhas atualizadas
                 linhas_atualizadas.append(linha)
 
             except Exception as e:
                 log_area.insert(tk.END, f"Erro ao processar ficha {ficha}: {e}\n")
+                log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
                 linha.append("Erro ao abrir ficha")  # Marca erro se não conseguir abrir a ficha
                 linhas_atualizadas.append(linha)
     
@@ -1096,6 +1154,7 @@ def captura_cns_restos_alta():
         escritor_csv.writerows(linhas_atualizadas)
     
     log_area.insert(tk.END, "Arquivo CSV atualizado com CNS salvo como 'restos_atualizado.csv'.\n")
+    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
     mostrar_popup_conclusao("Arquivo CSV atualizado com CNS salvo como 'restos_atualizado.csv'.")
 
 ####Capturar motivo alta por CNS
@@ -1107,6 +1166,7 @@ def motivo_alta_cns():
         driver = webdriver.Chrome(service=service)
         driver.maximize_window()
         log_area.insert(tk.END, "Iniciando driver...\n")
+        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
         janela.after(3000, trazer_janela_para_frente)
         return driver
 
@@ -1122,6 +1182,7 @@ def motivo_alta_cns():
         senha_field = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "password")))
         senha_field.send_keys(senha)
         log_area.insert(tk.END, "Logando no G-Hosp driver...\n")
+        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
         # Executa o login via script
         driver.execute_script("""
             document.getElementById('user_email').value = arguments[0];
@@ -1157,10 +1218,12 @@ def motivo_alta_cns():
             
             motivo_alta = motivo_conteudo_element.text
             log_area.insert(tk.END, f"Motivo de alta capturado: {motivo_alta}\n")
+            log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
             
         except Exception as e:
             motivo_alta = "Motivo da alta não encontrado"
             log_area.insert(tk.END, f"Erro ao capturar motivo da alta para CNS {cns}: {e}\n")
+            log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
         
         return motivo_alta
 
@@ -1178,16 +1241,19 @@ def motivo_alta_cns():
     for i, row in df_pacientes.iloc[1:].iterrows():  # .iloc[1:] para ignorar o cabeçalho
         cns = row[4]  # CNS está na quinta coluna (índice 4)
         log_area.insert(tk.END, f"Buscando motivo de alta para CNS: {cns}\n")
+        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
         
         motivo = obter_motivo_alta(driver, cns, caminho)
         df_pacientes.at[i, df_pacientes.columns[1]] = motivo  # Atualiza a segunda coluna com o motivo
         log_area.insert(tk.END, f"Motivo de alta para CNS {cns}: {motivo}\n")
+        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
         
         time.sleep(2)  # Tempo de espera entre as requisições
 
     # Salva o CSV atualizado com o motivo de alta
     df_pacientes.to_csv('restos_atualizado.csv', index=False)
     log_area.insert(tk.END, "Motivos de alta encontrados, CSV atualizado.\n")
+    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
     mostrar_popup_conclusao("Motivos de alta encontrados, CSV atualizado.")
     
     driver.quit()
@@ -1195,6 +1261,7 @@ def motivo_alta_cns():
 #### Executa altas capturadas por CNS
 def executa_saidas_cns():
     log_area.insert(tk.END, "Iniciando o navegador Chrome...\n")
+    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
     chrome_options = Options()
     chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
     navegador = webdriver.Chrome(options=chrome_options)
@@ -1202,9 +1269,11 @@ def executa_saidas_cns():
     wait = WebDriverWait(navegador, 20)
 
     log_area.insert(tk.END, "Acessando o sistema SISREG...\n")
+    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
     navegador.get("https://sisregiii.saude.gov.br")
 
     log_area.insert(tk.END, "Tentando localizar o campo de usuário...\n")
+    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
     usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
     senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
     usuario, senha = ler_credenciais()
@@ -1212,21 +1281,26 @@ def executa_saidas_cns():
     senha_field.send_keys(senha)
 
     log_area.insert(tk.END, "Tentando localizar o botão de login...\n")
+    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
     login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
     login_button.click()
 
     wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_saida_permanencia' and text()='saída/permanência']"))).click()
     log_area.insert(tk.END, "Login realizado e navegação para página de Saída/Permanência concluída!\n")
+    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
 
     wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
     log_area.insert(tk.END, "Foco alterado para o iframe com sucesso!\n")
+    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
 
     try:
         botao_pesquisar_saida = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']")))
         botao_pesquisar_saida.click()
         log_area.insert(tk.END, "Botão PESQUISAR clicado com sucesso!\n")
+        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
     except TimeoutException as e:
         log_area.insert(tk.END, f"Erro ao tentar localizar o botão PESQUISAR na página de Saída/Permanência: {e}\n")
+        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
         navegador.quit()
         return
 
@@ -1239,9 +1313,14 @@ def executa_saidas_cns():
 
         if nome_paciente is None or motivo_alta is None or ficha is None:
             log_area.insert(tk.END, "Dados insuficientes para o paciente, pulando para o próximo...\n")
+            log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
             continue
 
+        # Converter o número da ficha para string, garantindo que não haverá .0 no final
+        ficha = str(ficha).split('.')[0]  # Remove a parte decimal caso exista
+
         log_area.insert(tk.END, f"Processando alta para o paciente: {nome_paciente}\n")
+        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
         dar_alta(navegador, wait, motivo_alta, ficha)
         time.sleep(2)
 
@@ -1256,6 +1335,7 @@ def executa_saidas_cns():
     restos_df = pacientes_df[~pacientes_df['Motivo da Alta'].isin(motivos_desejados)]
     restos_df.to_csv('saida_manual.csv', index=False)
     log_area.insert(tk.END, "Arquivo 'saida_manual.csv' criado com os pacientes sem motivo de alta desejado.\n")
+    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
 
     navegador.quit()
     mostrar_popup_conclusao("Processo de saída concluído para todos os pacientes. \n Pacientes para análise manual gravados.\n")
@@ -1419,8 +1499,8 @@ def verificar_atualizar_chromedriver():
 
 #Função com informações da versão
 def mostrar_versao():
-    versao = "AUTOMATOR - AUTOREG\nOperação automatizada de Sistemas - SISREG & G-HOSP\nVersão 5.0.0 - Novembro de 2024\nAutor: Michel R. Paes\nGithub: MrPaC6689\nDesenvolvido com o apoio do ChatGPT 4o\nContato: michelrpaes@gmail.com"
-    mostrar_popup_alerta("AutoReg 5.0.0", versao)
+    versao = "AUTOMATOR - AUTOREG\nOperação automatizada de Sistemas - SISREG & G-HOSP\nVersão 5.0.1 - Novembro de 2024\nAutor: Michel R. Paes\nGithub: MrPaC6689\nDesenvolvido com o apoio do ChatGPT 4o\nContato: michelrpaes@gmail.com"
+    mostrar_popup_alerta("AutoReg 5.0.1", versao)
 
 # Função para exibir o conteúdo do arquivo README.md
 def exibir_leia_me():
@@ -1815,14 +1895,14 @@ def criar_interface():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)    
     janela.iconphoto(True, icone)
-    janela.title("AutoReg - v.5.0.0 ")
+    janela.title("AutoReg - v.5.0.1 ")
     janela.state('zoomed')  # Inicia a janela maximizada
     janela.configure(bg="#ffffff")  # Define uma cor de fundo branca
 
     # Adiciona texto explicativo ou outro conteúdo abaixo do título principal
     header_frame = tk.Frame(janela, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 5.0.0", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 5.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Sistema automatizado para captura de pacientes a dar alta - SISREG G-HOSP.\nPor Michel R. Paes - Outubro 2024\nEscolha uma das opções à esquerda", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -1957,13 +2037,13 @@ def interface_internacao():
     icone = PhotoImage(data=icone_data)    
     janela_internacao.iconphoto(True, icone)
     janela_internacao.state('zoomed')
-    janela_internacao.title("AutoReg - v.5.0.0 - Módulo de internação ")
+    janela_internacao.title("AutoReg - v.5.0.1 - Módulo de internação ")
     janela_internacao.configure(bg="#ffffff")
     
     # Frame para organizar a interface
     header_frame = tk.Frame(janela_internacao, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 5.0.0", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 5.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Sistema automatizado para captura de pacientes a dar alta - SISREG G-HOSP.\nPor Michel R. Paes - Outubro 2024\nMÓDULO INTERNAÇÃO", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -2072,7 +2152,7 @@ def criar_janela_principal():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)
     janela_principal.iconphoto(True, icone)
-    janela_principal.title("AutoReg - v.5.0.0 ") 
+    janela_principal.title("AutoReg - v.5.0.1 ") 
     janela_principal.configure(bg="#ffffff")
 
     janela_principal.protocol("WM_DELETE_WINDOW", lambda: fechar_modulo())
@@ -2082,7 +2162,7 @@ def criar_janela_principal():
     header_frame.pack(fill="x")
     icone_resized = icone.subsample(3, 3)
     
-    tk.Label(header_frame, text="AutoReg 5.0.0", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack(side="top")
+    tk.Label(header_frame, text="AutoReg 5.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack(side="top")
     tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Novembro 2024", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -2181,8 +2261,6 @@ def criar_janela_principal():
 
     janela_principal.mainloop()
 
-
-
 # Função para exibir o módulo selecionado
 def mostrar_modulo(frame_atual, modulo):
     # Fechar todas as janelas secundárias (Toplevel), mantendo a janela principal intacta
@@ -2214,7 +2292,7 @@ def criar_interface_modulo_alta():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)    
     janela.iconphoto(True, icone)
-    janela.title("AutoReg - v.5.0.0 ")
+    janela.title("AutoReg - v.5.0.1 ")
     janela.state('zoomed')  # Inicia a janela maximizada
     janela.configure(bg="#ffffff")  # Define uma cor de fundo branca
     janela.config(menu=menubar)
@@ -2222,7 +2300,7 @@ def criar_interface_modulo_alta():
     # Adiciona texto explicativo ou outro conteúdo abaixo do título principal
     header_frame = tk.Frame(janela, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 5.0.0", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 5.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Novembro 2024\nMÓDULO ALTA", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -2366,7 +2444,7 @@ def criar_interface_modulo_internacao():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)    
     janela_internacao.iconphoto(True, icone)
-    janela_internacao.title("AutoReg - v.5.0.0 - Módulo de Internação")
+    janela_internacao.title("AutoReg - v.5.0.1 - Módulo de Internação")
     janela_internacao.state('zoomed')
     janela_internacao.configure(bg="#ffffff")
     janela_internacao.config(menu=menubar)
@@ -2383,7 +2461,7 @@ def criar_interface_modulo_internacao():
     # Frame para organizar a interface
     header_frame = tk.Frame(janela_internacao, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 5.0.0", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 5.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Novembro 2024\nMÓDULO INTERNAÇÃO", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -2474,7 +2552,7 @@ if getattr(sys, 'frozen', False):
     import pyi_splash
 
 if getattr(sys, 'frozen', False):
-    pyi_splash.update_text("AutoReg 5.0.0")
+    pyi_splash.update_text("AutoReg 5.0.1")
     pyi_splash.update_text("Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Novembro 2024")
     pyi_splash.close()
     pyi_splash.close()
