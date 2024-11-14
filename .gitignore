@@ -22,3 +22,7 @@ dist
 AutoReg_v5.spec
 AutoReg_v5.exe
 autoreg_.py
+fichas_devolvidas_atualizado.csv
+fichas_devolvidas_motivo_alta.csv
+fichas_devolvidas_sisreg.csv
+temp.py
