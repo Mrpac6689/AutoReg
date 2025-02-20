@@ -1,9 +1,9 @@
 # Automated System Operation - SISREG & G-HOSP
-# Version 5.0.1 - November 2024
+# Version 6.0.1 - Fevereiro 2025
 # Author: MrPaC6689
 # Repo: https://github.com/Mrpac6689/AutoReg
 # Contact: michelrpaes@gmail.com
-# Developed with the support of ChatGPT in Python 3.13
+# Developed with the support of ChatGPT in Python 3.119
 # For more information, see README.md. Repository on GitHub.
 
 # Copyright (C) 2024 - Michel Ribeiro Paes
@@ -26,11 +26,11 @@
 
 
 # Operação Automatizada de Sistemas - SISREG & G-HOSP
-# Versão 5.0.1 - Novembro de 2024
+# Versão 6.0.1 - Fevereiro de 2025
 # Autor: MrPaC6689
 # Repo: https://github.com/Mrpac6689/AutoReg
 # Contato: michelrpaes@gmail.com
-# Desenvolvido com o apoio do ChatGPT em Python 3.13
+# Desenvolvido com o apoio do ChatGPT em Python 3.119
 # Informações em README.md. Repositório no GitHub.
 
 # Este programa é um software livre: você pode redistribuí-lo e/ou
@@ -47,11 +47,10 @@
 # junto com este programa. Caso contrário, consulte <https://www.gnu.org/licenses/>.
 #
 #
-#  Alterações da v5.0.1
-# - Corrigida interpretação float do pandas, que estava causando erro na captura e execução do numero da ficha, na rotina de alta. Inclusa conversão para string e remoção do ".0" que causava erro.
-# - Acrescido log_area.see(tk.END) após as entradas de mensagens das defs CNS, fazendo o widget rolar automaticamente até o final do conteúdo
-# - Ajustada função motivo_alta() para reinicializar o driver em caso de excessão.
-# - Restaurada função trazer_terminal(), com o G-Hosp, o selenium não consegue trabalhar se a pagina não estiver visível. Assim, foi necessário utilizaer o drive como um serviço do windows e utilizar a função para trazer a janela principal do programa à frente apos rodar o driver.
+#  Alterações da v6.0.1
+# - Implementada função de internação automatizada
+# - Implementada função de alta automatizada
+
 
 ########################################################
 # Importação de funções externas e bibliotecas Python  #
@@ -67,6 +66,7 @@ import pandas as pd
 import re
 import configparser
 import pygetwindow as gw
+import pyautogui
 import ctypes
 import tkinter as tk
 import threading
@@ -76,7 +76,9 @@ import zipfile
 import shutil
 import random
 import io
+import pdb
 import PyInstaller
+from datetime import datetime, timedelta
 from tkinter import ttk, scrolledtext, messagebox, filedialog
 from tkinter import ttk, messagebox, filedialog, scrolledtext
 from tkinter.scrolledtext import ScrolledText
@@ -84,7 +86,7 @@ from tkinter import PhotoImage
 from PIL import Image, ImageTk  # Biblioteca para manipular imagens
 import base64
 from io import BytesIO
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException, WebDriverException
+from selenium.common.exceptions import TimeoutException, NoAlertPresentException, NoSuchElementException, StaleElementReferenceException, WebDriverException
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -93,12 +95,25 @@ from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from pathlib import Path
+from selenium.webdriver.common.alert import Alert
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, NoAlertPresentException, WebDriverException
+from selenium.webdriver.support.ui import Select, WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains  # Adicionando a importação correta
+from selenium.webdriver.common.keys import Keys
+import tkinter as tk
+import csv
+import threading
+import random
+import time
 
 ########################################
 #   DEFINIÇÕES DE FUNÇÕES GLOBAIS      #
 ########################################
 
 # Popup CONCLUSÃO
+
 def mostrar_popup_conclusao(mensagem):
     # Cria uma janela Toplevel temporária para servir como pai do messagebox
     janela_temporaria = tk.Toplevel()
@@ -112,6 +127,28 @@ def mostrar_popup_conclusao(mensagem):
 
     # Destroi a janela temporária após o messagebox ser fechado
     janela_temporaria.destroy()
+
+def bkp_mostrar_popup_conclusao(mensagem):
+    # Cria uma janela Toplevel temporária para exibir o popup
+    global janela_temporaria  # Torna a janela temporária acessível globalmente
+    janela_temporaria = tk.Toplevel()
+    janela_temporaria.title("Concluído")
+    janela_temporaria.geometry("300x150")
+    janela_temporaria.wm_attributes("-topmost", 1)  # Garante que fique no topo
+
+    # Adiciona a mensagem ao popup
+    label_mensagem = tk.Label(janela_temporaria, text=mensagem, wraplength=280, justify="center", font=("Helvetica", 12))
+    label_mensagem.pack(pady=20)
+
+    # Adiciona o botão "OK" para fechar o popup
+    botao_ok = tk.Button(janela_temporaria, text="OK", command=lambda: fechar_popup())
+    botao_ok.pack(pady=10)
+
+def fechar_popup():
+    global janela_temporaria
+    if 'janela_temporaria' in globals() and isinstance(janela_temporaria, tk.Toplevel):
+        janela_temporaria.destroy()  # Fecha a janela temporária
+        del janela_temporaria  # Remove a referência global
 
 # Popup ERROS
 def mostrar_popup_erro(mensagem):
@@ -575,24 +612,24 @@ def motivo_alta():
         driver.get(caminho + ':4002/prontuarios')
 
         # Localiza o campo de nome e insere o nome do paciente
-        nome_field = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "nome")))
+        nome_field = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "nome")))
         nome_field.send_keys(nome)
         
         # Clica no botão de procurar
-        procurar_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//input[@value='Procurar']")))
+        procurar_button = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@value='Procurar']")))
         procurar_button.click()
 
         # Aguarda a página carregar
-        time.sleep(10)
+        time.sleep(5)
         
         try:
             # Localiza o elemento com o rótulo "Motivo da alta"
-            motivo_element = WebDriverWait(driver, 10).until(
+            motivo_element = WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.XPATH, "//small[text()='Motivo da alta: ']"))
             )
 
             # Agora captura o conteúdo do próximo elemento <div> após o rótulo
-            motivo_conteudo_element = WebDriverWait(driver, 10).until(
+            motivo_conteudo_element = WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.XPATH, "//small[text()='Motivo da alta: ']/following::div[@class='pl5 pb5']"))
             )
             
@@ -638,7 +675,7 @@ def motivo_alta():
         processar_lista()
 
 #Definições para extração do código SISREG dos internados
-def extrai_codigos():
+def bkp_extrai_codigos():
     nomes_fichas = []
 
     #Inicia o webdriver
@@ -748,7 +785,100 @@ def extrai_codigos():
         escritor_csv.writerows(nomes_fichas)
         
     print("Dados salvos no arquivo 'codigos_sisreg.csv'.")
+    mostrar_popup_conclusao("A extração dos códigos SISREG foi concluída com sucesso!")
     navegador.quit()
+
+def extrai_codigos():
+    nomes_fichas = []
+
+    # Inicia o webdriver
+    print("Iniciando o navegador Chrome...")
+    chrome_options = Options()
+    chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
+    navegador = webdriver.Chrome(options=chrome_options)
+    wait = WebDriverWait(navegador, 20)  # Define um tempo de espera de 20 segundos para aguardar os elementos
+    
+    try:
+        # Acessa a URL do sistema SISREG
+        print("Acessando o sistema SISREG...")
+        navegador.get("https://sisregiii.saude.gov.br")
+
+        # Localiza e preenche o campo de usuário
+        print("Tentando localizar o campo de usuário...")
+        usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
+        print("Campo de usuário encontrado!")
+
+        print("Tentando localizar o campo de senha...")
+        senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
+        print("Campo de senha encontrado!")
+
+        # Preenche os campos de login com as credenciais do config.ini
+        usuario, senha = ler_credenciais()
+        usuario_field.send_keys(usuario)
+        senha_field.send_keys(senha)
+
+        # Pressiona o botão de login
+        print("Tentando localizar o botão de login...")
+        login_button = wait.until(
+            EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']"))
+        )
+        login_button.click()
+
+        time.sleep(5)  # Aguarda o carregamento da página após login
+        print("Login realizado com sucesso!")
+
+        # Clica no link "Saída/Permanência"
+        saida_permanencia_link = wait.until(
+            EC.element_to_be_clickable((By.XPATH, "//a[@href='/cgi-bin/config_saida_permanencia' and text()='saída/permanência']"))
+        )
+        saida_permanencia_link.click()
+
+        time.sleep(5)  # Aguarda o carregamento da nova página
+        wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
+
+        # Localiza e clica no botão PESQUISAR dentro do iframe
+        botao_pesquisar_saida = wait.until(
+            EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']"))
+        )
+        botao_pesquisar_saida.click()
+        time.sleep(2)
+
+        # Extrai dados das tabelas
+        while True:
+            linhas_pacientes = navegador.find_elements(By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]")
+            for linha in linhas_pacientes:
+                nome_paciente = linha.find_element(By.XPATH, "./td[2]").text
+                ficha_onclick = linha.get_attribute("onclick")
+                ficha = ficha_onclick.split("'")[1]
+                nomes_fichas.append((nome_paciente, ficha))
+            
+            # Verifica próxima página
+            try:
+                botao_proxima_pagina = navegador.find_element(By.XPATH, "//a[contains(@onclick, 'exibirPagina')]/img[@alt='Proxima']")
+                if botao_proxima_pagina.is_displayed():
+                    botao_proxima_pagina.click()
+                    time.sleep(2)
+                else:
+                    break
+            except NoSuchElementException:
+                break
+
+        # Salva os dados em um arquivo CSV
+        with open('codigos_sisreg.csv', mode='w', newline='', encoding='utf-8') as file:
+            escritor_csv = csv.writer(file)
+            escritor_csv.writerow(["Nome do Paciente", "Número da Ficha"])
+            escritor_csv.writerows(nomes_fichas)
+
+        print("Dados salvos no arquivo 'codigos_sisreg.csv'.")
+
+    except Exception as e:
+        print(f"Erro durante a execução de extrai_codigos: {e}")
+
+    finally:
+        navegador.quit()
+        print("Navegador encerrado.")
+    
+    print("Exibindo popup de conclusão...")
     mostrar_popup_conclusao("A extração dos códigos SISREG foi concluída com sucesso!")
 
 #Atualiza arquivo CVS para organizar nomes e incluir numeros de internação SISREG    
@@ -791,9 +921,12 @@ def dar_alta(navegador, wait, motivo_alta, ficha):
         motivo_mapping = {
             'PERMANENCIA POR OUTROS MOTIVOS': '1.2 ALTA MELHORADO',
             'ALTA MELHORADO': '1.2 ALTA MELHORADO',
+            'ALTA A PEDIDO': '1.4 ALTA A PEDIDO',
+            'ALTA POR OUTROS MOTIVOS': '1.8 ALTA POR OUTROS MOTIVOS',
             'TRANSFERENCIA PARA OUTRO ESTABELECIMENTO': '3.1 TRANSFERIDO PARA OUTRO ESTABELECIMENTO',
             'OBITO COM DECLARACAO DE OBITO FORNECIDA PELO MEDICO ASSISTENTE': '4.1 OBITO COM DECLARACAO DE OBITO FORNECIDA PELO MEDICO ASSISTENTE',
-            'ALTA POR EVASAO': '1.6 ALTA POR EVASAO'
+            'ALTA POR EVASAO': '1.6 ALTA POR EVASAO',
+            'ENCERRAMENTO ADMINISTRATIVO': '5.1 ENCERRAMENTO ADMINISTRATIVO'
         }
         motivo_alta = motivo_mapping.get(motivo_alta, None)
         if motivo_alta is None:
@@ -917,8 +1050,11 @@ def executa_saidas():
     motivos_desejados = [
         'PERMANENCIA POR OUTROS MOTIVOS',
         'ALTA MELHORADO',
+        'ALTA A PEDIDO',
+        'ALTA POR OUTROS MOTIVOS',
         'TRANSFERENCIA PARA OUTRO ESTABELECIMENTO',
         'OBITO COM DECLARACAO DE OBITO FORNECIDA PELO MEDICO ASSISTENTE',
+        'ENCERRAMENTO ADMINISTRATIVO',
         'ALTA POR EVASAO'
     ]
     restos_df = pacientes_df[~pacientes_df['Motivo da Alta'].isin(motivos_desejados)]
@@ -1064,7 +1200,7 @@ def captura_cns_restos_alta():
             # Clica no link "saída/permanência"
             saida_permanencia = wait.until(EC.element_to_be_clickable((By.XPATH, "//*[@id='barraMenu']/ul/li[2]/a")))
             saida_permanencia.click()
-           
+            
             # Troca o iframe
             navegador.switch_to.frame("f_principal")
                   
@@ -1084,6 +1220,7 @@ def captura_cns_restos_alta():
     # Função para executar o JavaScript da ficha do paciente
     def executar_ficha_js(navegador, ficha):
         try:
+            time.sleep(2)
             navegador.execute_script(f"configFicha('{ficha}')\n")
             log_area.insert(tk.END, f"Executando a função configFicha para a ficha: {ficha}\n")
             log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
@@ -1127,6 +1264,11 @@ def captura_cns_restos_alta():
                     # Localiza e captura o CNS
                     cns_paciente = navegador.find_element(By.XPATH, "//*[@id='main_page']/form/table[1]/tbody/tr[17]/td")
                     cns_texto = cns_paciente.text
+                    
+                    # Verifica se o CNS termina com ".0" e remove se necessário
+                    if cns_texto.endswith('.0'):
+                        cns_texto = cns_texto[:-2]
+                    
                     log_area.insert(tk.END, f"CNS encontrado: {cns_texto}\n")
                     log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
                     
@@ -1159,6 +1301,23 @@ def captura_cns_restos_alta():
 
 ####Capturar motivo alta por CNS
 def motivo_alta_cns():
+    # Corrige o arquivo CSV antes de iniciar a rotina
+    try:
+        df_corrigir = pd.read_csv('restos_atualizado.csv')
+        # Verifica se a coluna 'CNS' existe; se não, tenta acessar pela posição (índice 4)
+        if 'CNS' in df_corrigir.columns:
+            df_corrigir['CNS'] = df_corrigir['CNS'].astype(str).apply(lambda x: x[:-2] if x.endswith('.0') else x)
+        else:
+            # Caso a coluna CNS não tenha sido nomeada, assume que ela está na posição 4
+            nome_coluna = df_corrigir.columns[4]
+            df_corrigir[nome_coluna] = df_corrigir[nome_coluna].astype(str).apply(lambda x: x[:-2] if x.endswith('.0') else x)
+        df_corrigir.to_csv('restos_atualizado.csv', index=False)
+        log_area.insert(tk.END, "Arquivo CSV corrigido: removido '.0' dos CNS, se necessário.\n")
+        log_area.see(tk.END)
+    except Exception as e:
+        log_area.insert(tk.END, f"Erro ao corrigir o CSV: {e}\n")
+        log_area.see(tk.END)
+    
     # Função para inicializar o ChromeDriver
     def iniciar_driver():
         chrome_driver_path = "chromedriver.exe"
@@ -1234,8 +1393,11 @@ def motivo_alta_cns():
     # Faz login no G-HOSP
     login_ghosp(driver, usuario, senha, caminho)
     
-    # Lê a lista de pacientes de alta, pulando a primeira linha (cabeçalho)
-    df_pacientes = pd.read_csv('restos_atualizado.csv')
+    # Lê a lista de pacientes de alta, garantindo que a coluna CNS seja lida como string
+    df_pacientes = pd.read_csv('restos_atualizado.csv', dtype={'CNS': str})
+    
+    # (Opcional) Caso algum valor ainda contenha o ".0", corrigimos novamente
+    df_pacientes['CNS'] = df_pacientes['CNS'].apply(lambda x: re.sub(r'\.0$', '', x) if isinstance(x, str) else x)
     
     # Verifica cada paciente a partir da segunda linha e adiciona o motivo de alta
     for i, row in df_pacientes.iloc[1:].iterrows():  # .iloc[1:] para ignorar o cabeçalho
@@ -1289,20 +1451,34 @@ def executa_saidas_cns():
     log_area.insert(tk.END, "Login realizado e navegação para página de Saída/Permanência concluída!\n")
     log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
 
-    wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
-    log_area.insert(tk.END, "Foco alterado para o iframe com sucesso!\n")
-    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
+    wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_saida_permanencia' and text()='saída/permanência']"))).click()
+    log_area.insert(tk.END, "Login realizado e navegação para página de Saída/Permanência concluída!\n")
+    log_area.see(tk.END)
 
+    # Aguarda e altera o foco para o iframe
+    try:
+        wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
+        log_area.insert(tk.END, "Foco alterado para o iframe com sucesso!\n")
+        log_area.see(tk.END)
+    except TimeoutException as e:
+        log_area.insert(tk.END, f"Erro ao tentar acessar o iframe 'f_main': {e}\n")
+        log_area.see(tk.END)
+        navegador.quit()
+        return
+
+    # Aguarda o botão 'PESQUISAR' estar presente e clicável
     try:
         botao_pesquisar_saida = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']")))
         botao_pesquisar_saida.click()
         log_area.insert(tk.END, "Botão PESQUISAR clicado com sucesso!\n")
-        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
+        log_area.see(tk.END)
+        time.sleep(5)
     except TimeoutException as e:
         log_area.insert(tk.END, f"Erro ao tentar localizar o botão PESQUISAR na página de Saída/Permanência: {e}\n")
-        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
+        log_area.see(tk.END)
         navegador.quit()
         return
+
 
     pacientes_atualizados_df = pd.read_csv('restos_atualizado.csv', encoding='utf-8')
 
@@ -1328,8 +1504,11 @@ def executa_saidas_cns():
     motivos_desejados = [
         'PERMANENCIA POR OUTROS MOTIVOS',
         'ALTA MELHORADO',
+        'ALTA A PEDIDO',
+        'ALTA POR OUTROS MOTIVOS',
         'TRANSFERENCIA PARA OUTRO ESTABELECIMENTO',
         'OBITO COM DECLARACAO DE OBITO FORNECIDA PELO MEDICO ASSISTENTE',
+        'ENCERRAMENTO ADMINISTRATIVO',
         'ALTA POR EVASAO'
     ]
     restos_df = pacientes_df[~pacientes_df['Motivo da Alta'].isin(motivos_desejados)]
@@ -1499,8 +1678,8 @@ def verificar_atualizar_chromedriver():
 
 #Função com informações da versão
 def mostrar_versao():
-    versao = "AUTOMATOR - AUTOREG\nOperação automatizada de Sistemas - SISREG & G-HOSP\nVersão 5.0.1 - Novembro de 2024\nAutor: Michel R. Paes\nGithub: MrPaC6689\nDesenvolvido com o apoio do ChatGPT 4o\nContato: michelrpaes@gmail.com"
-    mostrar_popup_alerta("AutoReg 5.0.1", versao)
+    versao = "AUTOMATOR - AUTOREG\nOperação automatizada de Sistemas - SISREG & G-HOSP\nVersão 6.0.1 - Fevereiro de 2025\nAutor: Michel R. Paes\nGithub: MrPaC6689\nDesenvolvido com o apoio do ChatGPT 4o\nContato: michelrpaes@gmail.com"
+    mostrar_popup_alerta("AutoReg 6.0.1", versao)
 
 # Função para exibir o conteúdo do arquivo README.md
 def exibir_leia_me():
@@ -1562,7 +1741,7 @@ def extrai_codigos_internacao(log_area):
     try:
         chrome_options = Options()
         chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
-        chrome_options.add_argument("--start-maximized")  # Abre o navegador maximizado
+        chrome_options.add_argument("--start-maximized")  
         chrome_options.add_argument("--disable-extensions")  # Desabilita extensões para aumentar a velocidade
         chrome_options.add_argument("--disable-gpu")  # Desabilita GPU para melhorar o desempenho em ambientes sem aceleração gráfica
         chrome_options.add_argument("--no-sandbox")  # Pode acelerar o navegador em alguns casos
@@ -1578,10 +1757,12 @@ def extrai_codigos_internacao(log_area):
         usuario, senha = ler_credenciais()
         usuario_field.send_keys(usuario)
         senha_field.send_keys(senha)
+        time.sleep(10)
         login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
         login_button.click()
         
         wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_internar' and text()='internar']"))).click()
+        time.sleep(10)
         wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
         log_area.insert(tk.END, "Login realizado e navegação para página de Internação...\n")
 
@@ -1654,7 +1835,7 @@ def iniciar_navegador():
     janela_internacao.iconify()    # Minimizar a janela
     janela_internacao.update()     # Atualizar o estado da janela
     janela_internacao.deiconify()  # Restaurar para garantir visibilidade
-
+    
     return navegador
 
 # Função para realizar o login no SISREG
@@ -1676,6 +1857,7 @@ def realizar_login(navegador, wait, usuario, senha):
         log_area.insert(tk.END, "Erro: Falha ao realizar login, elemento esperado não encontrado.\n")
         navegador.quit()
         return False
+    time.sleep(2)
 
 # Função para acessar a página de internação
 def acessar_pagina_internacao(navegador, wait):
@@ -1791,6 +1973,8 @@ def iniciar_internacao_multiplas_fichas(frame_print_area, log_area, entry_data, 
                         log_area.insert(tk.END, f"Erro: Elemento não encontrado - {str(e)}\nAGUARDE A REINICIALIZAÇÃO DO CHROMEDRIVER...\n")
                     elif isinstance(e, TimeoutException):
                         log_area.insert(tk.END, f"Erro: Ocorreu um TimeoutException - {str(e)}\nAGUARDE A REINICIALIZAÇÃO DO CHROMEDRIVER...\n")
+                    elif isinstance(e, NoAlertPresentException):
+                        log_area.insert(tk.END, f"Erro: Nenhum alerta presente - {str(e)}\nAGUARDE A REINICIALIZAÇÃO DO CHROMEDRIVER...\n")
                     else:
                         log_area.insert(tk.END, f"Erro inesperado: {str(e)}\nAGUARDE A REINICIALIZAÇÃO DO CHROMEDRIVER...\n")
                     log_area.see(tk.END)
@@ -1817,7 +2001,6 @@ def confirmar_internacao(entry_data, ficha, log_area, navegador):
     try:
         wait = WebDriverWait(navegador, 15)
         select_profissional = Select(wait.until(EC.presence_of_element_located((By.XPATH, "//*[@id='main_page']/form/table[2]/tbody/tr[2]/td[2]/select"))))
-        # Seleciona um item aleatório, ignorando o primeiro e o último
         opcoes = select_profissional.options[1:-1]
         opcao_aleatoria = random.choice(opcoes)
         select_profissional.select_by_visible_text(opcao_aleatoria.text)
@@ -1827,8 +2010,14 @@ def confirmar_internacao(entry_data, ficha, log_area, navegador):
         data_field.clear()
         time.sleep(0.3)
         data_field.send_keys(data_internacao)
-        navegador.execute_script("Internar();")
 
+        # Adiciona ação explícita para clicar no botão "Internar"
+        botao_internar = wait.until(EC.presence_of_element_located((By.XPATH, "//*[@id='main_page']/form/center[2]/input[2]")))
+        botao_internar.click()
+
+        texto_segundo_popup = ""  # Inicializa a variável antes do uso
+
+        # Primeiro alerta
         try:
             alert = navegador.switch_to.alert
             texto_popup = alert.text
@@ -1837,13 +2026,19 @@ def confirmar_internacao(entry_data, ficha, log_area, navegador):
         except NoAlertPresentException:
             log_area.insert(tk.END, "Nenhum alerta encontrado no primeiro pop-up.\n")
 
+        # Segundo alerta com espera dinâmica
         try:
+            WebDriverWait(navegador, 60).until(EC.alert_is_present())  # Aguarda até que o alerta esteja presente
             segundo_alert = navegador.switch_to.alert
             texto_segundo_popup = segundo_alert.text
             segundo_alert.accept()
             log_area.insert(tk.END, f"Segundo alerta confirmado: {texto_segundo_popup}\n")
-        except NoAlertPresentException:
-            log_area.insert(tk.END, "Nenhum segundo alerta encontrado.\n")
+        except TimeoutException:
+            log_area.insert(tk.END, "Nenhum segundo alerta apareceu. Prosseguindo com a operação.\n")
+
+        # Confirma se o segundo alerta foi tratado
+        if not texto_segundo_popup:
+            log_area.insert(tk.END, "Aviso: A mensagem do segundo popup está vazia ou o popup não apareceu. Verifique o comportamento do sistema, se necessário.\n")
 
         log_area.insert(tk.END, f"Ficha {ficha} processada. Mensagem do sistema: {texto_segundo_popup}\n")
     except (TimeoutException, NoSuchElementException, WebDriverException) as e:
@@ -1854,6 +2049,289 @@ def confirmar_internacao(entry_data, ficha, log_area, navegador):
         entry_data.delete(0, tk.END)
         entry_data.focus_set()
 
+        # Solução adicional para verificar alertas residuais
+        try:
+            residual_alert = navegador.switch_to.alert
+            residual_alert_text = residual_alert.text
+            residual_alert.accept()
+            log_area.insert(tk.END, f"Alerta residual tratado: {residual_alert_text}\n")
+        except NoAlertPresentException:
+            log_area.insert(tk.END, "Nenhum alerta residual encontrado.\n")
+
+def bkp_iniciar_internacao_auto(log_area):
+    with open('codigos_internacao.csv', mode='r', encoding='utf-8') as file:
+        leitor_csv = csv.reader(file)
+        next(leitor_csv)  # Pula o cabeçalho
+        for linha in leitor_csv:
+            ficha = linha[1]  # Captura o número da ficha da segunda coluna
+            try:
+                chrome_options = Options()
+                #chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
+                #chrome_options.add_argument("--start-maximized")  
+                #chrome_options.add_argument("--disable-extensions")  # Desabilita extensões para aumentar a velocidade
+                #chrome_options.add_argument("--disable-gpu")  # Desabilita GPU para melhorar o desempenho em ambientes sem aceleração gráfica
+                #chrome_options.add_argument("--no-sandbox")  # Pode acelerar o navegador em alguns casos
+                #chrome_options.add_argument("--disable-dev-shm-usage")  # Resolve problemas de espaço insuficiente em alguns sistemas 
+                navegador = webdriver.Chrome(options=chrome_options)
+                wait = WebDriverWait(navegador, 20)
+                log_area.insert(tk.END, "Acessando a página de Internação...\n")
+                navegador.get("https://sisregiii.saude.gov.br")
+                
+                # Realiza o login
+                usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
+                senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
+                usuario, senha = ler_credenciais()
+                usuario_field.send_keys(usuario)
+                senha_field.send_keys(senha)
+                time.sleep(5)
+                login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
+                login_button.click()
+                
+                wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_internar' and text()='internar']"))).click()
+                time.sleep(5)
+                wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
+                log_area.insert(tk.END, "Login realizado e navegação para página de Internação...\n")
+
+                #ABRE A FICHA A SER INTERNADA
+                executar_ficha(navegador, ficha)
+                log_area.insert(tk.END, f"Ficha {ficha} processada com sucesso.\n")
+                log_area.see(tk.END)
+
+                try:
+                    # Encontrar todas as TRs que contêm alguma descrição
+                    all_trs = navegador.find_elements(By.XPATH, "//tr")
+
+                    tr_solicitacao = None
+                    for tr in all_trs:
+                        try:
+                            if "Data de Solicitação:" in tr.text:
+                                tr_solicitacao = tr
+                                break
+                        except:
+                            continue
+
+                    if tr_solicitacao:
+                        # Identificar a TR seguinte (onde está a data)
+                        tr_data = tr_solicitacao.find_element(By.XPATH, "following-sibling::tr[1]")
+
+                        # Obter a TD correta (terceira coluna)
+                        data_element = tr_data.find_element(By.XPATH, "td[3]")
+
+                        # Extração e processamento da data
+                        data_text = data_element.text.split(" - ")[0].strip()  # Pega só a data
+                        data_original = datetime.strptime(data_text, "%d.%m.%Y")
+                        data_internacao = data_original - timedelta(days=2)
+                        data_internacao_str = data_internacao.strftime("%d/%m/%Y")
+
+                        log_area.insert(tk.END, f"Data de solicitação encontrada: {data_text}\n")
+                        log_area.insert(tk.END, f"Data formatada para inserção: {data_internacao_str}\n")
+
+                    else:
+                        log_area.insert(tk.END, "Erro: A TR com 'Data de Solicitação:' não foi encontrada!\n")
+
+                except TimeoutException:
+                    log_area.insert(tk.END, "Erro: Timeout ao buscar a TR com 'Data de Solicitação:'!\n")
+                except NoSuchElementException:
+                    log_area.insert(tk.END, "Erro: Não foi possível localizar a TR com a data!\n")
+                except ValueError as e:
+                    log_area.insert(tk.END, f"Erro na conversão da data: {e}\n")
+
+
+                # Preenche a data de internação
+                data_field = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@type='text' and contains(@id, 'dp')]")))
+                data_field.clear()
+                time.sleep(0.3)
+                data_field.send_keys(data_internacao_str)
+
+                # Seleciona aleatoriamente um profissional da lista
+                select_profissional = Select(wait.until(EC.presence_of_element_located((By.XPATH, "//*[@id='main_page']/form/table[2]/tbody/tr[2]/td[2]/select"))))
+                opcoes = select_profissional.options[1:-1]
+                opcao_aleatoria = random.choice(opcoes)
+                select_profissional.select_by_visible_text(opcao_aleatoria.text)
+                log_area.insert(tk.END, f"O profissional selecionado foi: {opcao_aleatoria.text}\n")                                                
+
+                # Adiciona ação explícita para clicar no botão "Internar"
+                botao_internar = wait.until(EC.presence_of_element_located((By.XPATH, "//*[@id='main_page']/form/center[2]/input[2]")))
+                botao_internar.click()
+
+                texto_segundo_popup = ""  # Inicializa a variável antes do uso
+
+                # Lidar com o primeiro popup de confirmação
+                try:
+                    
+                    WebDriverWait(navegador, 10).until(EC.alert_is_present())  
+                    alert = navegador.switch_to.alert
+                    texto_popup = alert.text
+                    log_area.insert(tk.END, f"Popup detectado: {texto_popup}\n")
+
+                    # Confirma a operação clicando em "OK"
+                    alert.accept()
+                    log_area.insert(tk.END, "✔️ Botão 'OK' pressionado com sucesso.\n")
+
+                    # Pequena pausa para que o sistema processe a ação
+                    time.sleep(2)
+                except TimeoutException:
+                    log_area.insert(tk.END, "⚠️ Nenhum popup encontrado. Prosseguindo com a operação.\n")
+                except Exception as e:
+                    log_area.insert(tk.END, f"❌ Erro ao interagir com o popup: {e}\n")
+
+
+                # Aguarda a possível aparição do segundo popup
+                try:
+                    WebDriverWait(navegador, 5).until(EC.alert_is_present())  # Tempo reduzido, pois pode não aparecer
+                    segundo_alert = navegador.switch_to.alert
+                    texto_segundo_popup = segundo_alert.text
+                    segundo_alert.accept()
+                    log_area.insert(tk.END, f"Segundo alerta confirmado: {texto_segundo_popup}\n")
+                except TimeoutException:
+                    log_area.insert(tk.END, "Nenhum segundo alerta apareceu. Prosseguindo com a operação.\n")
+                except Exception as e:
+                    log_area.insert(tk.END, f"Erro ao lidar com o segundo alerta: {e}\n")
+
+                # Verifica se há erro na tela após o primeiro popup
+                try:
+                    erro_sistema = navegador.find_element(By.XPATH, "//div[contains(text(), 'Erro de Sistema')]")
+                    log_area.insert(tk.END, "Erro de Sistema detectado na interface. Processo interrompido.\n")
+                except NoSuchElementException:
+                    log_area.insert(tk.END, "Nenhum erro de sistema detectado. Continuando operação.\n")
+
+            finally:
+                
+                log_area.see(tk.END)
+
+
+def iniciar_internacao_auto(log_area):
+    log_area.insert(tk.END, "INICIANDO PROCESSO DE INTERNAÇÃO\n")
+    with open('codigos_internacao.csv', mode='r', encoding='utf-8') as file:
+        leitor_csv = csv.reader(file)
+        next(leitor_csv)  # Pula o cabeçalho
+        
+        # Inicializa o navegador uma única vez antes do loop
+        chrome_options = Options()
+        chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
+        chrome_options.add_argument("--start-maximized")  
+        chrome_options.add_argument("--disable-extensions")  # Desabilita extensões para aumentar a velocidade
+        chrome_options.add_argument("--disable-gpu")  # Desabilita GPU para melhorar o desempenho em ambientes sem aceleração gráfica
+        chrome_options.add_argument("--no-sandbox")  # Pode acelerar o navegador em alguns casos
+        chrome_options.add_argument("--disable-dev-shm-usage")  # Resolve problemas de espaço insuficiente em alguns sistemas 
+        navegador = webdriver.Chrome(options=chrome_options)
+        wait = WebDriverWait(navegador, 20)
+
+        navegador.get("https://sisregiii.saude.gov.br")
+
+        # Realiza o login
+        usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
+        senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
+        usuario, senha = ler_credenciais()
+        usuario_field.send_keys(usuario)
+        senha_field.send_keys(senha)
+        time.sleep(5)
+        login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
+        login_button.click()
+
+        wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_internar' and text()='internar']"))).click()
+        time.sleep(5)
+        wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
+        log_area.insert(tk.END, "Login realizado e navegação para página de Internação...\n")
+
+        try:
+            for linha in leitor_csv:
+                ficha = linha[1]  # Captura o número da ficha da segunda coluna
+                try:
+                    log_area.insert(tk.END, f"Acessando a página de Internação para a ficha {ficha}...\n")
+
+                    # ABRE A FICHA A SER INTERNADA
+                    executar_ficha(navegador, ficha)
+                    log_area.insert(tk.END, f"Ficha {ficha} processada com sucesso.\n")
+                    log_area.see(tk.END)
+
+                    # Captura a data de solicitação e formata corretamente
+                    try:
+                        all_trs = navegador.find_elements(By.XPATH, "//tr")
+                        tr_solicitacao = None
+                        for tr in all_trs:
+                            if "Data de Solicitação:" in tr.text:
+                                tr_solicitacao = tr
+                                break
+
+                        if tr_solicitacao:
+                            tr_data = tr_solicitacao.find_element(By.XPATH, "following-sibling::tr[1]")
+                            data_element = tr_data.find_element(By.XPATH, "td[3]")
+                            data_text = data_element.text.split(" - ")[0].strip()
+                            data_original = datetime.strptime(data_text, "%d.%m.%Y")
+                            data_internacao = data_original - timedelta(days=2)
+                            data_internacao_str = data_internacao.strftime("%d/%m/%Y")
+
+                            log_area.insert(tk.END, f"Data de solicitação encontrada: {data_text}\n")
+                            log_area.insert(tk.END, f"Data formatada para inserção: {data_internacao_str}\n")
+                        else:
+                            log_area.insert(tk.END, "Erro: A TR com 'Data de Solicitação:' não foi encontrada!\n")
+
+                    except (TimeoutException, NoSuchElementException, ValueError) as e:
+                        log_area.insert(tk.END, f"Erro na extração da data: {e}\n")
+
+                    # Preenche a data de internação
+                    data_field = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@type='text' and contains(@id, 'dp')]")))
+                    data_field.clear()
+                    time.sleep(0.3)
+                    data_field.send_keys(data_internacao_str)
+
+                    # Seleciona aleatoriamente um profissional
+                    select_profissional = Select(wait.until(EC.presence_of_element_located((By.XPATH, "//*[@id='main_page']/form/table[2]/tbody/tr[2]/td[2]/select"))))
+                    opcoes = select_profissional.options[1:-1]
+                    opcao_aleatoria = random.choice(opcoes)
+                    select_profissional.select_by_visible_text(opcao_aleatoria.text)
+                    log_area.insert(tk.END, f"O profissional selecionado foi: {opcao_aleatoria.text}\n")
+
+                    # Clica no botão "Internar"
+                    botao_internar = wait.until(EC.presence_of_element_located((By.XPATH, "//*[@id='main_page']/form/center[2]/input[2]")))
+                    botao_internar.click()
+
+                    # Lidar com o primeiro popup de confirmação
+                    try:
+                        WebDriverWait(navegador, 10).until(EC.alert_is_present())  
+                        alert = navegador.switch_to.alert
+                        texto_popup = alert.text
+                        log_area.insert(tk.END, f"Popup detectado: {texto_popup}\n")
+                        alert.accept()
+                        log_area.insert(tk.END, "✔️ Botão 'OK' pressionado com sucesso.\n")
+                        time.sleep(2)
+                    except TimeoutException:
+                        log_area.insert(tk.END, "⚠️ Nenhum popup encontrado. Prosseguindo com a operação.\n")
+                    except Exception as e:
+                        log_area.insert(tk.END, f"❌ Erro ao interagir com o popup: {e}\n")
+
+                    # Aguarda um possível segundo popup
+                    try:
+                        WebDriverWait(navegador, 5).until(EC.alert_is_present())
+                        segundo_alert = navegador.switch_to.alert
+                        texto_segundo_popup = segundo_alert.text
+                        segundo_alert.accept()
+                        log_area.insert(tk.END, f"Segundo alerta confirmado: {texto_segundo_popup}\n")
+                    except TimeoutException:
+                        log_area.insert(tk.END, "Nenhum segundo alerta apareceu. Prosseguindo com a operação.\n")
+                    except Exception as e:
+                        log_area.insert(tk.END, f"Erro ao lidar com o segundo alerta: {e}\n")
+
+                    # Verifica se há erro de sistema na tela
+                    try:
+                        erro_sistema = navegador.find_element(By.XPATH, "//div[contains(text(), 'Erro de Sistema')]")
+                        log_area.insert(tk.END, "⚠️ Erro de Sistema detectado. Processo interrompido.\n")
+                    except NoSuchElementException:
+                        log_area.insert(tk.END, "✔️ Nenhum erro de sistema detectado. Internação realizada com sucesso.\n")
+
+                except Exception as e:
+                    log_area.insert(tk.END, f"❌ Erro durante a internação da ficha {ficha}: {e}\n")
+
+                finally:
+                    log_area.see(tk.END)
+
+        finally:
+            navegador.quit()
+            log_area.insert(tk.END, "✔️ Internação automática finalizada com sucesso.\n")
+            log_area.see(tk.END)
+
+
 ######################################
 ## CODIFICAÇÃO DA INTERFACE GRAFICA ##
 ######################################
@@ -1863,7 +2341,7 @@ def confirmar_internacao(entry_data, ficha, log_area, navegador):
 # Função para redirecionar a saída do terminal para a Text Box
 class RedirectOutputToGUI:
     def __init__(self, text_widget):
-        self.text_widget = text_widget
+        self.text_widget = self.text_widget
 
     def write(self, text):
         self.text_widget.insert(tk.END, text)
@@ -1885,146 +2363,6 @@ class RedirectOutputToGUI:
     def flush(self):
         pass
 
-# Interface modulo alta
-def criar_interface():
-    # Cria a janela principal
-    global janela  # Declara a variável 'janela' como global para ser acessada em outras funções
-    janela = tk.Tk()
-    # Decodifique a imagem em base64
-    icone_data = base64.b64decode(imagens.icone_base64)
-    # Crie uma PhotoImage para o ícone a partir dos dados decodificados
-    icone = PhotoImage(data=icone_data)    
-    janela.iconphoto(True, icone)
-    janela.title("AutoReg - v.5.0.1 ")
-    janela.state('zoomed')  # Inicia a janela maximizada
-    janela.configure(bg="#ffffff")  # Define uma cor de fundo branca
-
-    # Adiciona texto explicativo ou outro conteúdo abaixo do título principal
-    header_frame = tk.Frame(janela, bg="#4B79A1", pady=15)
-    header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 5.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
-    tk.Label(header_frame, text="Sistema automatizado para captura de pacientes a dar alta - SISREG G-HOSP.\nPor Michel R. Paes - Outubro 2024\nEscolha uma das opções à esquerda", 
-             font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
-
-    # Criação do menu
-    menubar = tk.Menu(janela)
-    janela.config(menu=menubar)
-
-    # Adiciona um submenu "Configurações"
-    config_menu = tk.Menu(menubar, tearoff=0)
-    menubar.add_cascade(label="Configurações", menu=config_menu)
-    config_menu.add_command(label="Editar config.ini", command=lambda: abrir_configuracoes())
-    config_menu.add_command(label="Verificar e Atualizar ChromeDriver", command=lambda: verificar_atualizar_chromedriver())
-
-    # Adiciona um submenu "Informações" com "Versão" e "Leia-me"
-    info_menu = tk.Menu(menubar, tearoff=0)
-    menubar.add_cascade(label="Informações", menu=info_menu)
-    info_menu.add_command(label="Versão", command=lambda: mostrar_versao())
-    info_menu.add_command(label="Leia-me", command=lambda: exibir_leia_me())
-
-    # Frame principal para organizar a interface em duas colunas
-    frame_principal = tk.Frame(janela, bg="#ffffff")
-    frame_principal.pack(fill="both", expand=True, padx=20, pady=10)
-
-    # Frame esquerdo para botões
-    frame_esquerdo = tk.Frame(frame_principal, bg="#ffffff")
-    frame_esquerdo.pack(side=tk.LEFT, fill="y")
-
-    # Frame direito para a área de texto
-    frame_direito = tk.Frame(frame_principal, bg="#ffffff")
-    frame_direito.pack(side=tk.RIGHT, fill="both", expand=True)
-
-    # Estilo dos botões
-    style = ttk.Style()
-    style.configure("TButton", font=("Helvetica", 12), padding=10)
-
-    # Frame para manter os botões lado a lado e padronizar tamanho
-    button_width = 40  # Define uma largura fixa para todos os botões
-
-    # Frame para SISREG
-    frame_sisreg = tk.LabelFrame(frame_esquerdo, text="SISREG", padx=10, pady=10, font=("Helvetica", 14, "bold"), bg="#ffffff", fg="#4B79A1")
-    frame_sisreg.pack(pady=10, fill="x")
-
-    btn_sisreg = ttk.Button(frame_sisreg, text="Extrair internados SISREG", command=lambda: threading.Thread(target=executar_sisreg).start(), width=button_width)
-    btn_sisreg.pack(side=tk.LEFT, padx=6)
-
-    btn_exibir_sisreg = ttk.Button(frame_sisreg, text="Exibir Resultado SISREG", command=lambda: abrir_csv('internados_sisreg.csv'), width=button_width)
-    btn_exibir_sisreg.pack(side=tk.LEFT, padx=6)
-
-    # Frame para G-HOSP
-    frame_ghosp = tk.LabelFrame(frame_esquerdo, text="G-HOSP", padx=10, pady=10, font=("Helvetica", 14, "bold"), bg="#ffffff", fg="#4B79A1")
-    frame_ghosp.pack(pady=10, fill="x")
-
-    btn_ghosp = ttk.Button(frame_ghosp, text="Extrair internados G-HOSP", command=lambda: threading.Thread(target=executar_ghosp).start(), width=button_width)
-    btn_ghosp.pack(side=tk.LEFT, padx=6)
-
-    btn_exibir_ghosp = ttk.Button(frame_ghosp, text="Exibir Resultado G-HOSP", command=lambda: abrir_csv('internados_ghosp.csv'), width=button_width)
-    btn_exibir_ghosp.pack(side=tk.LEFT, padx=6)
-
-    # Frame para Comparação
-    frame_comparar = tk.LabelFrame(frame_esquerdo, text="Comparar e Tratar Dados", padx=10, pady=10, font=("Helvetica", 14, "bold"), bg="#ffffff", fg="#4B79A1")
-    frame_comparar.pack(pady=10, fill="x")
-
-    btn_comparar = ttk.Button(frame_comparar, text="Comparar e tratar dados", command=lambda: threading.Thread(target=comparar).start(), width=button_width)
-    btn_comparar.pack(side=tk.LEFT, padx=6)
-
-    btn_exibir_comparar = ttk.Button(frame_comparar, text="Exibir Resultado da Comparação", command=lambda: abrir_csv('pacientes_de_alta.csv'), width=button_width)
-    btn_exibir_comparar.pack(side=tk.LEFT, padx=6)
-
-    # Frame para Capturar Motivo de Alta
-    frame_motivo_alta = tk.LabelFrame(frame_esquerdo, text="Capturar Motivo de Alta", padx=10, pady=10, font=("Helvetica", 14, "bold"), bg="#ffffff", fg="#4B79A1")
-    frame_motivo_alta.pack(pady=10, fill="x")
-
-    btn_motivo_alta = ttk.Button(frame_motivo_alta, text="Capturar Motivo de Alta", command=lambda: threading.Thread(target=capturar_motivo_alta).start(), width=button_width)
-    btn_motivo_alta.pack(side=tk.LEFT, padx=6)
-
-    btn_exibir_motivo_alta = ttk.Button(frame_motivo_alta, text="Exibir Motivos de Alta", command=lambda: abrir_csv('pacientes_de_alta.csv'), width=button_width)
-    btn_exibir_motivo_alta.pack(side=tk.LEFT, padx=6)
-
-    # Frame para Extrair Códigos Sisreg Internados
-    frame_extrai_codigos = tk.LabelFrame(frame_esquerdo, text="Extrair Códigos SISREG", padx=10, pady=10, font=("Helvetica", 14, "bold"), bg="#ffffff", fg="#4B79A1")
-    frame_extrai_codigos.pack(pady=10, fill="x")
-
-    btn_extrai_codigos = ttk.Button(frame_extrai_codigos, text="Extrair Código SISREG dos Internados", command=lambda: threading.Thread(target=extrai_codigos).start(), width=button_width)
-    btn_extrai_codigos.pack(side=tk.LEFT, padx=6)
-
-    btn_exibir_extrai_codigos = ttk.Button(frame_extrai_codigos, text="Exibir Código SISREG dos Internados", command=lambda: abrir_csv('codigos_sisreg.csv'), width=button_width)
-    btn_exibir_extrai_codigos.pack(side=tk.LEFT, padx=6)
-
-    # Frame para Atualizar CSV
-    frame_atualiza_csv = tk.LabelFrame(frame_esquerdo, text="Atualizar Planilha para Alta", padx=10, pady=10, font=("Helvetica", 14, "bold"), bg="#ffffff", fg="#4B79A1")
-    frame_atualiza_csv.pack(pady=10, fill="x")
-
-    btn_atualiza_csv = ttk.Button(frame_atualiza_csv, text="Organizar Planilha para Alta", command=lambda: threading.Thread(target=atualiza_csv).start(), width=button_width)
-    btn_atualiza_csv.pack(side=tk.LEFT, padx=6)
-
-    btn_exibir_atualiza_csv = ttk.Button(frame_atualiza_csv, text="Exibir Planilha para Alta", command=lambda: abrir_csv('pacientes_de_alta_atualizados.csv'), width=button_width)
-    btn_exibir_atualiza_csv.pack(side=tk.LEFT, padx=6)
-
-    # Frame para Executar Altas no SISREG
-    frame_executar_altas = tk.LabelFrame(frame_esquerdo, text="Executar Altas no SISREG", padx=10, pady=10, font=("Helvetica", 14, "bold"), bg="#ffffff", fg="#4B79A1")
-    frame_executar_altas.pack(pady=10, fill="x")
-
-    btn_executar_altas = ttk.Button(frame_executar_altas, text="Executar Altas", command=lambda: threading.Thread(target=executa_saidas).start(), width=button_width)
-    btn_executar_altas.pack(side=tk.LEFT, padx=6)
-
-    btn_relacao_pacientes = ttk.Button(frame_executar_altas, text="Relação de pacientes para análise manual", command=lambda: abrir_csv('restos.csv'), width=button_width)
-    btn_relacao_pacientes.pack(side=tk.LEFT, padx=6)
-
-    # Botão de Sair
-    btn_sair = ttk.Button(frame_esquerdo, text="Sair", command=sair_programa, width=2*button_width + 10)  # Largura ajustada para ficar mais largo
-    btn_sair.pack(pady=20)
-
-    # Widget de texto com scroll para mostrar o status
-    text_area = ScrolledText(frame_direito, wrap=tk.WORD, height=30, width=80, font=("Helvetica", 12))
-    text_area.pack(pady=10, fill="both", expand=True)
-
-    # Redireciona a saída do terminal para a Text Box
-    sys.stdout = RedirectOutputToGUI(text_area)
-
-    # Inicia o loop da interface gráfica
-    janela.mainloop()
-
 ### FIM DA INTERFACE MÓDULO ALTA
 
 ### INTERFACE MÓDULO INTERNAÇÃO
@@ -2037,14 +2375,14 @@ def interface_internacao():
     icone = PhotoImage(data=icone_data)    
     janela_internacao.iconphoto(True, icone)
     janela_internacao.state('zoomed')
-    janela_internacao.title("AutoReg - v.5.0.1 - Módulo de internação ")
+    janela_internacao.title("AutoReg - v.6.0.1 - Módulo de internação ")
     janela_internacao.configure(bg="#ffffff")
     
     # Frame para organizar a interface
     header_frame = tk.Frame(janela_internacao, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 5.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
-    tk.Label(header_frame, text="Sistema automatizado para captura de pacientes a dar alta - SISREG G-HOSP.\nPor Michel R. Paes - Outubro 2024\nMÓDULO INTERNAÇÃO", 
+    tk.Label(header_frame, text="AutoReg 6.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="Sistema automatizado para captura de pacientes a dar alta - SISREG G-HOSP.\nPor Michel R. Paes - Outubro 2025\nMÓDULO INTERNAÇÃO", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
     frame_principal = tk.Frame(janela_internacao, bg="#ffffff")
@@ -2152,7 +2490,7 @@ def criar_janela_principal():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)
     janela_principal.iconphoto(True, icone)
-    janela_principal.title("AutoReg - v.5.0.1 ") 
+    janela_principal.title("AutoReg - v.6.0.1 ") 
     janela_principal.configure(bg="#ffffff")
 
     janela_principal.protocol("WM_DELETE_WINDOW", lambda: fechar_modulo())
@@ -2162,8 +2500,8 @@ def criar_janela_principal():
     header_frame.pack(fill="x")
     icone_resized = icone.subsample(3, 3)
     
-    tk.Label(header_frame, text="AutoReg 5.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack(side="top")
-    tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Novembro 2024", 
+    tk.Label(header_frame, text="AutoReg 6.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack(side="top")
+    tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Fevereiro 2025", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
     # Criação do menu superior
@@ -2282,7 +2620,174 @@ def mostrar_modulo(frame_atual, modulo):
 def fechar_modulo():
     mostrar_popup_conclusao('\nAté Breve!')
     janela_principal.destroy()
-         
+
+# Funções para normalizar o processo autônomo
+def iniciar_extracao():
+    thread = threading.Thread(target=extrai_codigos, daemon=True)
+    thread.start()
+
+def iniciar_atualiza_csv():
+    thread = threading.Thread(target=atualiza_csv, daemon=True)
+    thread.start()
+
+def iniciar_executa_saidas():
+    thread = threading.Thread(target=executa_saidas, daemon=True)
+    thread.start()
+
+def iniciar_captura_cns_restos_alta():
+    thread = threading.Thread(target=captura_cns_restos_alta, daemon=True)
+    thread.start()
+
+def iniciar_motivo_alta_cns():
+    thread = threading.Thread(target=motivo_alta_cns, daemon=True)
+    thread.start()
+
+def iniciar_executa_saidas_cns():
+    thread = threading.Thread(target=executa_saidas_cns, daemon=True)
+    thread.start()
+
+def rodar_automatico():
+    print("""
+        ======================================================================
+        
+            Iniciando rotina de extração de pacientes internados - SISREG
+        
+        ======================================================================
+        """)
+    executar_sisreg()
+    confirmar_popup()
+    print("""
+        ======================================================================
+        
+             Iniciando rotina de extração de pacientes internados - GHOSP
+        
+        ======================================================================
+        """)
+    executar_ghosp()
+    confirmar_popup()
+    print("""
+        ======================================================================
+        
+                       COMPARANDO DADOS E DETERMINANDO ALTAS
+        
+        ======================================================================
+        """)
+    comparar()
+    confirmar_popup()
+    print("""
+        ======================================================================
+        
+                      CAPTURANDO MOTIVOS DE ALTAS POR PACIENTE
+        
+        ======================================================================
+        """)    
+    capturar_motivo_alta()
+    confirmar_popup()
+    print("""
+        ======================================================================
+        
+                      CAPTURANDO CODIGOS INDIVIDUAIS SISREG
+        
+        ======================================================================
+        """)
+    iniciar_extracao()
+    confirmar_popup()
+    print("""
+        ======================================================================
+        
+                    PREPARANDO PLANILHA PARA PROCESSAR ALTAS
+        
+        ======================================================================
+        """)
+    iniciar_atualiza_csv()
+    confirmar_popup()
+    print("""
+        ======================================================================
+        
+                          EXECUTANDO ALTAS NO SISREG
+        
+        ======================================================================
+        """)
+    iniciar_executa_saidas()
+    confirmar_popup()
+    print("""
+        ======================================================================
+        
+              CAPTURANDO CNS DE PACIENTES CUJO MOTIVO NÃO FOI DETERMINADO
+        
+        ======================================================================
+        """)
+    iniciar_captura_cns_restos_alta()
+    confirmar_popup()
+    print("""
+        ======================================================================
+        
+                      CAPTURANDO MOTIVOS DE ALTA - REVISANDO
+        
+        ======================================================================
+        """)    
+    iniciar_motivo_alta_cns()
+    confirmar_popup()
+    print("""
+        ======================================================================
+        
+                       REEXECUTANDO ALTAS PENDENTES - SISREG
+        
+        ======================================================================
+        """)    
+    iniciar_executa_saidas_cns()
+    confirmar_popup()
+    print("""
+        \n
+        ======================================================================
+        
+                             Rotina de Alta Encerrada.
+        
+        ======================================================================
+        """)
+
+def bkp_confirmar_popup():
+    # Aguarda a criação e fechamento da janela temporária
+    try:
+        while True:
+            if 'janela_temporaria' in globals() and isinstance(janela_temporaria, tk.Toplevel):
+                if not janela_temporaria.winfo_exists():
+                    print("Popup fechado. Continuando o fluxo...")
+                    del janela_temporaria  # Remove a referência global
+                    return
+                else:
+                    print("Aguardando fechamento do popup...")
+                    janela_temporaria.update()  # Processa eventos da janela temporária
+            else:
+                print("Janela temporária não detectada. Saindo do loop...")
+                return
+            time.sleep(0.1)  # Pausa para evitar consumo excessivo de CPU
+    except Exception as e:
+        print(f"Erro ao confirmar popup: {e}")
+
+def confirmar_popup():
+    # Aguarda a criação da janela temporária específica e destrói-a após 5 segundos
+    try:
+        while True:
+            # Verifica todas as janelas Toplevel
+            for window in tk._default_root.winfo_children():
+                if isinstance(window, tk.Toplevel) and window.wm_attributes("-topmost"):
+                    print("""
+        ======================================================================
+                                Etapa finalizada.
+""")
+                    time.sleep(1)
+                    window.destroy()  # Fecha a janela temporária detectada
+                    print("""
+                        Prosseguindo com rotina de Alta
+        ======================================================================
+
+""")
+                    return
+            time.sleep(0.1)  # Pausa antes de verificar novamente
+    except Exception as e:
+        print(f"Erro ao confirmar popup: {e}")
+
 # Interface do Módulo Alta
 def criar_interface_modulo_alta():
     global janela, menubar, log_area  # Declara a variável 'janela' como global para ser acessada em outras funções
@@ -2292,7 +2797,7 @@ def criar_interface_modulo_alta():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)    
     janela.iconphoto(True, icone)
-    janela.title("AutoReg - v.5.0.1 ")
+    janela.title("AutoReg - v.6.0.1 ")
     janela.state('zoomed')  # Inicia a janela maximizada
     janela.configure(bg="#ffffff")  # Define uma cor de fundo branca
     janela.config(menu=menubar)
@@ -2300,9 +2805,9 @@ def criar_interface_modulo_alta():
     # Adiciona texto explicativo ou outro conteúdo abaixo do título principal
     header_frame = tk.Frame(janela, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 5.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
-    tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Novembro 2024\nMÓDULO ALTA", 
-             font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
+    tk.Label(header_frame, text="AutoReg 6.0.1", font=("Helvetica", 18, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Fevereiro 2025\nMÓDULO ALTA", 
+             font=("Helvetica", 12), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
     # Frame principal para organizar a interface em duas colunas
     frame_principal = tk.Frame(janela, bg="#ffffff")
@@ -2318,7 +2823,7 @@ def criar_interface_modulo_alta():
 
     # Estilo dos botões
     style = ttk.Style()
-    style.configure("TButton", font=("Helvetica", 12), padding=3)  # Reduz a altura dos botões
+    style.configure("TButton", font=("Helvetica", 10), padding=3)  # Reduz a altura dos botões
 
     button_width = 40  # Define uma largura fixa para todos os botões
 
@@ -2392,7 +2897,6 @@ def criar_interface_modulo_alta():
     btn_relacao_pacientes = ttk.Button(frame_executar_altas, text="Relação de pacientes para análise manual", command=lambda: abrir_csv('restos.csv'), width=button_width)
     btn_relacao_pacientes.pack(side=tk.LEFT, padx=6)
 
-
     # Frame para Altas Não Executadas a partir do CNS
     frame_altas_pendentes = tk.LabelFrame(frame_esquerdo, text="Tratamento das Altas Não Executadas a partir do CNS", padx=10, pady=10, font=("Helvetica", 10, "bold"), bg="#ffffff", fg="#4B79A1")
     frame_altas_pendentes.pack(pady=10, fill="x")
@@ -2425,6 +2929,10 @@ def criar_interface_modulo_alta():
     btn_exibir_altas_pendentes = ttk.Button(row3, text="Exibir Planilha para alta manual", command=lambda: abrir_csv('saida_manual.csv'), width=button_width)
     btn_exibir_altas_pendentes.pack(side=tk.LEFT, padx=6)
 
+    # Criação do botão "Rodar Automático"
+    btn_rodar_automatico = ttk.Button(frame_esquerdo, text="Rodar Automático", command=lambda: threading.Thread(target=rodar_automatico).start(), width=2*button_width + 10)
+    btn_rodar_automatico.pack(pady=5)
+
     # Widget de texto com scroll para mostrar o status
     log_area = ScrolledText(frame_direito, wrap=tk.WORD, height=30, width=80, font=("Helvetica", 12))
     log_area.pack(pady=10, fill="both", expand=True)
@@ -2444,7 +2952,7 @@ def criar_interface_modulo_internacao():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)    
     janela_internacao.iconphoto(True, icone)
-    janela_internacao.title("AutoReg - v.5.0.1 - Módulo de Internação")
+    janela_internacao.title("AutoReg - v.6.0.1 - Módulo de Internação")
     janela_internacao.state('zoomed')
     janela_internacao.configure(bg="#ffffff")
     janela_internacao.config(menu=menubar)
@@ -2461,8 +2969,8 @@ def criar_interface_modulo_internacao():
     # Frame para organizar a interface
     header_frame = tk.Frame(janela_internacao, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 5.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
-    tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Novembro 2024\nMÓDULO INTERNAÇÃO", 
+    tk.Label(header_frame, text="AutoReg 6.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Fevereiro 2025\nMÓDULO INTERNAÇÃO", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
     frame_principal = tk.Frame(janela_internacao, bg="#ffffff")
@@ -2490,6 +2998,10 @@ def criar_interface_modulo_internacao():
     # Botão para iniciar a internação com múltiplas fichas
     btn_internar_multiplas = ttk.Button(frame_sisreg, text="Iniciar Internação Múltiplas Fichas", command=lambda: threading.Thread(target=lambda: iniciar_internacao_multiplas_fichas(frame_print_area, log_area, entry_data, btn_confirmar_internacao)).start(), width=button_width)
     btn_internar_multiplas.pack(pady=5)
+
+    # Botão para iniciar a internação com múltiplas fichas
+    btn_internar_auto = ttk.Button(frame_sisreg, text="Rodar Internação Automática", command=lambda: threading.Thread(target=lambda: iniciar_internacao_auto(log_area)).start(), width=button_width)
+    btn_internar_auto.pack(pady=5)
 
     # Frame para entrada de dados de internação
     frame_data = tk.LabelFrame(frame_esquerdo, text="Dados de Internação", padx=10, pady=10, font=("Helvetica", 14, "bold"), bg="#ffffff", fg="#4B79A1")
@@ -2552,8 +3064,8 @@ if getattr(sys, 'frozen', False):
     import pyi_splash
 
 if getattr(sys, 'frozen', False):
-    pyi_splash.update_text("AutoReg 5.0.1")
-    pyi_splash.update_text("Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Novembro 2024")
+    pyi_splash.update_text("AutoReg 6.0.1")
+    pyi_splash.update_text("Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Fevereiro 2025")
     pyi_splash.close()
     pyi_splash.close()
 

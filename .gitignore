@@ -26,3 +26,5 @@ fichas_devolvidas_atualizado.csv
 fichas_devolvidas_motivo_alta.csv
 fichas_devolvidas_sisreg.csv
 temp.py
+internaut.py
+executa_autoreg.ps1

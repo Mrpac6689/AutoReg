@@ -1,11 +1,11 @@
 # AutoReg
 Operação automatizada de Sistemas de Saúde- SISREG &amp; G-HOSP
 
-Versão 5.0 - Novembro de 2024
+Versão 6.0 - Fevereiro de 2025
 Autor: Michel Ribeiro Paes (MrPaC6689)
 Repo: https://github.com/Mrpac6689/AutoReg
 Contato michelrpaes@gmail.com
-Desenvolvido com o apoio do ChatGPT 4o em Python 3.13
+Desenvolvido com o apoio do ChatGPT 4o em Python 3.11.9
 
 # Descrição:
 O AUTOREG é um programa desenvolvido para automatizar o processo de internação e alta de pacientes nos sistemas SISREG e G-HOSP, proporcionando maior eficiência e reduzindo o tempo gasto em processos manuais. Utilizando Python, Selenium e Tkinter, o programa oferece uma interface amigável para operar de forma automática o fluxo de trabalho hospitalar.
@@ -45,6 +45,10 @@ Execute com:
 
       autoreg
 
+# Novidades da Versão 6.0
+ - Implementada função de internação automatizada
+ - Implementada função de alta automatizada
+
 # Novidades da Versão 5.0
  - Acrescentadas as funções captura_cns_restos_alta(), motivo_alta_cns(), executa_saidas_cns() para trabalhar os pacientes não capturados em primeiro momento a dar alta.
  - Acrescentada estrutura de diretorios com versões anteriores
@@ -58,6 +62,11 @@ Execute com:
  - Redesenhada interfaçe do módulo alta
  - Redesenhada interfaçe do módulo principal
  - Restaurada função trazer_terminal(), com o G-Hosp, o selenium não consegue trabalhar se a pagina não estiver visível. Assim, foi necessário utilizaer o drive como um serviço do windows e utilizar a função para trazer a janela principal do programa à frente apos rodar o driver.
+
+# Versão 5.1.2
+ - Acrescentados motivos de saida ausentes
+ - Acrescentada rotina para execução autônoma do modulo de Alta
+ - Reduzido tempo para captura de altas
 
 # Novidades da Versão 4.0
   Funções de Internação:
