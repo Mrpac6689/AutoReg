@@ -82,6 +82,8 @@ from tkinter.scrolledtext import ScrolledText
 from tkinter import PhotoImage
 from PIL import Image, ImageTk  # Biblioteca para manipular imagens
 import base64
+import argparse
+from datetime import datetime
 from io import BytesIO
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException, WebDriverException
 from selenium import webdriver
@@ -113,6 +115,7 @@ from selenium.common.exceptions import NoSuchElementException
 
 #Captura fichas devolvidas conforme periodo definido
 def captura_devolvidas(data_inicio, data_fim):
+    print(f"Capturando devolvidas de {data_inicio} até {data_fim}")
     chrome_options = Options()
     navegador = webdriver.Chrome(options=chrome_options)
     wait = WebDriverWait(navegador, 20)
@@ -481,12 +484,41 @@ def reenvia_solicitacoes():
 
 # Utilização - Comentar funções conforme necessário
 
-captura_devolvidas("01/10/2024", "31/10/2024") # DEFINIR PERIODO PARA CAPTURAR AS FICHAS DEVOLVIDAS
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Captura devolvidas dentro do intervalo de datas.")
+    parser.add_argument("--data_inicio", required=True, help="Data inicial no formato DD/MM/AAAA")
+    parser.add_argument("--data_fim", required=True, help="Data final no formato DD/MM/AAAA")
+    
+    args = parser.parse_args()
+    
+    # Validação e conversão de datas
+    try:
+        data_inicio = datetime.strptime(args.data_inicio, "%d/%m/%Y").date()
+        data_fim = datetime.strptime(args.data_fim, "%d/%m/%Y").date()
+        
+        if data_inicio > data_fim:
+            raise ValueError("A data inicial não pode ser maior que a data final.")
+        
+        # Convertendo as datas para string antes de usá-las no Selenium
+        data_inicio_str = data_inicio.strftime("%d/%m/%Y")
+        data_fim_str = data_fim.strftime("%d/%m/%Y")
 
-captura_cns_devolvidas()
+        captura_devolvidas(data_inicio_str, data_fim_str)
+        captura_cns_devolvidas()
+        motivo_alta_cns_devolvidas()
+        reenvia_solicitacoes()
 
-motivo_alta_cns_devolvidas()
+    except ValueError as e:
+        print(f"Erro: {e}")
 
-reenvia_solicitacoes()
+
+
+#captura_devolvidas("01/01/2025", "31/01/2025") # DEFINIR PERIODO PARA CAPTURAR AS FICHAS DEVOLVIDAS
+
+#captura_cns_devolvidas()
+
+#motivo_alta_cns_devolvidas()
+
+#reenvia_solicitacoes()
 
 

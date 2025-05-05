@@ -841,7 +841,7 @@ def extrai_codigos():
             EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']"))
         )
         botao_pesquisar_saida.click()
-        time.sleep(2)
+        time.sleep(5)
 
         # Extrai dados das tabelas
         while True:
@@ -851,13 +851,14 @@ def extrai_codigos():
                 ficha_onclick = linha.get_attribute("onclick")
                 ficha = ficha_onclick.split("'")[1]
                 nomes_fichas.append((nome_paciente, ficha))
+                
             
             # Verifica próxima página
             try:
                 botao_proxima_pagina = navegador.find_element(By.XPATH, "//a[contains(@onclick, 'exibirPagina')]/img[@alt='Proxima']")
                 if botao_proxima_pagina.is_displayed():
                     botao_proxima_pagina.click()
-                    time.sleep(2)
+                    time.sleep(5)
                 else:
                     break
             except NoSuchElementException:
@@ -2242,6 +2243,7 @@ def iniciar_internacao_auto(log_area):
 
                     # ABRE A FICHA A SER INTERNADA
                     executar_ficha(navegador, ficha)
+                    #wait.until(EC.presence_of_element_located((By.XPATH, "//*[@id='cod_solicitacao_ficha']"))) #Adiconado para esperar a página carregar
                     log_area.insert(tk.END, f"Ficha {ficha} processada com sucesso.\n")
                     log_area.see(tk.END)
 
@@ -2303,7 +2305,7 @@ def iniciar_internacao_auto(log_area):
 
                     # Aguarda um possível segundo popup
                     try:
-                        WebDriverWait(navegador, 5).until(EC.alert_is_present())
+                        WebDriverWait(navegador, 60).until(EC.alert_is_present())
                         segundo_alert = navegador.switch_to.alert
                         texto_segundo_popup = segundo_alert.text
                         segundo_alert.accept()
@@ -2319,6 +2321,8 @@ def iniciar_internacao_auto(log_area):
                         log_area.insert(tk.END, "⚠️ Erro de Sistema detectado. Processo interrompido.\n")
                     except NoSuchElementException:
                         log_area.insert(tk.END, "✔️ Nenhum erro de sistema detectado. Internação realizada com sucesso.\n")
+                        #wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_internar' and text()='internar']")))
+                        time.sleep(10)
 
                 except Exception as e:
                     log_area.insert(tk.END, f"❌ Erro durante a internação da ficha {ficha}: {e}\n")
