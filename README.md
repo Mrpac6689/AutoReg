@@ -3,11 +3,21 @@ Operação automatizada de Sistemas de Saúde- SISREG &amp; G-HOSP
 
 ## Branch Linux
 
-Versão 6.0 - Fevereiro de 2025
+Versão 6.0.1-linux - Maio de 2025
 Autor: Michel Ribeiro Paes (MrPaC6689)
 Repo: https://github.com/Mrpac6689/AutoReg
 Contato michelrpaes@gmail.com
-Desenvolvido com o apoio do ChatGPT 4o em Python 3.11.9
+Desenvolvido com o apoio do ChatGPT 4o em Python 3.10.12
+
+Alterações no port para Linux:
+- Removidos os imports de bibliotecas não utilizadas.
+- Removido o argumento zoomed do ChromeOptions, pois não é compativel com Linux.
+- Adicionado o argumento headless=new para rodar o Chrome em modo oculto.
+- Removidos os reajustes da janela de internação.
+- Removidos os reajustes da janela de alta.
+- Ajuste de foco para frame f_principal antes de chamar configFicha em executar_ficha() para todas as rotinas que acessam fichas no SISREG.
+- Substituidos pop-ups de criação de janela extra por prints no campo de logs.
+- Removidas bibliotecas inócuas.
 
 # Descrição:
 O AUTOREG é um programa desenvolvido para automatizar o processo de internação e alta de pacientes nos sistemas SISREG e G-HOSP, proporcionando maior eficiência e reduzindo o tempo gasto em processos manuais. Utilizando Python, Selenium e Tkinter, o programa oferece uma interface amigável para operar de forma automática o fluxo de trabalho hospitalar.

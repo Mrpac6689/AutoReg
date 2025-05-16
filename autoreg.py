@@ -1,5 +1,5 @@
 # Automated System Operation - SISREG & G-HOSP
-# Version 6.0.1 - Fevereiro 2025
+# Version 6.0.1-linux - Maio 2025
 # Author: MrPaC6689
 # Repo: https://github.com/Mrpac6689/AutoReg
 # Contact: michelrpaes@gmail.com
@@ -26,7 +26,7 @@
 
 
 # Operação Automatizada de Sistemas - SISREG & G-HOSP
-# Versão 6.0.1 - Fevereiro de 2025
+# Versão 6.0.1-linux - Maio de 2025
 # Autor: MrPaC6689
 # Repo: https://github.com/Mrpac6689/AutoReg
 # Contato: michelrpaes@gmail.com
@@ -47,9 +47,17 @@
 # junto com este programa. Caso contrário, consulte <https://www.gnu.org/licenses/>.
 #
 #
-#  Alterações da v6.0.1
-# - Implementada função de internação automatizada
-# - Implementada função de alta automatizada
+#  Alterações da v6.0.1-linux-linux:
+'''
+- Removidos os imports de bibliotecas não utilizadas.
+- Removido o argumento zoomed do ChromeOptions, pois não é compativel com Linux.
+- Adicionado o argumento headless=new para rodar o Chrome em modo oculto.
+- Removidos os reajustes da janela de internação.
+- Removidos os reajustes da janela de alta.
+- Ajuste de foco para frame f_principal antes de chamar configFicha em executar_ficha() para todas as rotinas que acessam fichas no SISREG.
+- Substituidos pop-ups de criação de janela extra por prints no campo de logs.
+- Removidas bibliotecas inócuas.
+'''
 
 
 ########################################################
@@ -65,7 +73,6 @@ import time
 import pandas as pd
 import re
 import configparser
-import pygetwindow as gw
 import pyautogui
 import ctypes
 import tkinter as tk
@@ -77,7 +84,6 @@ import shutil
 import random
 import io
 import pdb
-import PyInstaller
 from datetime import datetime, timedelta
 from tkinter import ttk, scrolledtext, messagebox, filedialog
 from tkinter import ttk, messagebox, filedialog, scrolledtext
@@ -113,7 +119,6 @@ import time
 ########################################
 
 # Popup CONCLUSÃO
-
 def mostrar_popup_conclusao(mensagem):
     # Cria uma janela Toplevel temporária para servir como pai do messagebox
     janela_temporaria = tk.Toplevel()
@@ -127,6 +132,14 @@ def mostrar_popup_conclusao(mensagem):
 
     # Destroi a janela temporária após o messagebox ser fechado
     janela_temporaria.destroy()
+
+'''
+Bloco desativado no port para Linux
+
+'''
+    
+'''
+Bloco desativado no port para Linux
 
 def bkp_mostrar_popup_conclusao(mensagem):
     # Cria uma janela Toplevel temporária para exibir o popup
@@ -179,6 +192,7 @@ def mostrar_popup_alerta(titulo, mensagem):
 
     # Destroi a janela temporária após o messagebox ser fechado
     janela_temporaria.destroy()
+'''
 
 # Função para normalizar o nome (remover acentos, transformar em minúsculas)
 def normalizar_nome(nome):
@@ -244,23 +258,29 @@ def ler_credenciais():
 
 ### Definições Herdadas extrator.py
 def extrator():
+    print("\n---===> EXTRAÇÃO DE INTERNADOS <===---")
     # Exemplo de uso no script extrator.py
     usuario, senha = ler_credenciais()
+
+    '''
+    Bloco desativado no port para Linux
 
     # Caminho para o ChromeDriver
     chrome_driver_path = "chromedriver.exe"
 
     # Cria um serviço para o ChromeDriver
     service = Service(executable_path=chrome_driver_path)
-
+    '''
     # Modo silencioso
     chrome_options = Options()
     chrome_options.add_argument('--disable-gpu')
     chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--incognito')
+    chrome_options.add_argument('--incognito')   
+    chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+        
 
     # Inicializa o navegador (Chrome neste caso) usando o serviço
-    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver = webdriver.Chrome(options=chrome_options)
 
     # Minimizando a janela após iniciar o Chrome
     driver.minimize_window()
@@ -432,20 +452,28 @@ def extrair_nomes(original_df):
 
 #Função para extrair internados no G-HOSP
 def internhosp():
+    print("\n---===> EXTRAÇÃO DE INTERNADOS <===---")
     usuario, senha, caminho = ler_credenciais_ghosp()
 
+    '''
+    Bloco desativado no port para Linux
     # Caminho para o ChromeDriver
     chrome_driver_path = "chromedriver.exe"
+
+    # Inicializa o navegador (Chrome neste caso) usando o serviço
+    service = Service(executable_path=chrome_driver_path)
+
+   
+            '''
     # Obtém o caminho da pasta de Downloads do usuário
     pasta_downloads = str(Path.home() / "Downloads")
 
     print(f"Pasta de Downloads: {pasta_downloads}")
-
-    # Inicializa o navegador (Chrome neste caso) usando o serviço
-    service = Service(executable_path=chrome_driver_path)
     
     # Inicializa o navegador (Chrome neste caso) usando o serviço
-    driver = webdriver.Chrome(service=service)
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+    driver = webdriver.Chrome(options=chrome_options)
 
     # Minimizando a janela após iniciar o Chrome
     driver.minimize_window()
@@ -554,6 +582,7 @@ def internhosp():
     finally:
         driver.quit()
 
+''' Bloco desativado no port para Linux
 def trazer_terminal():
     # Obtenha o identificador da janela do terminal
     user32 = ctypes.windll.user32
@@ -563,24 +592,34 @@ def trazer_terminal():
     if hwnd != 0:
         user32.ShowWindow(hwnd, 5)  # 5 = SW_SHOW (Mostra a janela)
         user32.SetForegroundWindow(hwnd)  # Traz a janela para frente
+'''
 
 ### Definições Herdadas do motivo_alta.py
 def motivo_alta():
         # Função para ler a lista de pacientes de alta do CSV
     def ler_pacientes_de_alta():
         df = pd.read_csv('pacientes_de_alta.csv')
+        print("Lista de pacientes de alta lida com sucesso.")
         return df
 
     # Função para salvar a lista com o motivo de alta
     def salvar_pacientes_com_motivo(df):
         df.to_csv('pacientes_de_alta.csv', index=False)
+        print("Lista de pacientes com motivo de alta salva com sucesso.")
 
     # Inicializa o ChromeDriver
     def iniciar_driver():
+        '''
+        Bloco desativado no port para Linux
+
         chrome_driver_path = "chromedriver.exe"
         service = Service(executable_path=chrome_driver_path)
         driver = webdriver.Chrome(service=service)
         driver.maximize_window()
+        '''
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+        driver = webdriver.Chrome(options=chrome_options)
         return driver
 
     # Função para realizar login no G-HOSP
@@ -591,7 +630,7 @@ def motivo_alta():
         # Ajusta o zoom para 50%
         driver.execute_script("document.body.style.zoom='50%'")
         time.sleep(2)
-        trazer_terminal()
+        #trazer_terminal()
         
         # Localiza os campos visíveis de login
         email_field = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "email")))
@@ -610,6 +649,7 @@ def motivo_alta():
     # Função para pesquisar um nome e obter o motivo de alta via HTML
     def obter_motivo_alta(driver, nome, caminho):
         driver.get(caminho + ':4002/prontuarios')
+        driver.maximize_window()      
 
         # Localiza o campo de nome e insere o nome do paciente
         nome_field = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "nome")))
@@ -674,6 +714,7 @@ def motivo_alta():
     if __name__ == '__main__':
         processar_lista()
 
+''' Bloco desativado no port para Linux
 #Definições para extração do código SISREG dos internados
 def bkp_extrai_codigos():
     nomes_fichas = []
@@ -785,8 +826,10 @@ def bkp_extrai_codigos():
         escritor_csv.writerows(nomes_fichas)
         
     print("Dados salvos no arquivo 'codigos_sisreg.csv'.")
-    mostrar_popup_conclusao("A extração dos códigos SISREG foi concluída com sucesso!")
+    print("A extração dos códigos SISREG foi concluída com sucesso!")
+    #mostrar_popup_conclusao("A extração dos códigos SISREG foi concluída com sucesso!")
     navegador.quit()
+'''
 
 def extrai_codigos():
     nomes_fichas = []
@@ -794,7 +837,11 @@ def extrai_codigos():
     # Inicia o webdriver
     print("Iniciando o navegador Chrome...")
     chrome_options = Options()
-    chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
+    chrome_options.add_argument('--disable-gpu')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--incognito')   
+    chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+    #chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
     navegador = webdriver.Chrome(options=chrome_options)
     wait = WebDriverWait(navegador, 20)  # Define um tempo de espera de 20 segundos para aguardar os elementos
     
@@ -880,7 +927,8 @@ def extrai_codigos():
         print("Navegador encerrado.")
     
     print("Exibindo popup de conclusão...")
-    mostrar_popup_conclusao("A extração dos códigos SISREG foi concluída com sucesso!")
+    print("A extração dos códigos SISREG foi concluída com sucesso!")
+    #mostrar_popup_conclusao("A extração dos códigos SISREG foi concluída com sucesso!")
 
 #Atualiza arquivo CVS para organizar nomes e incluir numeros de internação SISREG    
 def atualiza_csv():
@@ -903,17 +951,42 @@ def atualiza_csv():
     # Salvar o DataFrame atualizado em um novo arquivo CSV
     pacientes_atualizados_df.to_csv('pacientes_de_alta_atualizados.csv', index=False, encoding='utf-8')
 
-    print("Arquivo 'pacientes_de_alta.csv' atualizado com sucesso!")
-    mostrar_popup_conclusao("Arquivo 'pacientes_de_alta.csv' atualizado com sucesso!")
+    print("\n Arquivo 'pacientes_de_alta.csv' atualizado com sucesso!")
+    print("\n Arquivo 'pacientes_de_alta.csv' atualizado com sucesso!")
+    #mostrar_popup_conclusao("Arquivo 'pacientes_de_alta.csv' atualizado com sucesso!")
 
 #Função para dar alta individual
 def dar_alta(navegador, wait, motivo_alta, ficha):
+    '''
     print(f"Executando a função configFicha para a ficha: {ficha}")
     navegador.switch_to.default_content()
     wait.until(EC.frame_to_be_available_and_switch_to_it((By.NAME, 'f_principal')))
     navegador.execute_script(f"configFicha('{ficha}')")
     print("Função de Saída/Permanência executada com sucesso!")
     wait.until(EC.presence_of_element_located((By.XPATH, "//input[@name='bt_acao' and @value='Efetua Saída']")))
+    '''
+    print(f"Executando a função configFicha para a ficha: {ficha}")
+    navegador.switch_to.default_content()
+    wait.until(EC.frame_to_be_available_and_switch_to_it((By.NAME, 'f_principal')))
+    
+    # Verifica se a função configFicha está disponível
+    script_exists = navegador.execute_script("return typeof configFicha === 'function';")
+    if not script_exists:
+        print("Função configFicha não está disponível no contexto atual!")
+        print(navegador.page_source)  # Debug: imprime o HTML do frame
+        return
+
+    navegador.execute_script(f"configFicha('{ficha}')")
+    
+    # Aguarda o botão "Efetua Saída" aparecer, indicando que a ficha foi carregada
+    try:
+        wait.until(EC.presence_of_element_located((By.XPATH, "//input[@name='bt_acao' and @value='Efetua Saída']")))
+    except TimeoutException:
+        print("Timeout esperando o botão 'Efetua Saída'. Verifique se a ficha existe ou se já foi dada alta.")
+        print(navegador.page_source)  # Debug: imprime o HTML do frame
+        return
+
+    print("Aguarda o carregamento da página após a execução do script configFicha.")
 
     try:
         print(f"Selecionando o motivo de alta: {motivo_alta}")
@@ -966,9 +1039,11 @@ def executa_saidas():
     def iniciar_navegador():
         print("Iniciando o navegador Chrome...")
         chrome_options = Options()
-        chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
+        chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+        #chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
         navegador = webdriver.Chrome(options=chrome_options)
-        wait = WebDriverWait(navegador, 20)
+        wait = WebDriverWait(navegador, 20) #mudado de 20 para 10
+        navegador.maximize_window()
         return navegador, wait
 
     def realizar_login(navegador, wait):
@@ -996,6 +1071,9 @@ def executa_saidas():
             botao_pesquisar_saida = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']")))
             botao_pesquisar_saida.click()
             print("Botão PESQUISAR clicado com sucesso!")
+            # Aguarde a tabela/lista de pacientes aparecer
+            wait.until(EC.presence_of_element_located((By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]")))
+            print("Tabela de pacientes carregada!")
         except TimeoutException as e:
             print(f"Erro ao tentar localizar o botão PESQUISAR na página de Saída/Permanência: {e}")
             navegador.quit()
@@ -1063,7 +1141,7 @@ def executa_saidas():
     print("Arquivo 'restos.csv' criado com os pacientes sem motivo de alta desejado.")
 
     navegador.quit()
-    mostrar_popup_conclusao("Processo de saída concluído para todos os pacientes. \n Pacientes para análise manual gravados.")
+    print("\n Processo de saída concluído para todos os pacientes. \n Pacientes para análise manual gravados.")
 
 # Função para normalizar o nome (remover acentos, transformar em minúsculas)
 def normalizar_nome(nome):
@@ -1110,9 +1188,11 @@ def executar_sisreg():
     def run_task():
         try:
             extrator()
-            mostrar_popup_conclusao("Extração dos internados SISREG realizada com sucesso!")
+            log_area.insert(tk.END, "Extração dos internados SISREG realizada com sucesso!")
+            #mostrar_popup_conclusao("Extração dos internados SISREG realizada com sucesso!")
         except Exception as e:
-            mostrar_popup_erro("Erro", f"Ocorreu um erro: {e}")
+            log_area.insert(tk.END, "Erro", f"Ocorreu um erro: {e}")
+            #mostrar_popup_erro("Erro", f"Ocorreu um erro: {e}")
     threading.Thread(target=run_task).start()  # Executar a função em um thread separado
 
 # Função para executar a extração do G-HOSP
@@ -1120,9 +1200,11 @@ def executar_ghosp():
     def run_task():
         try:
             internhosp()
-            mostrar_popup_conclusao("Extração dos internados G-HOSP realizada com sucesso!")          
+            log_area.insert(tk.END, "Extração dos internados G-HOSP realizada com sucesso!")          
+            #mostrar_popup_conclusao("Extração dos internados G-HOSP realizada com sucesso!")          
         except Exception as e:
-            mostrar_popup_erro(f"Ocorreu um erro: {e}")
+            log_area.insert(tk.END, "Ocorreu um erro: {e}")
+            #mostrar_popup_erro(f"Ocorreu um erro: {e}")
     threading.Thread(target=run_task).start()
 
 # Função para comparar os dados
@@ -1130,9 +1212,11 @@ def comparar():
     def run_task():
         try:
             comparar_dados()
-            mostrar_popup_conclusao("Comparação de dados realizada com sucesso!")
+            log_area.insert(tk.END, "Comparação de dados realizada com sucesso!")
+            #mostrar_popup_conclusao("Comparação de dados realizada com sucesso!")
         except Exception as e:
-            mostrar_popup_erro(f"Ocorreu um erro: {e}")
+            log_area.insert(tk.END, "Ocorreu um erro: {e}")
+            #mostrar_popup_erro(f"Ocorreu um erro: {e}")
     threading.Thread(target=run_task).start()
 
 # Função para trazer a janela principal para a frente
@@ -1148,9 +1232,11 @@ def capturar_motivo_alta():
         try:
            # Função para trazer a janela principal para a frente
             motivo_alta()
-            mostrar_popup_conclusao("Motivos de alta capturados com sucesso!")
+            log_area.insert(tk.END, "Motivos de alta capturados com sucesso!")
+            #mostrar_popup_conclusao("Motivos de alta capturados com sucesso!")
         except Exception as e:
-            mostrar_popup_erro(f"Ocorreu um erro: {e}")
+            log_area.insert(tk.END, "Ocorreu um erro: {e}")
+            #mostrar_popup_erro(f"Ocorreu um erro: {e}")
     threading.Thread(target=run_task).start()
     janela.after(3000, trazer_janela_para_frente)
 
@@ -1172,14 +1258,15 @@ def captura_cns_restos_alta():
         chrome_options.add_argument("--disable-gpu")  # Desabilita GPU para melhorar o desempenho em ambientes sem aceleração gráfica
         chrome_options.add_argument("--no-sandbox")  # Pode acelerar o navegador em alguns casos
         chrome_options.add_argument("--disable-dev-shm-usage")  # Resolve problemas de espaço insuficiente em alguns sistemas  
+        chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
         
         #Roda o chromedriver com o label 'navegador'
         navegador = webdriver.Chrome(options=chrome_options)
         
         #Ajusta a visibilidade da janela do programa
-        janela.iconify()    # Minimizar a janela
-        janela.update()     # Atualizar o estado da janela
-        janela.deiconify()  # Restaurar para garantir visibilidade
+        #janela.iconify()    # Minimizar a janela
+        #janela.update()     # Atualizar o estado da janela
+        #janela.deiconify()  # Restaurar para garantir visibilidade
 
         return navegador
     
@@ -1298,7 +1385,7 @@ def captura_cns_restos_alta():
     
     log_area.insert(tk.END, "Arquivo CSV atualizado com CNS salvo como 'restos_atualizado.csv'.\n")
     log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
-    mostrar_popup_conclusao("Arquivo CSV atualizado com CNS salvo como 'restos_atualizado.csv'.")
+    #mostrar_popup_conclusao("Arquivo CSV atualizado com CNS salvo como 'restos_atualizado.csv'.")
 
 ####Capturar motivo alta por CNS
 def motivo_alta_cns():
@@ -1321,13 +1408,15 @@ def motivo_alta_cns():
     
     # Função para inicializar o ChromeDriver
     def iniciar_driver():
-        chrome_driver_path = "chromedriver.exe"
-        service = Service(executable_path=chrome_driver_path)
-        driver = webdriver.Chrome(service=service)
+        #chrome_driver_path = "chromedriver.exe"
+        #service = Service(executable_path=chrome_driver_path)
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+        driver = webdriver.Chrome(options=chrome_options)
         driver.maximize_window()
         log_area.insert(tk.END, "Iniciando driver...\n")
         log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
-        janela.after(3000, trazer_janela_para_frente)
+        #janela.after(3000, trazer_janela_para_frente)
         return driver
 
     # Função para realizar login no G-HOSP
@@ -1417,8 +1506,7 @@ def motivo_alta_cns():
     df_pacientes.to_csv('restos_atualizado.csv', index=False)
     log_area.insert(tk.END, "Motivos de alta encontrados, CSV atualizado.\n")
     log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
-    mostrar_popup_conclusao("Motivos de alta encontrados, CSV atualizado.")
-    
+        
     driver.quit()
 
 #### Executa altas capturadas por CNS
@@ -1426,9 +1514,10 @@ def executa_saidas_cns():
     log_area.insert(tk.END, "Iniciando o navegador Chrome...\n")
     log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
     chrome_options = Options()
-    chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
+    chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+    #chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
     navegador = webdriver.Chrome(options=chrome_options)
-    janela.after(3000, trazer_janela_para_frente)
+    #janela.after(3000, trazer_janela_para_frente)
     wait = WebDriverWait(navegador, 20)
 
     log_area.insert(tk.END, "Acessando o sistema SISREG...\n")
@@ -1518,7 +1607,7 @@ def executa_saidas_cns():
     log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
 
     navegador.quit()
-    mostrar_popup_conclusao("Processo de saída concluído para todos os pacientes. \n Pacientes para análise manual gravados.\n")
+    print("Processo de saída concluído para todos os pacientes. \n Pacientes para análise manual gravados.\n")
 
 ############################################
 #   DEFINIÇÕES DE FUNÇÕES MENU SUPERIOR    #
@@ -1679,8 +1768,8 @@ def verificar_atualizar_chromedriver():
 
 #Função com informações da versão
 def mostrar_versao():
-    versao = "AUTOMATOR - AUTOREG\nOperação automatizada de Sistemas - SISREG & G-HOSP\nVersão 6.0.1 - Fevereiro de 2025\nAutor: Michel R. Paes\nGithub: MrPaC6689\nDesenvolvido com o apoio do ChatGPT 4o\nContato: michelrpaes@gmail.com"
-    mostrar_popup_alerta("AutoReg 6.0.1", versao)
+    versao = "AUTOMATOR - AUTOREG\nOperação automatizada de Sistemas - SISREG & G-HOSP\nVersão 6.0.1-linux - Maio de 2025\nAutor: Michel R. Paes\nGithub: MrPaC6689\nDesenvolvido com o apoio do ChatGPT 4o\nContato: michelrpaes@gmail.com"
+    mostrar_popup_alerta("AutoReg 6.0.1-linux", versao)
 
 # Função para exibir o conteúdo do arquivo README.md
 def exibir_leia_me():
@@ -1747,6 +1836,7 @@ def extrai_codigos_internacao(log_area):
         chrome_options.add_argument("--disable-gpu")  # Desabilita GPU para melhorar o desempenho em ambientes sem aceleração gráfica
         chrome_options.add_argument("--no-sandbox")  # Pode acelerar o navegador em alguns casos
         chrome_options.add_argument("--disable-dev-shm-usage")  # Resolve problemas de espaço insuficiente em alguns sistemas 
+        chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
         navegador = webdriver.Chrome(options=chrome_options)
         wait = WebDriverWait(navegador, 20)
         log_area.insert(tk.END, "Acessando a página de Internação...\n")
@@ -1802,7 +1892,8 @@ def extrai_codigos_internacao(log_area):
             escritor_csv.writerows(nomes_fichas)
         log_area.insert(tk.END, "Dados salvos no arquivo 'codigos_internacao.csv'.\n")
         navegador.quit()
-        mostrar_popup_conclusao("Processo de captura de pacientes a internar concluído. \n Dados salvos no arquivo 'codigos_internacao.csv'.")
+        log_area.insert(tk.END, "Processo de captura de pacientes a internar concluído. \n Dados salvos no arquivo 'codigos_internacao.csv'.")
+        #mostrar_popup_conclusao("Processo de captura de pacientes a internar concluído. \n Dados salvos no arquivo 'codigos_internacao.csv'.")
         log_area.see(tk.END)
 
 # Função para atualizar a planilha na interface com o conteúdo do CSV
@@ -1823,19 +1914,19 @@ def iniciar_navegador():
     
     #Define opções do Driver
     chrome_options = Options()
-    chrome_options.add_argument("--start-maximized")  # Abre o navegador maximizado
+    #chrome_options.add_argument("--start-maximized")  # Abre o navegador maximizado
     chrome_options.add_argument("--disable-extensions")  # Desabilita extensões para aumentar a velocidade
     chrome_options.add_argument("--disable-gpu")  # Desabilita GPU para melhorar o desempenho em ambientes sem aceleração gráfica
     chrome_options.add_argument("--no-sandbox")  # Pode acelerar o navegador em alguns casos
     chrome_options.add_argument("--disable-dev-shm-usage")  # Resolve problemas de espaço insuficiente em alguns sistemas  
-    
+    chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
     #Roda o chromedriver com o label 'navegador'
     navegador = webdriver.Chrome(options=chrome_options)
     
     #Ajusta a visibilidade da janela do programa
-    janela_internacao.iconify()    # Minimizar a janela
-    janela_internacao.update()     # Atualizar o estado da janela
-    janela_internacao.deiconify()  # Restaurar para garantir visibilidade
+    #janela_internacao.iconify()    # Minimizar a janela
+    #janela_internacao.update()     # Atualizar o estado da janela
+    #janela_internacao.deiconify()  # Restaurar para garantir visibilidade
     
     return navegador
 
@@ -1876,6 +1967,14 @@ def acessar_pagina_internacao(navegador, wait):
 
 # Função para executar o JavaScript da ficha do paciente
 def executar_ficha(navegador, ficha):
+    '''
+    Port para Linux. configFicha não estava sendo encontrado.
+    Corrigi a função para garantir que o foco seja alterado corretamente para o iframe antes de executar o JavaScript.
+    Também adicionei um tempo de espera reduzido para acelerar o fluxo.
+    '''
+    navegador.switch_to.default_content()
+    wait = WebDriverWait(navegador, 10)
+    wait.until(EC.frame_to_be_available_and_switch_to_it((By.NAME, 'f_principal')))
     navegador.execute_script(f"configFicha('{ficha}')")
     log_area.insert(tk.END, f"Executando a função configFicha para a ficha: {ficha}\n")
     time.sleep(1)  # Reduzi o tempo de espera para acelerar o fluxo
@@ -2215,6 +2314,7 @@ def iniciar_internacao_auto(log_area):
         chrome_options.add_argument("--disable-gpu")  # Desabilita GPU para melhorar o desempenho em ambientes sem aceleração gráfica
         chrome_options.add_argument("--no-sandbox")  # Pode acelerar o navegador em alguns casos
         chrome_options.add_argument("--disable-dev-shm-usage")  # Resolve problemas de espaço insuficiente em alguns sistemas 
+        chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
         navegador = webdriver.Chrome(options=chrome_options)
         wait = WebDriverWait(navegador, 20)
 
@@ -2378,14 +2478,14 @@ def interface_internacao():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)    
     janela_internacao.iconphoto(True, icone)
-    janela_internacao.state('zoomed')
-    janela_internacao.title("AutoReg - v.6.0.1 - Módulo de internação ")
+    #janela_internacao.state('zoomed')
+    janela_internacao.title("AutoReg - v.6.0.1-linux - Módulo de internação ")
     janela_internacao.configure(bg="#ffffff")
     
     # Frame para organizar a interface
     header_frame = tk.Frame(janela_internacao, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 6.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 6.0.1-linux", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Sistema automatizado para captura de pacientes a dar alta - SISREG G-HOSP.\nPor Michel R. Paes - Outubro 2025\nMÓDULO INTERNAÇÃO", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -2494,7 +2594,7 @@ def criar_janela_principal():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)
     janela_principal.iconphoto(True, icone)
-    janela_principal.title("AutoReg - v.6.0.1 ") 
+    janela_principal.title("AutoReg - v.6.0.1-linux ") 
     janela_principal.configure(bg="#ffffff")
 
     janela_principal.protocol("WM_DELETE_WINDOW", lambda: fechar_modulo())
@@ -2504,8 +2604,8 @@ def criar_janela_principal():
     header_frame.pack(fill="x")
     icone_resized = icone.subsample(3, 3)
     
-    tk.Label(header_frame, text="AutoReg 6.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack(side="top")
-    tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Fevereiro 2025", 
+    tk.Label(header_frame, text="AutoReg 6.0.1-linux", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack(side="top")
+    tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Maio 2025", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
     # Criação do menu superior
@@ -2516,7 +2616,13 @@ def criar_janela_principal():
     config_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="Configurações", menu=config_menu)
     config_menu.add_command(label="Editar config.ini", command=lambda: abrir_configuracoes())
-    config_menu.add_command(label="Verificar e Atualizar ChromeDriver", command=lambda: verificar_atualizar_chromedriver())
+    # Verifica o sistema operacional
+    if platform.system().lower() == "windows":
+        config_menu.add_command(label="Verificar e Atualizar ChromeDriver", command=lambda: verificar_atualizar_chromedriver())
+    else:
+        config_menu.add_command(label="Verificar e Atualizar ChromeDriver", command=lambda: None, state=tk.DISABLED)
+    
+    #config_menu.add_command(label="Verificar e Atualizar ChromeDriver", command=lambda: verificar_atualizar_chromedriver())
 
     # Adiciona um submenu "Informações" com "Versão" e "Leia-me"
     info_menu = tk.Menu(menubar, tearoff=0)
@@ -2589,17 +2695,21 @@ def criar_janela_principal():
     iconebase_data = base64.b64decode(imagens.icone_base64)
     logo_python_data = base64.b64decode(imagens.logo_python)
     logo_chatgpt_data = base64.b64decode(imagens.logo_chatgpt)
+    logo_linux_data = base64.b64decode(imagens.logo_linux)
 
     iconebase_img = ImageTk.PhotoImage(Image.open(BytesIO(iconebase_data)))
     logo_python_img = ImageTk.PhotoImage(Image.open(BytesIO(logo_python_data)))
     logo_chatgpt_img = ImageTk.PhotoImage(Image.open(BytesIO(logo_chatgpt_data)).resize((70, 70), Image.LANCZOS))
+    logo_linux_img = ImageTk.PhotoImage(Image.open(BytesIO(logo_linux_data)).resize((140, 70), Image.LANCZOS))
 
     tk.Label(footer_frame, image=logo_python_img, bg="#ffffff").pack(side="left", padx=5)
     tk.Label(footer_frame, image=logo_chatgpt_img, bg="#ffffff").pack(side="left", padx=5)
+    tk.Label(footer_frame, image=logo_linux_img, bg="#ffffff").pack(side="left", padx=5)
 
     # Manter referências para as imagens do rodapé
     footer_frame.image_logo_python = logo_python_img
     footer_frame.image_logo_chatgpt = logo_chatgpt_img
+    footer_frame.image_logo_chatgpt = logo_linux_img
 
     janela_principal.mainloop()
 
@@ -2801,16 +2911,16 @@ def criar_interface_modulo_alta():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)    
     janela.iconphoto(True, icone)
-    janela.title("AutoReg - v.6.0.1 ")
-    janela.state('zoomed')  # Inicia a janela maximizada
+    janela.title("AutoReg - v.6.0.1-linux ")
+    #janela.state('zoomed')  # Inicia a janela maximizada
     janela.configure(bg="#ffffff")  # Define uma cor de fundo branca
     janela.config(menu=menubar)
 
     # Adiciona texto explicativo ou outro conteúdo abaixo do título principal
     header_frame = tk.Frame(janela, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 6.0.1", font=("Helvetica", 18, "bold"), fg="#ffffff", bg="#4B79A1").pack()
-    tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Fevereiro 2025\nMÓDULO ALTA", 
+    tk.Label(header_frame, text="AutoReg 6.0.1-linux", font=("Helvetica", 18, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Maio 2025\nMÓDULO ALTA", 
              font=("Helvetica", 12), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
     # Frame principal para organizar a interface em duas colunas
@@ -2956,8 +3066,8 @@ def criar_interface_modulo_internacao():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)    
     janela_internacao.iconphoto(True, icone)
-    janela_internacao.title("AutoReg - v.6.0.1 - Módulo de Internação")
-    janela_internacao.state('zoomed')
+    janela_internacao.title("AutoReg - v.6.0.1-linux - Módulo de Internação")
+    #janela_internacao.state('zoomed')
     janela_internacao.configure(bg="#ffffff")
     janela_internacao.config(menu=menubar)
 
@@ -2973,8 +3083,8 @@ def criar_interface_modulo_internacao():
     # Frame para organizar a interface
     header_frame = tk.Frame(janela_internacao, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 6.0.1", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
-    tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Fevereiro 2025\nMÓDULO INTERNAÇÃO", 
+    tk.Label(header_frame, text="AutoReg 6.0.1-linux", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Maio 2025\nMÓDULO INTERNAÇÃO", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
     frame_principal = tk.Frame(janela_internacao, bg="#ffffff")
@@ -3068,8 +3178,8 @@ if getattr(sys, 'frozen', False):
     import pyi_splash
 
 if getattr(sys, 'frozen', False):
-    pyi_splash.update_text("AutoReg 6.0.1")
-    pyi_splash.update_text("Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Fevereiro 2025")
+    pyi_splash.update_text("AutoReg 6.0.1-linux")
+    pyi_splash.update_text("Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Maio 2025")
     pyi_splash.close()
     pyi_splash.close()
 
