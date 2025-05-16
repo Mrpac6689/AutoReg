@@ -1,5 +1,5 @@
 # Automated System Operation - SISREG & G-HOSP
-# Version 6.0.1-linux - Maio 2025
+# Version 6.5.0-linux - Maio 2025
 # Author: MrPaC6689
 # Repo: https://github.com/Mrpac6689/AutoReg
 # Contact: michelrpaes@gmail.com
@@ -26,7 +26,7 @@
 
 
 # Operação Automatizada de Sistemas - SISREG & G-HOSP
-# Versão 6.0.1-linux - Maio de 2025
+# Versão 6.5.0-linux - Maio de 2025
 # Autor: MrPaC6689
 # Repo: https://github.com/Mrpac6689/AutoReg
 # Contato: michelrpaes@gmail.com
@@ -47,7 +47,7 @@
 # junto com este programa. Caso contrário, consulte <https://www.gnu.org/licenses/>.
 #
 #
-#  Alterações da v6.0.1-linux-linux:
+#  Alterações da v6.5.0-linux-linux:
 '''
 - Removidos os imports de bibliotecas não utilizadas.
 - Removido o argumento zoomed do ChromeOptions, pois não é compativel com Linux.
@@ -113,7 +113,8 @@ import csv
 import threading
 import random
 import time
-
+import sys
+#print(sys.path)
 ########################################
 #   DEFINIÇÕES DE FUNÇÕES GLOBAIS      #
 ########################################
@@ -129,6 +130,20 @@ def mostrar_popup_conclusao(mensagem):
     
     # Exibe o messagebox modal
     messagebox.showinfo("Concluído", mensagem, parent=janela_temporaria)
+
+    # Destroi a janela temporária após o messagebox ser fechado
+    janela_temporaria.destroy()
+
+def mostrar_popup_alerta(titulo, mensagem):
+    # Cria uma janela Toplevel temporária para servir como pai do messagebox
+    janela_temporaria = tk.Toplevel()
+    janela_temporaria.withdraw()  # Oculta a janela temporária
+    
+    # Define a janela temporária como "topmost" para garantir que o messagebox ficará à frente
+    janela_temporaria.wm_attributes("-topmost", 1)
+    
+    # Exibe o messagebox modal
+    messagebox.showwarning(titulo, mensagem, parent=janela_temporaria)
 
     # Destroi a janela temporária após o messagebox ser fechado
     janela_temporaria.destroy()
@@ -244,12 +259,19 @@ def comparar_dados():
 
 # Função para ler as credenciais do arquivo config.ini
 def ler_credenciais():
+    import sys
+    import os
     config = configparser.ConfigParser()
-    config.read('config.ini')
-    
+    if getattr(sys, 'frozen', False):
+        # Executável PyInstaller
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        # Script Python
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(base_dir, 'config.ini')
+    config.read(config_path)
     usuario_sisreg = config['SISREG']['usuario']
     senha_sisreg = config['SISREG']['senha']
-    
     return usuario_sisreg, senha_sisreg
 
 ########################################
@@ -378,23 +400,32 @@ def extrator():
         df = pd.DataFrame(nomes, columns=["Nome"])
 
         # Salva os dados em uma planilha CSV
-        df.to_csv('internados_sisreg.csv', index=False)
-        print("Dados salvos em 'internados_sisreg.csv'.")
+        user_dir = os.path.expanduser('~/AutoReg')
+        os.makedirs(user_dir, exist_ok=True)
+        csv_path = os.path.join(user_dir, 'internados_sisreg.csv')
+        df.to_csv(csv_path, index=False)
+        print(f"Dados salvos em '{csv_path}'.")
 
     except Exception as e:
         print(f"Ocorreu um erro: {e}")
     finally:
         driver.quit()
 
-### Definições Interhosp.py
 def ler_credenciais_ghosp():
+    import sys
+    import os
     config = configparser.ConfigParser()
-    config.read('config.ini')
-    
+    if getattr(sys, 'frozen', False):
+        # Executável PyInstaller
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        # Script Python
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(base_dir, 'config.ini')
+    config.read(config_path)
     usuario_ghosp = config['G-HOSP']['usuario']
     senha_ghosp = config['G-HOSP']['senha']
     caminho_ghosp = config['G-HOSP']['caminho']
-    
     return usuario_ghosp, senha_ghosp, caminho_ghosp
 
 # Função para encontrar o arquivo mais recente na pasta de Downloads
@@ -436,6 +467,7 @@ def extrair_nomes(original_df):
     # Converte a lista de nomes extraídos para um DataFrame
     nomes_df = pd.DataFrame(nomes_extraidos, columns=['Nome'])
     
+    '''
     # Determina o diretório onde o executável ou o script está sendo executado
     if getattr(sys, 'frozen', False):
         # Se o programa estiver rodando como executável
@@ -443,9 +475,11 @@ def extrair_nomes(original_df):
     else:
         # Se estiver rodando como um script Python
         base_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    # Caminho para salvar o novo arquivo sobrescrevendo o anterior na pasta atual
-    caminho_novo_arquivo = os.path.join(base_dir, 'internados_ghosp.csv')
+    '''
+    # Caminho para salvar o novo arquivo na pasta ~/AutoReg/
+    user_dir = os.path.expanduser('~/AutoReg')
+    os.makedirs(user_dir, exist_ok=True)
+    caminho_novo_arquivo = os.path.join(user_dir, 'internados_ghosp.csv')
     nomes_df.to_csv(caminho_novo_arquivo, index=False)
     
     print(f"Nomes extraídos e salvos em {caminho_novo_arquivo}.")
@@ -596,16 +630,21 @@ def trazer_terminal():
 
 ### Definições Herdadas do motivo_alta.py
 def motivo_alta():
-        # Função para ler a lista de pacientes de alta do CSV
+    # Função para ler a lista de pacientes de alta do CSV
     def ler_pacientes_de_alta():
-        df = pd.read_csv('pacientes_de_alta.csv')
+        user_dir = os.path.expanduser('~/AutoReg')
+        csv_path = os.path.join(user_dir, 'pacientes_de_alta.csv')
+        df = pd.read_csv(csv_path)
         print("Lista de pacientes de alta lida com sucesso.")
         return df
 
     # Função para salvar a lista com o motivo de alta
     def salvar_pacientes_com_motivo(df):
-        df.to_csv('pacientes_de_alta.csv', index=False)
-        print("Lista de pacientes com motivo de alta salva com sucesso.")
+        user_dir = os.path.expanduser('~/AutoReg')
+        os.makedirs(user_dir, exist_ok=True)
+        csv_path = os.path.join(user_dir, 'pacientes_de_alta.csv')
+        df.to_csv(csv_path, index=False)
+        print(f"Lista de pacientes com motivo de alta salva com sucesso em '{csv_path}'.")
 
     # Inicializa o ChromeDriver
     def iniciar_driver():
@@ -911,13 +950,16 @@ def extrai_codigos():
             except NoSuchElementException:
                 break
 
-        # Salva os dados em um arquivo CSV
-        with open('codigos_sisreg.csv', mode='w', newline='', encoding='utf-8') as file:
+        # Salva os dados em um arquivo CSV na pasta ~/AutoReg/
+        user_dir = os.path.expanduser('~/AutoReg')
+        os.makedirs(user_dir, exist_ok=True)
+        csv_path = os.path.join(user_dir, 'codigos_sisreg.csv')
+        with open(csv_path, mode='w', newline='', encoding='utf-8') as file:
             escritor_csv = csv.writer(file)
             escritor_csv.writerow(["Nome do Paciente", "Número da Ficha"])
             escritor_csv.writerows(nomes_fichas)
 
-        print("Dados salvos no arquivo 'codigos_sisreg.csv'.")
+        print(f"Dados salvos no arquivo '{csv_path}'.")
 
     except Exception as e:
         print(f"Erro durante a execução de extrai_codigos: {e}")
@@ -932,28 +974,54 @@ def extrai_codigos():
 
 #Atualiza arquivo CVS para organizar nomes e incluir numeros de internação SISREG    
 def atualiza_csv():
+    import os
     import pandas as pd
 
-    # Carregar os arquivos CSV como DataFrames
-    pacientes_de_alta_df = pd.read_csv('pacientes_de_alta.csv', encoding='utf-8')
-    codigos_sisreg_df = pd.read_csv('codigos_sisreg.csv', encoding='utf-8', dtype={'Número da Ficha': str})  # Forçar o campo 'Número da Ficha' como string
+    user_dir = os.path.expanduser('~/AutoReg')
+    os.makedirs(user_dir, exist_ok=True)
+
+    pacientes_de_alta_path = os.path.join(user_dir, 'pacientes_de_alta.csv')
+    codigos_sisreg_path = os.path.join(user_dir, 'codigos_sisreg.csv')
+
+    # Verifique se os arquivos existem
+    if not os.path.exists(pacientes_de_alta_path):
+        print(f"Arquivo não encontrado: {pacientes_de_alta_path}")
+        return
+    if not os.path.exists(codigos_sisreg_path):
+        print(f"Arquivo não encontrado: {codigos_sisreg_path}")
+        return
+
+    pacientes_de_alta_df = pd.read_csv(pacientes_de_alta_path, encoding='utf-8')
+    codigos_sisreg_df = pd.read_csv(codigos_sisreg_path, encoding='utf-8', dtype={'Número da Ficha': str})
+
+    #print("Colunas pacientes_de_alta_df:", pacientes_de_alta_df.columns)
+    #print("Colunas codigos_sisreg_df:", codigos_sisreg_df.columns)
+    #print("Primeiras linhas pacientes_de_alta_df:\n", pacientes_de_alta_df.head())
+    #print("Primeiras linhas codigos_sisreg_df:\n", codigos_sisreg_df.head())
 
     # Atualizar os nomes dos pacientes para caixa alta
-    pacientes_de_alta_df['Nome'] = pacientes_de_alta_df['Nome'].str.upper()
+    if 'Nome' in pacientes_de_alta_df.columns:
+        pacientes_de_alta_df['Nome'] = pacientes_de_alta_df['Nome'].str.upper()
+    else:
+        print("Coluna 'Nome' não encontrada em pacientes_de_alta.csv")
+        return
 
-    # Mesclar os dois DataFrames com base no nome do paciente para adicionar o número da ficha
-    pacientes_atualizados_df = pacientes_de_alta_df.merge(codigos_sisreg_df, left_on='Nome', right_on='Nome do Paciente', how='left')
+    # Mesclar os dois DataFrames
+    if 'Nome do Paciente' not in codigos_sisreg_df.columns:
+        print("Coluna 'Nome do Paciente' não encontrada em codigos_sisreg.csv")
+        return
 
-    # Garantir que a coluna com os números da ficha seja tratada como string (para evitar o '.0')
+    pacientes_atualizados_df = pacientes_de_alta_df.merge(
+        codigos_sisreg_df, left_on='Nome', right_on='Nome do Paciente', how='left'
+    )
+
     if 'Número da Ficha' in pacientes_atualizados_df.columns:
         pacientes_atualizados_df['Número da Ficha'] = pacientes_atualizados_df['Número da Ficha'].astype(str)
 
-    # Salvar o DataFrame atualizado em um novo arquivo CSV
-    pacientes_atualizados_df.to_csv('pacientes_de_alta_atualizados.csv', index=False, encoding='utf-8')
+    atualizados_path = os.path.join(user_dir, 'pacientes_de_alta_atualizados.csv')
+    pacientes_atualizados_df.to_csv(atualizados_path, index=False, encoding='utf-8')
 
-    print("\n Arquivo 'pacientes_de_alta.csv' atualizado com sucesso!")
-    print("\n Arquivo 'pacientes_de_alta.csv' atualizado com sucesso!")
-    #mostrar_popup_conclusao("Arquivo 'pacientes_de_alta.csv' atualizado com sucesso!")
+    print(f"\nArquivo '{atualizados_path}' atualizado com sucesso!")
 
 #Função para dar alta individual
 def dar_alta(navegador, wait, motivo_alta, ficha):
@@ -1085,8 +1153,13 @@ def executa_saidas():
     if not realizar_login(navegador, wait):
         return
 
+    user_dir = os.path.expanduser('~/AutoReg')
+    os.makedirs(user_dir, exist_ok=True)
+    atualizados_path = os.path.join(user_dir, 'pacientes_de_alta_atualizados.csv')
+    restos_path = os.path.join(user_dir, 'restos.csv')
+
     try:
-        pacientes_atualizados_df = pd.read_csv('pacientes_de_alta_atualizados.csv', encoding='utf-8')
+        pacientes_atualizados_df = pd.read_csv(atualizados_path, encoding='utf-8')
         for _, paciente in pacientes_atualizados_df.iterrows():
             try:
                 nome_paciente = paciente.get('Nome', None)
@@ -1125,7 +1198,7 @@ def executa_saidas():
         print(f"Erro geral na execução: {e}")
 
     # Criar arquivo 'restos.csv' com pacientes que não possuem motivos de alta desejados
-    pacientes_df = pd.read_csv('pacientes_de_alta_atualizados.csv', encoding='utf-8')
+    pacientes_df = pd.read_csv(atualizados_path, encoding='utf-8')
     motivos_desejados = [
         'PERMANENCIA POR OUTROS MOTIVOS',
         'ALTA MELHORADO',
@@ -1137,12 +1210,11 @@ def executa_saidas():
         'ALTA POR EVASAO'
     ]
     restos_df = pacientes_df[~pacientes_df['Motivo da Alta'].isin(motivos_desejados)]
-    restos_df.to_csv('restos.csv', index=False)
-    print("Arquivo 'restos.csv' criado com os pacientes sem motivo de alta desejado.")
+    restos_df.to_csv(restos_path, index=False)
+    print(f"Arquivo '{restos_path}' criado com os pacientes sem motivo de alta desejado.")
 
     navegador.quit()
     print("\n Processo de saída concluído para todos os pacientes. \n Pacientes para análise manual gravados.")
-
 # Função para normalizar o nome (remover acentos, transformar em minúsculas)
 def normalizar_nome(nome):
     nfkd = unicodedata.normalize('NFKD', nome)
@@ -1151,8 +1223,11 @@ def normalizar_nome(nome):
 # Função para comparar os arquivos CSV e salvar os pacientes a dar alta
 def comparar_dados():
     print("Comparando dados...")
-    arquivo_sisreg = 'internados_sisreg.csv'
-    arquivo_ghosp = 'internados_ghosp.csv'
+    user_dir = os.path.expanduser('~/AutoReg')
+    os.makedirs(user_dir, exist_ok=True)
+    arquivo_sisreg = os.path.join(user_dir, 'internados_sisreg.csv')
+    arquivo_ghosp = os.path.join(user_dir, 'internados_ghosp.csv')
+    arquivo_saida = os.path.join(user_dir, 'pacientes_de_alta.csv')
 
     if not os.path.exists(arquivo_sisreg) or not os.path.exists(arquivo_ghosp):
         print("Os arquivos internados_sisreg.csv ou internados_ghosp.csv não foram encontrados!")
@@ -1173,13 +1248,13 @@ def comparar_dados():
         for nome in sorted(pacientes_a_dar_alta):
             print(nome)
 
-        with open('pacientes_de_alta.csv', 'w', newline='', encoding='utf-8') as csvfile:
+        with open(arquivo_saida, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(['Nome'])
             for nome in sorted(pacientes_a_dar_alta):
                 writer.writerow([nome])
 
-        print("\nA lista de pacientes a dar alta foi salva em 'pacientes_de_alta.csv'.")
+        print(f"\nA lista de pacientes a dar alta foi salva em '{arquivo_saida}'. \n")
     else:
         print("\nNenhum paciente a dar alta encontrado!")
 
@@ -1330,11 +1405,15 @@ def captura_cns_restos_alta():
     linhas_atualizadas = []
 
     # Abre o arquivo CSV e percorre cada linha
-    with open('restos.csv', mode='r', encoding='utf-8') as file:
+    user_dir = os.path.expanduser('~/AutoReg')
+    os.makedirs(user_dir, exist_ok=True)
+    restos_path = os.path.join(user_dir, 'restos.csv')
+
+    with open(restos_path, mode='r', encoding='utf-8') as file:
         leitor_csv = csv.reader(file)
         cabecalho = next(leitor_csv)  # Pega o cabeçalho
         cabecalho.append("CNS")  # Adiciona uma nova coluna "CNS"
-        linhas_atualizadas.append(cabecalho)
+        linhas_atualizadas.append(cabecalho)  # Adiciona o cabeçalho atualizado à lista
 
         for linha in leitor_csv:
             ficha = linha[3]  # Captura o número da ficha da quarta coluna
@@ -1379,7 +1458,10 @@ def captura_cns_restos_alta():
                 linhas_atualizadas.append(linha)
     
     # Salva o CSV atualizado com a nova coluna CNS
-    with open('restos_atualizado.csv', mode='w', newline='', encoding='utf-8') as file:
+    user_dir = os.path.expanduser('~/AutoReg')
+    os.makedirs(user_dir, exist_ok=True)
+    restos_atualizado_path = os.path.join(user_dir, 'restos_atualizado.csv')
+    with open(restos_atualizado_path, mode='w', newline='', encoding='utf-8') as file:
         escritor_csv = csv.writer(file)
         escritor_csv.writerows(linhas_atualizadas)
     
@@ -1389,17 +1471,21 @@ def captura_cns_restos_alta():
 
 ####Capturar motivo alta por CNS
 def motivo_alta_cns():
+    # Caminho para a pasta do usuário
+    user_dir = os.path.expanduser('~/AutoReg')
+    os.makedirs(user_dir, exist_ok=True)
+    restos_csv_path = os.path.join(user_dir, 'restos_atualizado.csv')
+
     # Corrige o arquivo CSV antes de iniciar a rotina
     try:
-        df_corrigir = pd.read_csv('restos_atualizado.csv')
+        df_corrigir = pd.read_csv(restos_csv_path)
         # Verifica se a coluna 'CNS' existe; se não, tenta acessar pela posição (índice 4)
         if 'CNS' in df_corrigir.columns:
             df_corrigir['CNS'] = df_corrigir['CNS'].astype(str).apply(lambda x: x[:-2] if x.endswith('.0') else x)
         else:
-            # Caso a coluna CNS não tenha sido nomeada, assume que ela está na posição 4
             nome_coluna = df_corrigir.columns[4]
             df_corrigir[nome_coluna] = df_corrigir[nome_coluna].astype(str).apply(lambda x: x[:-2] if x.endswith('.0') else x)
-        df_corrigir.to_csv('restos_atualizado.csv', index=False)
+        df_corrigir.to_csv(restos_csv_path, index=False)
         log_area.insert(tk.END, "Arquivo CSV corrigido: removido '.0' dos CNS, se necessário.\n")
         log_area.see(tk.END)
     except Exception as e:
@@ -1408,15 +1494,12 @@ def motivo_alta_cns():
     
     # Função para inicializar o ChromeDriver
     def iniciar_driver():
-        #chrome_driver_path = "chromedriver.exe"
-        #service = Service(executable_path=chrome_driver_path)
         chrome_options = Options()
-        chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+        chrome_options.add_argument("--headless=new")
         driver = webdriver.Chrome(options=chrome_options)
         driver.maximize_window()
         log_area.insert(tk.END, "Iniciando driver...\n")
-        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
-        #janela.after(3000, trazer_janela_para_frente)
+        log_area.see(tk.END)
         return driver
 
     # Função para realizar login no G-HOSP
@@ -1424,15 +1507,12 @@ def motivo_alta_cns():
         driver.get(caminho + ':4002/users/sign_in')
         driver.execute_script("document.body.style.zoom='50%'")
         time.sleep(2)
-        
-        # Localiza os campos de login
         email_field = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "email")))
         email_field.send_keys(usuario)
         senha_field = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "password")))
         senha_field.send_keys(senha)
         log_area.insert(tk.END, "Logando no G-Hosp driver...\n")
-        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
-        # Executa o login via script
+        log_area.see(tk.END)
         driver.execute_script("""
             document.getElementById('user_email').value = arguments[0];
             document.getElementById('user_password').value = arguments[1];
@@ -1442,90 +1522,73 @@ def motivo_alta_cns():
     # Função para buscar o motivo de alta pelo CNS no G-HOSP
     def obter_motivo_alta(driver, cns, caminho):
         driver.get(caminho + ':4002/prontuarios')
-
-        # Insere o CNS no campo de busca
         cns_field = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "cns")))
         cns_field.send_keys(cns)
-        
-        # Clica no botão de procurar
         procurar_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//input[@value='Procurar']")))
         procurar_button.click()
-
-        # Aguarda a página carregar
         time.sleep(10)
-        
         try:
-            # Localiza o rótulo "Motivo da alta"
             motivo_element = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, "//small[text()='Motivo da alta: ']"))
             )
-
-            # Captura o conteúdo do próximo elemento <div> após o rótulo
             motivo_conteudo_element = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, "//small[text()='Motivo da alta: ']/following::div[@class='pl5 pb5']"))
             )
-            
             motivo_alta = motivo_conteudo_element.text
             log_area.insert(tk.END, f"Motivo de alta capturado: {motivo_alta}\n")
-            log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
-            
+            log_area.see(tk.END)
         except Exception as e:
             motivo_alta = "Motivo da alta não encontrado"
             log_area.insert(tk.END, f"Erro ao capturar motivo da alta para CNS {cns}: {e}\n")
-            log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
-        
+            log_area.see(tk.END)
         return motivo_alta
 
     # Código principal da função motivo_alta_cns
-    usuario, senha, caminho = ler_credenciais_ghosp()  # Lê as credenciais de fora da função
+    usuario, senha, caminho = ler_credenciais_ghosp()
     driver = iniciar_driver()
-    
-    # Faz login no G-HOSP
     login_ghosp(driver, usuario, senha, caminho)
-    
+
     # Lê a lista de pacientes de alta, garantindo que a coluna CNS seja lida como string
-    df_pacientes = pd.read_csv('restos_atualizado.csv', dtype={'CNS': str})
-    
-    # (Opcional) Caso algum valor ainda contenha o ".0", corrigimos novamente
+    df_pacientes = pd.read_csv(restos_csv_path, dtype={'CNS': str})
     df_pacientes['CNS'] = df_pacientes['CNS'].apply(lambda x: re.sub(r'\.0$', '', x) if isinstance(x, str) else x)
-    
+
     # Verifica cada paciente a partir da segunda linha e adiciona o motivo de alta
-    for i, row in df_pacientes.iloc[1:].iterrows():  # .iloc[1:] para ignorar o cabeçalho
+    for i, row in df_pacientes.iloc[1:].iterrows():
         cns = row[4]  # CNS está na quinta coluna (índice 4)
         log_area.insert(tk.END, f"Buscando motivo de alta para CNS: {cns}\n")
-        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
-        
+        log_area.see(tk.END)
         motivo = obter_motivo_alta(driver, cns, caminho)
-        df_pacientes.at[i, df_pacientes.columns[1]] = motivo  # Atualiza a segunda coluna com o motivo
+        df_pacientes.at[i, df_pacientes.columns[1]] = motivo
         log_area.insert(tk.END, f"Motivo de alta para CNS {cns}: {motivo}\n")
-        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
-        
-        time.sleep(2)  # Tempo de espera entre as requisições
+        log_area.see(tk.END)
+        time.sleep(2)
 
     # Salva o CSV atualizado com o motivo de alta
-    df_pacientes.to_csv('restos_atualizado.csv', index=False)
-    log_area.insert(tk.END, "Motivos de alta encontrados, CSV atualizado.\n")
-    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
-        
+    df_pacientes.to_csv(restos_csv_path, index=False)
+    log_area.insert(tk.END, f"Motivos de alta encontrados, CSV atualizado em '{restos_csv_path}'.\n")
+    log_area.see(tk.END)
     driver.quit()
 
 #### Executa altas capturadas por CNS
 def executa_saidas_cns():
+    user_dir = os.path.expanduser('~/AutoReg')
+    os.makedirs(user_dir, exist_ok=True)
+    restos_atualizado_path = os.path.join(user_dir, 'restos_atualizado.csv')
+    saida_manual_path = os.path.join(user_dir, 'saida_manual.csv')
+
     log_area.insert(tk.END, "Iniciando o navegador Chrome...\n")
-    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
+    log_area.see(tk.END)
     chrome_options = Options()
-    chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
-    #chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
+    chrome_options.add_argument("--headless=new")
     navegador = webdriver.Chrome(options=chrome_options)
-    #janela.after(3000, trazer_janela_para_frente)
     wait = WebDriverWait(navegador, 20)
 
     log_area.insert(tk.END, "Acessando o sistema SISREG...\n")
-    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
+    log_area.see(tk.END)
     navegador.get("https://sisregiii.saude.gov.br")
 
     log_area.insert(tk.END, "Tentando localizar o campo de usuário...\n")
-    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
+    log_area.see(tk.END)
     usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
     senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
     usuario, senha = ler_credenciais()
@@ -1533,13 +1596,9 @@ def executa_saidas_cns():
     senha_field.send_keys(senha)
 
     log_area.insert(tk.END, "Tentando localizar o botão de login...\n")
-    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
+    log_area.see(tk.END)
     login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
     login_button.click()
-
-    wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_saida_permanencia' and text()='saída/permanência']"))).click()
-    log_area.insert(tk.END, "Login realizado e navegação para página de Saída/Permanência concluída!\n")
-    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
 
     wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_saida_permanencia' and text()='saída/permanência']"))).click()
     log_area.insert(tk.END, "Login realizado e navegação para página de Saída/Permanência concluída!\n")
@@ -1569,8 +1628,7 @@ def executa_saidas_cns():
         navegador.quit()
         return
 
-
-    pacientes_atualizados_df = pd.read_csv('restos_atualizado.csv', encoding='utf-8')
+    pacientes_atualizados_df = pd.read_csv(restos_atualizado_path, encoding='utf-8')
 
     for _, paciente in pacientes_atualizados_df.iterrows():
         nome_paciente = paciente.get('Nome', None)
@@ -1579,18 +1637,17 @@ def executa_saidas_cns():
 
         if nome_paciente is None or motivo_alta is None or ficha is None:
             log_area.insert(tk.END, "Dados insuficientes para o paciente, pulando para o próximo...\n")
-            log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
+            log_area.see(tk.END)
             continue
 
-        # Converter o número da ficha para string, garantindo que não haverá .0 no final
-        ficha = str(ficha).split('.')[0]  # Remove a parte decimal caso exista
+        ficha = str(ficha).split('.')[0]
 
         log_area.insert(tk.END, f"Processando alta para o paciente: {nome_paciente}\n")
-        log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
+        log_area.see(tk.END)
         dar_alta(navegador, wait, motivo_alta, ficha)
         time.sleep(2)
 
-    pacientes_df = pd.read_csv('restos_atualizado.csv', encoding='utf-8')
+    pacientes_df = pd.read_csv(restos_atualizado_path, encoding='utf-8')
     motivos_desejados = [
         'PERMANENCIA POR OUTROS MOTIVOS',
         'ALTA MELHORADO',
@@ -1602,9 +1659,9 @@ def executa_saidas_cns():
         'ALTA POR EVASAO'
     ]
     restos_df = pacientes_df[~pacientes_df['Motivo da Alta'].isin(motivos_desejados)]
-    restos_df.to_csv('saida_manual.csv', index=False)
-    log_area.insert(tk.END, "Arquivo 'saida_manual.csv' criado com os pacientes sem motivo de alta desejado.\n")
-    log_area.see(tk.END)  # Faz o widget rolar automaticamente até o final do conteúdo
+    restos_df.to_csv(saida_manual_path, index=False)
+    log_area.insert(tk.END, f"Arquivo '{saida_manual_path}' criado com os pacientes sem motivo de alta desejado.\n")
+    log_area.see(tk.END)
 
     navegador.quit()
     print("Processo de saída concluído para todos os pacientes. \n Pacientes para análise manual gravados.\n")
@@ -1616,8 +1673,15 @@ def executa_saidas_cns():
 # Função para abrir e editar o arquivo config.ini
 def abrir_configuracoes():
     def salvar_configuracoes():
+        import sys
+        import os
         try:
-            with open('config.ini', 'w') as configfile:
+            if getattr(sys, 'frozen', False):
+                base_dir = os.path.dirname(sys.executable)
+            else:
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+            config_path = os.path.join(base_dir, 'config.ini')
+            with open(config_path, 'w') as configfile:
                 configfile.write(text_area.get("1.0", tk.END))
             mostrar_popup_conclusao("Configurações salvas com sucesso!")
         except Exception as e:
@@ -1632,13 +1696,21 @@ def abrir_configuracoes():
     text_area = scrolledtext.ScrolledText(janela_config, wrap=tk.WORD, width=60, height=20)
     text_area.pack(pady=10, padx=10)
 
+    # Tenta ler o config.ini e exibir no text_area
+    import sys
+    import os
     try:
-        with open('config.ini', 'r') as configfile:
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(base_dir, 'config.ini')
+        with open(config_path, 'r') as configfile:
             text_area.insert(tk.END, configfile.read())
     except FileNotFoundError:
         mostrar_popup_erro("Erro", "Arquivo config.ini não encontrado!")
 
-    # Botão para salvar as alterações
+    # Botão para salvar as alterações (sempre aparece)
     btn_salvar = tk.Button(janela_config, text="Salvar", command=salvar_configuracoes)
     btn_salvar.pack(pady=10)
 
@@ -1768,19 +1840,27 @@ def verificar_atualizar_chromedriver():
 
 #Função com informações da versão
 def mostrar_versao():
-    versao = "AUTOMATOR - AUTOREG\nOperação automatizada de Sistemas - SISREG & G-HOSP\nVersão 6.0.1-linux - Maio de 2025\nAutor: Michel R. Paes\nGithub: MrPaC6689\nDesenvolvido com o apoio do ChatGPT 4o\nContato: michelrpaes@gmail.com"
-    mostrar_popup_alerta("AutoReg 6.0.1-linux", versao)
+    versao = "AUTOMATOR - AUTOREG\nOperação automatizada de Sistemas - SISREG & G-HOSP\nVersão 6.5.0-linux - Maio de 2025\nAutor: Michel R. Paes\nGithub: MrPaC6689\nDesenvolvido com o apoio do ChatGPT 4o\nContato: michelrpaes@gmail.com"
+    mostrar_popup_alerta("AutoReg 6.5.0-linux", versao)
 
 # Função para exibir o conteúdo do arquivo README.md
 def exibir_leia_me():
     try:
+        import sys
+        # Descobre o diretório base do script/executável
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+        readme_path = os.path.join(base_dir, 'README.md')
+
         # Verifica se o arquivo README.md existe
-        if not os.path.exists('README.md'):
+        if not os.path.exists(readme_path):
             mostrar_popup_erro("O arquivo README.md não foi encontrado.")
             return
         
         # Lê o conteúdo do arquivo README.md
-        with open('README.md', 'r', encoding='utf-8') as file:
+        with open(readme_path, 'r', encoding='utf-8') as file:
             conteudo = file.read()
         
         # Cria uma nova janela para exibir o conteúdo
@@ -1794,7 +1874,7 @@ def exibir_leia_me():
         text_area.insert(tk.END, conteudo)
         text_area.config(state=tk.DISABLED)  # Desabilita a edição do texto
 
-         # Adiciona um botão "Fechar" para fechar a janela do Leia-me
+        # Adiciona um botão "Fechar" para fechar a janela do Leia-me
         btn_fechar = tk.Button(janela_leia_me, text="Fechar", command=janela_leia_me.destroy)
         btn_fechar.pack(pady=10)
     except Exception as e:
@@ -1802,20 +1882,24 @@ def exibir_leia_me():
 
 # Função para abrir o arquivo CSV com o programa de planilhas padrão
 def abrir_csv(caminho_arquivo):
+    # Se o caminho não for absoluto, busque em ~/AutoReg/
+    if not os.path.isabs(caminho_arquivo):
+        user_dir = os.path.expanduser('~/AutoReg')
+        os.makedirs(user_dir, exist_ok=True)
+        caminho_arquivo = os.path.join(user_dir, caminho_arquivo)
+
     try:
         if os.path.exists(caminho_arquivo):
             if os.name == 'nt':  # Windows
                 print("Abrindo o arquivo CSV como planilha, aguarde...")
-                os.startfile(caminho_arquivo)              
+                os.startfile(caminho_arquivo)
             elif os.name == 'posix':  # macOS ou Linux
                 print("Abrindo o arquivo CSV como planilha, aguarde...")
-                subprocess.call(('xdg-open' if 'linux' in os.sys.platform else 'open', caminho_arquivo))
+                subprocess.call(('xdg-open', caminho_arquivo))
         else:
-            print("O arquivo {caminho_arquivo} não foi encontrado.")
-            mostrar_popup_erro(f"O arquivo {caminho_arquivo} não foi encontrado.")            
+            print(f"O arquivo {caminho_arquivo} não foi encontrado.")           
     except Exception as e:
-        print("Não foi possível abrir o arquivo: {e}")
-        mostrar_popup_erro(f"Não foi possível abrir o arquivo: {e}")
+        print(f"Não foi possível abrir o arquivo: {e}")
 
 # Função para sair do programa
 def sair_programa():
@@ -1885,28 +1969,32 @@ def extrai_codigos_internacao(log_area):
     except Exception as e:
         log_area.insert(tk.END, f"Erro inesperado: {e}\n")
     finally:
-        # Salva os dados em um arquivo CSV
-        with open('codigos_internacao.csv', mode='w', newline='', encoding='utf-8') as file:
+        # Salva os dados em um arquivo CSV na pasta ~/AutoReg/
+        user_dir = os.path.expanduser('~/AutoReg')
+        os.makedirs(user_dir, exist_ok=True)
+        csv_path = os.path.join(user_dir, 'codigos_internacao.csv')
+        with open(csv_path, mode='w', newline='', encoding='utf-8') as file:
             escritor_csv = csv.writer(file)
             escritor_csv.writerow(["Nome do Paciente", "Número da Ficha"])
             escritor_csv.writerows(nomes_fichas)
-        log_area.insert(tk.END, "Dados salvos no arquivo 'codigos_internacao.csv'.\n")
+        log_area.insert(tk.END, f"Dados salvos no arquivo '{csv_path}'.\n")
         navegador.quit()
-        log_area.insert(tk.END, "Processo de captura de pacientes a internar concluído. \n Dados salvos no arquivo 'codigos_internacao.csv'.")
-        #mostrar_popup_conclusao("Processo de captura de pacientes a internar concluído. \n Dados salvos no arquivo 'codigos_internacao.csv'.")
+        log_area.insert(tk.END, f"Processo de captura de pacientes a internar concluído. \n Dados salvos no arquivo '{csv_path}'.")
         log_area.see(tk.END)
 
 # Função para atualizar a planilha na interface com o conteúdo do CSV
 def atualizar_planilha():
     try:
-        with open('codigos_internacao.csv', mode='r', encoding='utf-8') as file:
+        user_dir = os.path.expanduser('~/AutoReg')
+        csv_path = os.path.join(user_dir, 'codigos_internacao.csv')
+        with open(csv_path, mode='r', encoding='utf-8') as file:
             leitor_csv = csv.reader(file)
             next(leitor_csv)  # Pula o cabeçalho
             for linha in leitor_csv:
                 treeview.insert('', 'end', values=linha)
         log_area.insert(tk.END, "Planilha atualizada com os dados do CSV.\n")
     except FileNotFoundError:
-        log_area.insert(tk.END, "Erro: O arquivo 'codigos_internacao.csv' não foi encontrado.\n")
+        log_area.insert(tk.END, f"Erro: O arquivo '{csv_path}' não foi encontrado.\n")
 
 # Função para inicializar o navegador
 def iniciar_navegador():
@@ -2039,7 +2127,9 @@ def iniciar_internacao_multiplas_fichas(frame_print_area, log_area, entry_data, 
             log_area.insert(tk.END, "Erro ao acessar a página de internação.\n")
             return
 
-        with open('codigos_internacao.csv', mode='r', encoding='utf-8') as file:
+        user_dir = os.path.expanduser('~/AutoReg')
+        csv_path = os.path.join(user_dir, 'codigos_internacao.csv')
+        with open(csv_path, mode='r', encoding='utf-8') as file:
             leitor_csv = csv.reader(file)
             next(leitor_csv)  # Pula o cabeçalho
             for linha in leitor_csv:
@@ -2157,7 +2247,8 @@ def confirmar_internacao(entry_data, ficha, log_area, navegador):
             log_area.insert(tk.END, f"Alerta residual tratado: {residual_alert_text}\n")
         except NoAlertPresentException:
             log_area.insert(tk.END, "Nenhum alerta residual encontrado.\n")
-
+'''
+Bloco inativado no port para Linux.
 def bkp_iniciar_internacao_auto(log_area):
     with open('codigos_internacao.csv', mode='r', encoding='utf-8') as file:
         leitor_csv = csv.reader(file)
@@ -2298,11 +2389,13 @@ def bkp_iniciar_internacao_auto(log_area):
             finally:
                 
                 log_area.see(tk.END)
-
+'''
 
 def iniciar_internacao_auto(log_area):
     log_area.insert(tk.END, "INICIANDO PROCESSO DE INTERNAÇÃO\n")
-    with open('codigos_internacao.csv', mode='r', encoding='utf-8') as file:
+    user_dir = os.path.expanduser('~/AutoReg')
+    csv_path = os.path.join(user_dir, 'codigos_internacao.csv')
+    with open(csv_path, mode='r', encoding='utf-8') as file:
         leitor_csv = csv.reader(file)
         next(leitor_csv)  # Pula o cabeçalho
         
@@ -2479,13 +2572,13 @@ def interface_internacao():
     icone = PhotoImage(data=icone_data)    
     janela_internacao.iconphoto(True, icone)
     #janela_internacao.state('zoomed')
-    janela_internacao.title("AutoReg - v.6.0.1-linux - Módulo de internação ")
+    janela_internacao.title("AutoReg - v.6.5.0-linux - Módulo de internação ")
     janela_internacao.configure(bg="#ffffff")
     
     # Frame para organizar a interface
     header_frame = tk.Frame(janela_internacao, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 6.0.1-linux", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 6.5.0-linux", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Sistema automatizado para captura de pacientes a dar alta - SISREG G-HOSP.\nPor Michel R. Paes - Outubro 2025\nMÓDULO INTERNAÇÃO", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -2594,7 +2687,7 @@ def criar_janela_principal():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)
     janela_principal.iconphoto(True, icone)
-    janela_principal.title("AutoReg - v.6.0.1-linux ") 
+    janela_principal.title("AutoReg - v.6.5.0-linux ") 
     janela_principal.configure(bg="#ffffff")
 
     janela_principal.protocol("WM_DELETE_WINDOW", lambda: fechar_modulo())
@@ -2604,7 +2697,7 @@ def criar_janela_principal():
     header_frame.pack(fill="x")
     icone_resized = icone.subsample(3, 3)
     
-    tk.Label(header_frame, text="AutoReg 6.0.1-linux", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack(side="top")
+    tk.Label(header_frame, text="AutoReg 6.5.0-linux", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack(side="top")
     tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Maio 2025", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -2911,7 +3004,7 @@ def criar_interface_modulo_alta():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)    
     janela.iconphoto(True, icone)
-    janela.title("AutoReg - v.6.0.1-linux ")
+    janela.title("AutoReg - v.6.5.0-linux ")
     #janela.state('zoomed')  # Inicia a janela maximizada
     janela.configure(bg="#ffffff")  # Define uma cor de fundo branca
     janela.config(menu=menubar)
@@ -2919,7 +3012,7 @@ def criar_interface_modulo_alta():
     # Adiciona texto explicativo ou outro conteúdo abaixo do título principal
     header_frame = tk.Frame(janela, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 6.0.1-linux", font=("Helvetica", 18, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 6.5.0-linux", font=("Helvetica", 18, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Maio 2025\nMÓDULO ALTA", 
              font=("Helvetica", 12), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -3066,7 +3159,7 @@ def criar_interface_modulo_internacao():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)    
     janela_internacao.iconphoto(True, icone)
-    janela_internacao.title("AutoReg - v.6.0.1-linux - Módulo de Internação")
+    janela_internacao.title("AutoReg - v.6.5.0-linux - Módulo de Internação")
     #janela_internacao.state('zoomed')
     janela_internacao.configure(bg="#ffffff")
     janela_internacao.config(menu=menubar)
@@ -3083,7 +3176,7 @@ def criar_interface_modulo_internacao():
     # Frame para organizar a interface
     header_frame = tk.Frame(janela_internacao, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 6.0.1-linux", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 6.5.0-linux", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Maio 2025\nMÓDULO INTERNAÇÃO", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -3172,17 +3265,17 @@ def criar_interface_modulo_internacao():
     janela_internacao.mainloop()
 
 ### FIM DA INTERFACE SELEÇÃO DE MÓDULO
-
+'''
 #Controla o fechamento da Splash Screen se utilizada na compilação
 if getattr(sys, 'frozen', False):
     import pyi_splash
 
 if getattr(sys, 'frozen', False):
-    pyi_splash.update_text("AutoReg 6.0.1-linux")
+    pyi_splash.update_text("AutoReg 6.5.0-linux")
     pyi_splash.update_text("Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Maio 2025")
     pyi_splash.close()
     pyi_splash.close()
-
+'''
 # Inicia a aplicação
 criar_janela_principal()
 

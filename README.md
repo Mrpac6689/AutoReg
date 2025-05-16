@@ -3,11 +3,12 @@ Operação automatizada de Sistemas de Saúde- SISREG &amp; G-HOSP
 
 ## Branch Linux
 
-Versão 6.1.1-linux - Maio de 2025
+Versão 6.5.1-linux - Maio de 2025
 Autor: Michel Ribeiro Paes (MrPaC6689)
 Repo: https://github.com/Mrpac6689/AutoReg
 Contato michelrpaes@gmail.com
 Desenvolvido com o apoio do ChatGPT 4o em Python 3.10.12
+Funcional em Ubuntu 24.04 LTS POP_OS
 
 Alterações no port para Linux:
 - Removidos os imports de bibliotecas não utilizadas.
@@ -18,6 +19,9 @@ Alterações no port para Linux:
 - Ajuste de foco para frame f_principal antes de chamar configFicha em executar_ficha() para todas as rotinas que acessam fichas no SISREG.
 - Substituidos pop-ups de criação de janela extra por prints no campo de logs.
 - Removidas bibliotecas inócuas.
+- Código de complilação yinstaller --onefile --windowed --icon=icone.png --hidden-import=PIL._tkinter_finder autoreg.py
+- Realizados ajustes diversos de caminho de arquivos para o ambiente Linux.
+- Ajustado empacotamento em .deb.
 
 # Descrição:
 O AUTOREG é um programa desenvolvido para automatizar o processo de internação e alta de pacientes nos sistemas SISREG e G-HOSP, proporcionando maior eficiência e reduzindo o tempo gasto em processos manuais. Utilizando Python, Selenium e Tkinter, o programa oferece uma interface amigável para operar de forma automática o fluxo de trabalho hospitalar.
@@ -35,27 +39,12 @@ Verificação e atualização do ChromeDriver: O programa verifica automaticamen
 
 Interface gráfica amigável: Dividida em módulos de Internação e Alta, permitindo uma experiência independente e flexível. Um menu intuitivo facilita a escolha das funções e o uso das funcionalidades de forma direta.
 
-Compilação para binário único:
+# Intalação e utilização
 
-   Windows: Arquivo .exe que inclui todas as dependências, eliminando a necessidade de instalação do Python e das bibliotecas.
-
-# Utilização - Aplicativo para Windows
-
-Baixe o último Release para windows pelo link abaixo, descompacte os arquivos na mesma pasta e execute Autoreg.exe. Certifique-se de ter o Google Chrome instalado, e de realizar a verificação de compatibilidade do Driver pelo menu superior 'Configurações'.
-
-      https://github.com/Mrpac6689/AutoReg/releases/
-
-# Utilização - Script global
-
-Para desenvolvedores, o Script pode ser baixado utilizando Pypi com o comando abaixo, transformando-o em um comando global
-
-No terminal digite:
-      
-      pip install AutoReg-Mrpac6689
-
-Execute com:
-
-      autoreg
+## Requisitos Linux
+  - Google Chrome atualizado
+  - Ubuntu 24.04 LTS (não testado em outras distros)
+  
 
 # Novidades da Versão 6.0
  - Implementada função de internação automatizada

@@ -28,3 +28,5 @@ fichas_devolvidas_sisreg.csv
 temp.py
 internaut.py
 executa_autoreg.ps1
+*.deb
+/autoreg_6.5.0-1/
