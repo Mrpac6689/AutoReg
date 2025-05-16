@@ -3,7 +3,7 @@ Operação automatizada de Sistemas de Saúde- SISREG &amp; G-HOSP
 
 ## Branch Linux
 
-Versão 6.0.1-linux - Maio de 2025
+Versão 6.1.1-linux - Maio de 2025
 Autor: Michel Ribeiro Paes (MrPaC6689)
 Repo: https://github.com/Mrpac6689/AutoReg
 Contato michelrpaes@gmail.com
