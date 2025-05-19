@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=AutoReg
+Exec=/usr/local/bin/autoreg
+Icon=icone-autoreg
+Type=Application
+Categories=Utility;

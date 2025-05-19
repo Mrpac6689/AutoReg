@@ -3,13 +3,20 @@ Operação automatizada de Sistemas de Saúde- SISREG &amp; G-HOSP
 
 ## Branch Linux
 
-Versão 6.5.1-linux - Maio de 2025
+Versão 7.0.0-linux - Maio de 2025
 Autor: Michel Ribeiro Paes (MrPaC6689)
 Repo: https://github.com/Mrpac6689/AutoReg
 Contato michelrpaes@gmail.com
-Desenvolvido com o apoio do ChatGPT 4o em Python 3.10.12
+Desenvolvido com o apoio do ChatGPT 4.1 e Claude 3.7 Sonnet em Python 3.10.12
 Funcional em Ubuntu 24.04 LTS POP_OS
 
+# Alterações da v7.0.0-linux
+
+- Reajustado destino do Download na Função Internhosp
+- Corrigidos destinos de arquivos temposrários para concentrar na pasta ~/AutoReg
+- Testes e ajustes de empacotamento e distribuição .deb
+
+## Versão 6.5.1-linux - Maio de 2025
 Alterações no port para Linux:
 - Removidos os imports de bibliotecas não utilizadas.
 - Removido o argumento zoomed do ChromeOptions, pois não é compativel com Linux.

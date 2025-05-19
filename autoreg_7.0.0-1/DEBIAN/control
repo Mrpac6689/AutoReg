@@ -1,0 +1,8 @@
+Package: autoreg
+Version: 7.0.0-1
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: chromium-browser | google-chrome-stable
+Maintainer: Michel Ribeiro Paes <michelrpaes@gmail.com>
+Description: AutoReg - Automação SISREG & G-HOSP - Automação de processos hospitalares via Python/Selenium.

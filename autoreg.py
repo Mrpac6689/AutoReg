@@ -1,5 +1,5 @@
 # Automated System Operation - SISREG & G-HOSP
-# Version 6.5.0-linux - Maio 2025
+# Version 7.0.0-linux - Maio 2025
 # Author: MrPaC6689
 # Repo: https://github.com/Mrpac6689/AutoReg
 # Contact: michelrpaes@gmail.com
@@ -26,7 +26,7 @@
 
 
 # Operação Automatizada de Sistemas - SISREG & G-HOSP
-# Versão 6.5.0-linux - Maio de 2025
+# Versão 7.0.0-linux - Maio de 2025
 # Autor: MrPaC6689
 # Repo: https://github.com/Mrpac6689/AutoReg
 # Contato: michelrpaes@gmail.com
@@ -47,7 +47,7 @@
 # junto com este programa. Caso contrário, consulte <https://www.gnu.org/licenses/>.
 #
 #
-#  Alterações da v6.5.0-linux-linux:
+#  Alterações da v7.0.0-linux:
 '''
 - Removidos os imports de bibliotecas não utilizadas.
 - Removido o argumento zoomed do ChromeOptions, pois não é compativel com Linux.
@@ -57,6 +57,12 @@
 - Ajuste de foco para frame f_principal antes de chamar configFicha em executar_ficha() para todas as rotinas que acessam fichas no SISREG.
 - Substituidos pop-ups de criação de janela extra por prints no campo de logs.
 - Removidas bibliotecas inócuas.
+'''
+# Alterações da v7.0.0-linux
+'''
+- Reajustado destino do Download na Função Internhosp
+- Corrigidos destinos de arquivos temposrários para concentrar na pasta ~/AutoReg
+- Testes e ajustes de empacotamento e distribuição .deb
 '''
 
 
@@ -429,12 +435,75 @@ def ler_credenciais_ghosp():
     return usuario_ghosp, senha_ghosp, caminho_ghosp
 
 # Função para encontrar o arquivo mais recente na pasta de Downloads
+''' Backup 
+
 def encontrar_arquivo_recente(diretorio):
     arquivos = [os.path.join(diretorio, f) for f in os.listdir(diretorio) if os.path.isfile(os.path.join(diretorio, f))]
     arquivos.sort(key=os.path.getmtime, reverse=True)  # Ordena por data de modificação (mais recente primeiro)
     if arquivos:
         return arquivos[0]  # Retorna o arquivo mais recente
     return None
+
+    '''
+''' Destavidado, nova abordagem por Claude 3.7 Sonnet
+def encontrar_arquivo_recente(diretorio):
+    try:
+        print(f"Verificando arquivos em: {diretorio}")
+        
+        # Verifica se o diretório existe
+        if not os.path.exists(diretorio):
+            print(f"O diretório {diretorio} não existe!")
+            return None
+            
+        # Verifica se temos permissão para acessar o diretório
+        if not os.access(diretorio, os.R_OK):
+            print(f"Sem permissão para ler o diretório {diretorio}!")
+            return None
+            
+        # Lista todos os arquivos no diretório
+        arquivos = []
+        for f in os.listdir(diretorio):
+            caminho_completo = os.path.join(diretorio, f)
+            if os.path.isfile(caminho_completo):
+                arquivos.append(caminho_completo)
+        
+        if not arquivos:
+            print(f"Nenhum arquivo encontrado em {diretorio}")
+            return None
+            
+        print(f"Total de arquivos encontrados: {len(arquivos)}")
+        
+        # Mostra alguns arquivos como exemplo
+        for arquivo in arquivos[:3]:
+            print(f"Exemplo de arquivo: {os.path.basename(arquivo)}")
+        
+        # Ordena por data de modificação (mais recente primeiro)
+        arquivos.sort(key=os.path.getmtime, reverse=True)
+        
+        # Lista os 5 arquivos mais recentes para debug
+        print("Arquivos mais recentes:")
+        for i, arquivo in enumerate(arquivos[:5]):
+            mod_time = datetime.fromtimestamp(os.path.getmtime(arquivo))
+            print(f"{i+1}. {os.path.basename(arquivo)} - {mod_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        # Procura pelo primeiro arquivo CSV na lista ordenada
+        for arquivo in arquivos:
+            nome_arquivo = os.path.basename(arquivo).lower()
+            if nome_arquivo.endswith('.csv'):
+                tamanho = os.path.getsize(arquivo)
+                print(f"Arquivo CSV encontrado: {nome_arquivo} ({tamanho} bytes)")
+                if tamanho > 0:
+                    return arquivo
+                else:
+                    print(f"Arquivo vazio ignorado: {nome_arquivo}")
+        
+        print("Nenhum arquivo CSV válido encontrado no diretório.")
+        return None
+        
+    except Exception as e:
+        print(f"Erro ao buscar arquivos em {diretorio}: {str(e)}")
+        return None
+'''
 
 # Função para verificar se a linha contém um nome válido
 def linha_valida(linha):
@@ -500,15 +569,32 @@ def internhosp():
    
             '''
     # Obtém o caminho da pasta de Downloads do usuário
-    pasta_downloads = str(Path.home() / "Downloads")
+    #pasta_downloads = str(Path.home() / "Downloads")
 
-    print(f"Pasta de Downloads: {pasta_downloads}")
+    # Caminho para salvar o novo arquivo baixado
+    user_dir = os.path.expanduser('~/AutoReg')
+    os.makedirs(user_dir, exist_ok=True)
+    print(f"Diretório de download configurado: {user_dir}")
+
+    #download_path = os.path.join(user_dir, 'ghosp_download.csv')
+    #print(f"Pasta de Downloads: {download_path}")
     
+    # Captura timestamp antes do download para identificar arquivos novos
+    antes_download = time.time()
+
     # Inicializa o navegador (Chrome neste caso) usando o serviço
     chrome_options = Options()
     chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+    chrome_options.add_experimental_option("prefs", {
+        "download.default_directory": user_dir,
+        "download.prompt_for_download": False,
+        "download.directory_upgrade": True,
+        "safebrowsing.enabled": False
+    })    
     driver = webdriver.Chrome(options=chrome_options)
 
+    print("Iniciando o Chromedriver...")
+    
     # Minimizando a janela após iniciar o Chrome
     driver.minimize_window()
 
@@ -592,6 +678,7 @@ def internhosp():
         driver.minimize_window()
 
         # Aguardar até que o arquivo CSV seja baixado
+        '''
         while True:
             arquivo_recente = encontrar_arquivo_recente(pasta_downloads)
             if arquivo_recente and arquivo_recente.endswith('.csv'):
@@ -600,16 +687,46 @@ def internhosp():
             else:
                 print("Aguardando o download do arquivo CSV...")
                 time.sleep(5)  # Aguarda 5 segundos antes de verificar novamente
+        '''
+        # Contador para timeout
+        tentativas = 0
+        max_tentativas = 60  # 5 minutos (5 segundos * 60)
+        arquivo_recente = None
 
-        try:
-            # Carregar o arquivo CSV recém-baixado, garantindo que todas as colunas sejam lidas como texto
-            original_df = pd.read_csv(arquivo_recente, header=None, dtype=str)
+        # Aguardar até que um novo arquivo CSV seja baixado
+        while tentativas < max_tentativas:
+            # Procura por arquivos CSV no diretório que foram criados após o início do download
+            novos_arquivos = []
+            for arquivo in os.listdir(user_dir):
+                caminho_completo = os.path.join(user_dir, arquivo)
+                if (arquivo.lower().endswith('.csv') and 
+                    os.path.isfile(caminho_completo) and 
+                    os.path.getmtime(caminho_completo) > antes_download and
+                    os.path.getsize(caminho_completo) > 0):
+                    novos_arquivos.append(caminho_completo)
+            
+            if novos_arquivos:
+                # Ordena pelo mais recente
+                novos_arquivos.sort(key=os.path.getmtime, reverse=True)
+                arquivo_recente = novos_arquivos[0]
+                print(f"Arquivo CSV baixado encontrado: {os.path.basename(arquivo_recente)}")
+                break
+            
+            print(f"Aguardando o download do arquivo CSV... (tentativa {tentativas+1}/{max_tentativas})")
+            tentativas += 1
+            time.sleep(5)
 
-            # Chamar a função para extrair os nomes do CSV recém-baixado
-            extrair_nomes(original_df)
-
-        except Exception as e:
-            print(f"Erro ao processar o arquivo CSV: {e}")
+        if arquivo_recente:
+            # Processa o arquivo encontrado
+            try:
+                # Carregar o arquivo CSV recém-baixado
+                original_df = pd.read_csv(arquivo_recente, header=None, dtype=str)
+                # Chamar a função para extrair os nomes do CSV recém-baixado
+                extrair_nomes(original_df)
+            except Exception as e:
+                print(f"Erro ao processar o arquivo CSV: {e}")
+        else:
+            print("Timeout: Não foi possível encontrar o arquivo CSV baixado no tempo esperado.")
 
     except Exception as e:
         print(f"Ocorreu um erro: {e}")
@@ -1840,8 +1957,8 @@ def verificar_atualizar_chromedriver():
 
 #Função com informações da versão
 def mostrar_versao():
-    versao = "AUTOMATOR - AUTOREG\nOperação automatizada de Sistemas - SISREG & G-HOSP\nVersão 6.5.0-linux - Maio de 2025\nAutor: Michel R. Paes\nGithub: MrPaC6689\nDesenvolvido com o apoio do ChatGPT 4o\nContato: michelrpaes@gmail.com"
-    mostrar_popup_alerta("AutoReg 6.5.0-linux", versao)
+    versao = "AUTOMATOR - AUTOREG\nOperação automatizada de Sistemas - SISREG & G-HOSP\nVersão 7.0.0-linux - Maio de 2025\nAutor: Michel R. Paes\nGithub: MrPaC6689\nDesenvolvido com o apoio do ChatGPT 4o\nContato: michelrpaes@gmail.com"
+    mostrar_popup_alerta("AutoReg 7.0.0-linux", versao)
 
 # Função para exibir o conteúdo do arquivo README.md
 def exibir_leia_me():
@@ -2572,13 +2689,13 @@ def interface_internacao():
     icone = PhotoImage(data=icone_data)    
     janela_internacao.iconphoto(True, icone)
     #janela_internacao.state('zoomed')
-    janela_internacao.title("AutoReg - v.6.5.0-linux - Módulo de internação ")
+    janela_internacao.title("AutoReg - v.7.0.0-linux - Módulo de internação ")
     janela_internacao.configure(bg="#ffffff")
     
     # Frame para organizar a interface
     header_frame = tk.Frame(janela_internacao, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 6.5.0-linux", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 7.0.0-linux", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Sistema automatizado para captura de pacientes a dar alta - SISREG G-HOSP.\nPor Michel R. Paes - Outubro 2025\nMÓDULO INTERNAÇÃO", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -2687,7 +2804,7 @@ def criar_janela_principal():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)
     janela_principal.iconphoto(True, icone)
-    janela_principal.title("AutoReg - v.6.5.0-linux ") 
+    janela_principal.title("AutoReg - v.7.0.0-linux ") 
     janela_principal.configure(bg="#ffffff")
 
     janela_principal.protocol("WM_DELETE_WINDOW", lambda: fechar_modulo())
@@ -2697,7 +2814,7 @@ def criar_janela_principal():
     header_frame.pack(fill="x")
     icone_resized = icone.subsample(3, 3)
     
-    tk.Label(header_frame, text="AutoReg 6.5.0-linux", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack(side="top")
+    tk.Label(header_frame, text="AutoReg 7.0.0-linux", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack(side="top")
     tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Maio 2025", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -3004,7 +3121,7 @@ def criar_interface_modulo_alta():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)    
     janela.iconphoto(True, icone)
-    janela.title("AutoReg - v.6.5.0-linux ")
+    janela.title("AutoReg - v.7.0.0-linux ")
     #janela.state('zoomed')  # Inicia a janela maximizada
     janela.configure(bg="#ffffff")  # Define uma cor de fundo branca
     janela.config(menu=menubar)
@@ -3012,7 +3129,7 @@ def criar_interface_modulo_alta():
     # Adiciona texto explicativo ou outro conteúdo abaixo do título principal
     header_frame = tk.Frame(janela, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 6.5.0-linux", font=("Helvetica", 18, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 7.0.0-linux", font=("Helvetica", 18, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Maio 2025\nMÓDULO ALTA", 
              font=("Helvetica", 12), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -3159,7 +3276,7 @@ def criar_interface_modulo_internacao():
     # Crie uma PhotoImage para o ícone a partir dos dados decodificados
     icone = PhotoImage(data=icone_data)    
     janela_internacao.iconphoto(True, icone)
-    janela_internacao.title("AutoReg - v.6.5.0-linux - Módulo de Internação")
+    janela_internacao.title("AutoReg - v.7.0.0-linux - Módulo de Internação")
     #janela_internacao.state('zoomed')
     janela_internacao.configure(bg="#ffffff")
     janela_internacao.config(menu=menubar)
@@ -3176,7 +3293,7 @@ def criar_interface_modulo_internacao():
     # Frame para organizar a interface
     header_frame = tk.Frame(janela_internacao, bg="#4B79A1", pady=15)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="AutoReg 6.5.0-linux", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
+    tk.Label(header_frame, text="AutoReg 7.0.0-linux", font=("Helvetica", 20, "bold"), fg="#ffffff", bg="#4B79A1").pack()
     tk.Label(header_frame, text="Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Maio 2025\nMÓDULO INTERNAÇÃO", 
              font=("Helvetica", 14), fg="#ffffff", bg="#4B79A1", justify="center").pack()
 
@@ -3271,7 +3388,7 @@ if getattr(sys, 'frozen', False):
     import pyi_splash
 
 if getattr(sys, 'frozen', False):
-    pyi_splash.update_text("AutoReg 6.5.0-linux")
+    pyi_splash.update_text("AutoReg 7.0.0-linux")
     pyi_splash.update_text("Operação automatizada de Sistemas - SISREG & G-HOSP.\nPor Michel R. Paes - Maio 2025")
     pyi_splash.close()
     pyi_splash.close()
