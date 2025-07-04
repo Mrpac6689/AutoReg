@@ -304,7 +304,7 @@ def extrator():
     chrome_options.add_argument('--disable-gpu')
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--incognito')   
-    chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+    #chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
         
 
     # Inicializa o navegador (Chrome neste caso) usando o serviço
@@ -584,7 +584,7 @@ def internhosp():
 
     # Inicializa o navegador (Chrome neste caso) usando o serviço
     chrome_options = Options()
-    chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+    #chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
     chrome_options.add_experimental_option("prefs", {
         "download.default_directory": user_dir,
         "download.prompt_for_download": False,
@@ -774,7 +774,7 @@ def motivo_alta():
         driver.maximize_window()
         '''
         chrome_options = Options()
-        chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+        #chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
         driver = webdriver.Chrome(options=chrome_options)
         return driver
 
@@ -996,7 +996,7 @@ def extrai_codigos():
     chrome_options.add_argument('--disable-gpu')
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--incognito')   
-    chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+    #chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
     #chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
     navegador = webdriver.Chrome(options=chrome_options)
     wait = WebDriverWait(navegador, 20)  # Define um tempo de espera de 20 segundos para aguardar os elementos
@@ -1224,7 +1224,7 @@ def executa_saidas():
     def iniciar_navegador():
         print("Iniciando o navegador Chrome...")
         chrome_options = Options()
-        chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+        #chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
         #chrome_options.add_argument("--window-position=3000,3000")  # Posiciona a janela do navegador fora do campo visual
         navegador = webdriver.Chrome(options=chrome_options)
         wait = WebDriverWait(navegador, 20) #mudado de 20 para 10
@@ -1450,7 +1450,7 @@ def captura_cns_restos_alta():
         chrome_options.add_argument("--disable-gpu")  # Desabilita GPU para melhorar o desempenho em ambientes sem aceleração gráfica
         chrome_options.add_argument("--no-sandbox")  # Pode acelerar o navegador em alguns casos
         chrome_options.add_argument("--disable-dev-shm-usage")  # Resolve problemas de espaço insuficiente em alguns sistemas  
-        chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+       # chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
         
         #Roda o chromedriver com o label 'navegador'
         navegador = webdriver.Chrome(options=chrome_options)
@@ -1612,7 +1612,7 @@ def motivo_alta_cns():
     # Função para inicializar o ChromeDriver
     def iniciar_driver():
         chrome_options = Options()
-        chrome_options.add_argument("--headless=new")
+        #chrome_options.add_argument("--headless=new")
         driver = webdriver.Chrome(options=chrome_options)
         driver.maximize_window()
         log_area.insert(tk.END, "Iniciando driver...\n")
@@ -1696,7 +1696,7 @@ def executa_saidas_cns():
     log_area.insert(tk.END, "Iniciando o navegador Chrome...\n")
     log_area.see(tk.END)
     chrome_options = Options()
-    chrome_options.add_argument("--headless=new")
+    #chrome_options.add_argument("--headless=new")
     navegador = webdriver.Chrome(options=chrome_options)
     wait = WebDriverWait(navegador, 20)
 
@@ -2037,7 +2037,7 @@ def extrai_codigos_internacao(log_area):
         chrome_options.add_argument("--disable-gpu")  # Desabilita GPU para melhorar o desempenho em ambientes sem aceleração gráfica
         chrome_options.add_argument("--no-sandbox")  # Pode acelerar o navegador em alguns casos
         chrome_options.add_argument("--disable-dev-shm-usage")  # Resolve problemas de espaço insuficiente em alguns sistemas 
-        chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+        #chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
         navegador = webdriver.Chrome(options=chrome_options)
         wait = WebDriverWait(navegador, 20)
         log_area.insert(tk.END, "Acessando a página de Internação...\n")
@@ -2124,7 +2124,7 @@ def iniciar_navegador():
     chrome_options.add_argument("--disable-gpu")  # Desabilita GPU para melhorar o desempenho em ambientes sem aceleração gráfica
     chrome_options.add_argument("--no-sandbox")  # Pode acelerar o navegador em alguns casos
     chrome_options.add_argument("--disable-dev-shm-usage")  # Resolve problemas de espaço insuficiente em alguns sistemas  
-    chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+    #chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
     #Roda o chromedriver com o label 'navegador'
     navegador = webdriver.Chrome(options=chrome_options)
     
@@ -2524,7 +2524,7 @@ def iniciar_internacao_auto(log_area):
         chrome_options.add_argument("--disable-gpu")  # Desabilita GPU para melhorar o desempenho em ambientes sem aceleração gráfica
         chrome_options.add_argument("--no-sandbox")  # Pode acelerar o navegador em alguns casos
         chrome_options.add_argument("--disable-dev-shm-usage")  # Resolve problemas de espaço insuficiente em alguns sistemas 
-        chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
+        #chrome_options.add_argument("--headless=new")  # <-- Esta linha faz o Chrome rodar oculto
         navegador = webdriver.Chrome(options=chrome_options)
         wait = WebDriverWait(navegador, 20)
 
