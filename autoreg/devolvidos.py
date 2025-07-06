@@ -67,7 +67,6 @@ import re
 import configparser
 import pygetwindow as gw
 import ctypes
-import tkinter as tk
 import threading
 import sys
 import requests
@@ -75,11 +74,6 @@ import zipfile
 import shutil
 import random
 import io
-from tkinter import ttk, scrolledtext, messagebox, filedialog
-from tkinter import ttk, messagebox, filedialog, scrolledtext
-from tkinter.scrolledtext import ScrolledText
-from tkinter import PhotoImage
-from PIL import Image, ImageTk  # Biblioteca para manipular imagens
 import base64
 import argparse
 from datetime import datetime

@@ -2,7 +2,6 @@
 import os
 import csv
 import time
-import tkinter as tk
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -15,22 +14,6 @@ import logging
 
 setup_logging()
 def extrai_codigos_internacao():
-    """
-    Automatiza a extração dos códigos de internação de pacientes na página de internação do SISREG III utilizando Selenium.
-    Esta função realiza o login no sistema SISREG III, navega até a seção de internação e percorre todos os registros de pacientes disponíveis,
-    extraindo o nome de cada paciente e o código de internação ("ficha"). Os dados extraídos são salvos em um arquivo CSV no diretório ~/AutoReg do usuário.
-    O progresso e eventuais erros são registrados na área de texto Tkinter fornecida.
-    Args:
-        log_area (tk.Text): Widget de texto Tkinter utilizado para exibir mensagens de log e progresso ao usuário.
-    Raises:
-        TimeoutException: Caso elementos necessários para navegação ou extração de dados não sejam encontrados no tempo esperado.
-        Exception: Para quaisquer outros erros inesperados durante a execução.
-    Efeitos Colaterais:
-        - Abre uma janela do navegador Chrome (não headless por padrão).
-        - Escreve um arquivo CSV chamado 'codigos_internacao.csv' no diretório '~/AutoReg'.
-        - Atualiza a área de texto Tkinter fornecida com mensagens de status.
-        - Fecha a janela do navegador ao final ou em caso de erro.
-    """
     nomes_fichas = []
     navegador = None
     try:
