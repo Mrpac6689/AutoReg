@@ -1,218 +1,414 @@
 # AutoReg
-Operação automatizada de Sistemas de Saúde- SISREG &amp; G-HOSP
+Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 
-## Branch Linux
+## 🌌 Versão 8.0.0 Universe - Julho de 2025
 
-Versão 7.0.0-linux - Maio de 2025
-Autor: Michel Ribeiro Paes (MrPaC6689)
-Repo: https://github.com/Mrpac6689/AutoReg
-Contato michelrpaes@gmail.com
-Desenvolvido com o apoio do ChatGPT 4.1 e Claude 3.7 Sonnet em Python 3.10.12
-Funcional em Ubuntu 24.04 LTS POP_OS
+**Coordenador de Workflow Multiplataforma**
 
-# Alterações da v7.0.0-linux
+- **Autor**: Michel Ribeiro Paes (MrPaC6689)
+- **Repositório**: https://github.com/Mrpac6689/AutoReg
+- **Contato**: michelrpaes@gmail.com
+- **Desenvolvido com**: ChatGPT 4.1 e Claude 3.7 Sonnet
+- **Python**: 3.7+ (Compatível com 3.12.8)
+- **Plataformas**: Windows, macOS, Linux
 
+---
+
+## 🎯 Principais Novidades da v8.0.0 Universe
+
+### 🔄 **Arquitetura Modular Completa**
+- **Refatoração total**: Código dividido em módulos independentes na pasta `autoreg/`
+- **Coordenador de Workflow**: `autoreg.py` como orquestrador principal
+- **Imports otimizados**: Sistema de importação limpo e organizados
+
+### 🖥️ **Interface de Linha de Comando Avançada**
+- **12 funções individuais** com flags específicas (`-eci`, `-ip`, `-eis`, etc.)
+- **Execução sequencial**: Múltiplas funções em uma chamada (`autoreg -eci -ip -eis`)
+- **Workflow completo**: Flag `--all` executa todas as funções automaticamente
+- **Configuração integrada**: `--config` para editar credenciais
+- **Gestão de arquivos**: `--directory` para acessar pasta de trabalho
+
+### 🚀 **Sistema de Instalação Universal**
+- **Scripts multiplataforma**: `install.sh` (Linux/macOS) e `install.bat` (Windows)
+- **Detecção automática**: Sistema operacional, Python, pip e venv
+- **Instalação de dependências**: Automática por distro Linux/Homebrew/Manual Windows
+- **Ambiente virtual isolado**: Instalação em `~/.autoreg/` sem conflitos
+- **PATH global**: Comando `autoreg` disponível globalmente
+- **Desinstalação limpa**: Script `uninstall.sh` para remoção completa
+
+### 📋 **Funções Disponíveis**
+| Flag | Função | Descrição |
+|------|--------|-----------|
+| `-eci` | `extrai_codigos_internacao` | Extrai códigos de internação do SISREG |
+| `-ip` | `interna_pacientes` | Realiza internação de pacientes no SISREG |
+| `-eis` | `extrai_internados_sisreg` | Extrai lista de internados do SISREG |
+| `-eig` | `extrai_internados_ghosp` | Extrai lista de internados do G-HOSP |
+| `-ci` | `compara_internados` | Compara listas de internados entre sistemas |
+| `-ma` | `motivo_alta` | Captura motivos de alta no G-HOSP |
+| `-ecsa` | `extrai_codigos_sisreg_alta` | Extrai códigos SISREG para alta |
+| `-ea` | `executa_alta` | Executa altas no SISREG |
+| `-ar` | `atualiza_restos` | Atualiza arquivo de pacientes restantes |
+| `-eid` | `extrai_internacoes_duplicadas` | Identifica internações duplicadas |
+| `-td` | `trata_duplicados` | Processa pacientes com duplicações |
+| `-dev` | `devolvidos` | Processa solicitações devolvidas |
+
+### 🛠️ **Melhorias Técnicas**
+- **Logging estruturado**: Sistema de logs melhorado
+- **Tratamento de erros**: Feedback detalhado e recuperação automática
+- **Configuração flexível**: Suporte a diferentes ambientes hospitalares
+- **Performance otimizada**: Execução mais rápida e eficiente
+
+---
+
+# 📝 Descrição
+
+O **AutoReg v8.0.0 Universe** é um sistema completo de automação para processos hospitalares, oferecendo um **coordenador de workflow inteligente** que integra os sistemas SISREG e G-HOSP. Esta versão representa uma evolução significativa com **arquitetura modular**, **interface de linha de comando avançada** e **instalação universal**.
+
+## 🎯 **Características Principais**
+
+### 🔧 **Coordenador de Workflow**
+- **Execução orquestrada**: Controle centralizado de todas as funções
+- **Linha de comando intuitiva**: Interface CLI com flags mnêmicas
+- **Execução flexível**: Individual, sequencial ou workflow completo
+- **Feedback em tempo real**: Progresso detalhado com emojis e cores
+
+### 🏗️ **Arquitetura Modular**
+- **Módulos independentes**: Cada função em arquivo separado
+- **Imports otimizados**: Sistema de dependências limpo
+- **Manutenibilidade**: Código organizado e documentado
+- **Escalabilidade**: Fácil adição de novas funcionalidades
+
+### 🌐 **Multiplataforma Universal**
+- **Instalação automática**: Scripts para Windows, macOS e Linux
+- **Detecção inteligente**: Identificação automática de dependências
+- **Ambiente isolado**: Virtual environment dedicado
+- **Comando global**: Acesso via `autoreg` de qualquer local
+
+# ⚡ **Funcionalidades Principais**
+
+## 🏥 **Módulo de Internação**
+- **Extração automática**: Códigos de internação do SISREG (`-eci`)
+- **Internação inteligente**: Processo automatizado de internação (`-ip`)
+- **Identificação de duplicatas**: Detecção e tratamento de internações duplicadas (`-eid`, `-td`)
+
+## 🚪 **Módulo de Alta**
+- **Comparação de sistemas**: Análise entre SISREG e G-HOSP (`-ci`)
+- **Captura de motivos**: Extração automática de motivos de alta (`-ma`)
+- **Execução de altas**: Processamento automatizado no SISREG (`-ea`)
+- **Gestão de pendências**: Tratamento de pacientes restantes (`-ar`)
+
+## 📊 **Módulo de Dados**
+- **Extração SISREG**: Lista completa de internados (`-eis`)
+- **Extração G-HOSP**: Lista de pacientes no sistema hospitalar (`-eig`)
+- **Códigos para alta**: Extração de códigos SISREG específicos (`-ecsa`)
+- **Solicitações devolvidas**: Processamento de devoluções (`-dev`)
+
+## 🔄 **Workflows Inteligentes**
+- **Execução individual**: Funções específicas conforme necessidade
+- **Execução sequencial**: Múltiplas funções em ordem (`autoreg -eci -ip -eis`)
+- **Workflow completo**: Todas as funções automaticamente (`autoreg --all`)
+- **Recuperação de erros**: Parada inteligente e relatórios detalhados
+
+# 🚀 Instalação Rápida
+
+## 📋 Pré-requisitos
+- Python 3.7+
+- pip
+- Git (para clonar o repositório)
+
+## ⚡ Instalação Automática
+
+### 🐧 Linux / 🍎 macOS
+```bash
+git clone https://github.com/Mrpac6689/AutoReg.git
+cd AutoReg
+./install.sh
+```
+
+### 🪟 Windows
+```cmd
+git clone https://github.com/Mrpac6689/AutoReg.git
+cd AutoReg
+install.bat
+```
+
+## 🎯 Uso Rápido
+
+Após a instalação, use o comando `autoreg` de qualquer lugar no sistema:
+
+### 📋 **Comandos Básicos**
+```bash
+# Ver todas as opções disponíveis
+autoreg --help
+
+# Configurar credenciais de acesso
+autoreg --config
+
+# Abrir pasta de arquivos gerados
+autoreg --directory
+```
+
+### 🔧 **Execução de Funções**
+```bash
+# Função individual
+autoreg -eci                    # Extrai códigos de internação
+autoreg -ip                     # Interna pacientes
+autoreg -ma                     # Captura motivos de alta
+
+# Múltiplas funções em sequência
+autoreg -eci -ip                # Extrai códigos e interna
+autoreg -eis -eig -ci           # Extrai listas e compara
+autoreg -ma -ecsa -ea           # Workflow de alta completo
+
+# Workflow completo (11 funções automaticamente)
+autoreg --all                   # Executa tudo exceto devolvidos
+
+# Função especializada
+autoreg -dev                    # Processa devolvidos (separadamente)
+```
+
+### 💡 **Exemplos Práticos**
+```bash
+# Rotina matinal de internação
+autoreg -eci -ip -eid -td
+
+# Rotina de alta de pacientes
+autoreg -eis -eig -ci -ma -ecsa -ea -ar
+
+# Verificação e limpeza de dados
+autoreg -eid -td -ar
+
+# Processamento completo automatizado
+autoreg --all && autoreg -dev
+```
+
+## 📖 Documentação Completa
+- [**INSTALL.md**](INSTALL.md) - Guia detalhado de instalação
+- [**Histórico de Versões**](#-histórico-de-versões) - Changelog completo
+
+---
+
+# 💻 Requisitos do Sistema
+
+## 🖥️ **Sistemas Operacionais Suportados**
+- **Linux**: Ubuntu 20.04+, Debian 10+, CentOS 8+, Arch Linux
+- **macOS**: 10.14+ (Mojave ou superior)
+- **Windows**: 10/11 (x64)
+
+## 🐍 **Dependências Python**
+- **Python**: 3.7 ou superior (testado até 3.12.8)
+- **pip**: Gerenciador de pacotes Python
+- **venv**: Ambiente virtual (incluído no Python 3.3+)
+
+## 🌐 **Ferramentas Externas**
+- **Google Chrome**: Navegador atualizado (instalação automática do ChromeDriver)
+- **Git**: Para clonagem do repositório
+- **Conexão à Internet**: Para instalação de dependências
+
+## 🏥 **Acesso aos Sistemas**
+- **Credenciais SISREG**: Usuário e senha válidos
+- **Credenciais G-HOSP**: Usuário, senha e endereço do servidor
+- **Rede hospitalar**: Acesso aos sistemas de gestão hospitalar
+
+---
+
+# ⚙️ Configuração
+
+## 📝 **Configuração de Credenciais**
+
+Após a instalação, configure suas credenciais:
+
+```bash
+autoreg --config
+```
+
+Edite o arquivo `config.ini` com suas informações:
+
+```ini
+[SISREG]
+usuario = seu_usuario_sisreg
+senha = sua_senha_sisreg
+
+[G-HOSP]
+usuario = seu_usuario_ghosp
+senha = sua_senha_ghosp
+caminho = http://10.0.0.0:4001  # Endereço do seu servidor G-HOSP
+```
+
+## 📁 **Estrutura de Arquivos**
+
+Após a instalação, os arquivos ficam organizados em:
+
+```
+~/.autoreg/                    # Diretório de instalação
+├── autoreg.py                 # Coordenador principal
+├── autoreg/                   # Módulos do sistema
+│   ├── __init__.py
+│   ├── extrai_codigos_internacao.py
+│   ├── interna_pacientes.py
+│   ├── extrai_internados_sisreg.py
+│   ├── extrai_internados_ghosp.py
+│   ├── compara_internados.py
+│   ├── motivo_alta.py
+│   ├── extrai_codigos_sisreg_alta.py
+│   ├── executa_alta.py
+│   ├── trata_restos.py
+│   ├── extrai_internacoes_duplicadas.py
+│   ├── trata_duplicados.py
+│   ├── devolvidos.py
+│   ├── ler_credenciais.py
+│   ├── chrome_options.py
+│   └── logging.py
+├── venv/                      # Ambiente virtual
+├── config.ini                 # Configurações (criar após instalação)
+└── requirements.txt           # Dependências Python
+```
+
+---
+
+# 🔧 Solução de Problemas
+
+## ⚠️ **Erros Comuns**
+
+### 🐍 Python não encontrado
+```bash
+# Linux (Ubuntu/Debian)
+sudo apt update && sudo apt install python3 python3-pip python3-venv
+
+# Linux (CentOS/RHEL)
+sudo yum install python3 python3-pip
+
+# macOS (com Homebrew)
+brew install python3
+
+# Windows
+# Baixar de python.org e marcar "Add to PATH"
+```
+
+### 🌐 Erro de ChromeDriver
+```bash
+# O AutoReg baixa automaticamente a versão correta
+# Se persistir o erro, atualize o Chrome:
+# - Linux: sudo apt update && sudo apt upgrade google-chrome-stable
+# - macOS: Atualizar via Chrome ou App Store
+# - Windows: Atualizar via Chrome
+```
+
+### 🔑 Erro de credenciais
+```bash
+# Verificar configuração
+autoreg --config
+
+# Testar acesso manual aos sistemas
+# Verificar se as credenciais estão corretas
+```
+
+### 📁 Permissões de arquivo
+```bash
+# Linux/macOS - Corrigir permissões
+chmod +x ~/.autoreg/autoreg
+chmod -R 755 ~/.autoreg/
+
+# Verificar proprietário
+chown -R $USER:$USER ~/.autoreg/
+```
+
+---
+  
+
+# 📜 Histórico de Versões
+
+## 🌌 **v8.0.0 Universe** - Julho de 2025
+### 🔄 **Refatoração Completa**
+- **Arquitetura modular**: Código dividido em módulos independentes na pasta `autoreg/`
+- **Coordenador de workflow**: `autoreg.py` como orquestrador principal com CLI avançada
+- **12 funções especializadas**: Cada módulo com responsabilidade única
+- **Sistema de instalação universal**: Scripts para Windows, macOS e Linux
+- **Comando global**: `autoreg` disponível em qualquer local do sistema
+- **Ambiente virtual isolado**: Instalação em `~/.autoreg/` sem conflitos
+- **Interface CLI intuitiva**: Flags mnêmicas e execução sequencial
+- **Documentação completa**: README, INSTALL.md e scripts de exemplo
+
+## 🐧 **v7.0.0-linux** - Maio de 2025
 - Reajustado destino do Download na Função Internhosp
-- Corrigidos destinos de arquivos temposrários para concentrar na pasta ~/AutoReg
+- Corrigidos destinos de arquivos temporários para concentrar na pasta ~/AutoReg
 - Testes e ajustes de empacotamento e distribuição .deb
 
-## Versão 6.5.1-linux - Maio de 2025
-Alterações no port para Linux:
-- Removidos os imports de bibliotecas não utilizadas.
-- Removido o argumento zoomed do ChromeOptions, pois não é compativel com Linux.
-- Adicionado o argumento headless=new para rodar o Chrome em modo oculto.
-- Removidos os reajustes da janela de internação.
-- Removidos os reajustes da janela de alta.
-- Ajuste de foco para frame f_principal antes de chamar configFicha em executar_ficha() para todas as rotinas que acessam fichas no SISREG.
-- Substituidos pop-ups de criação de janela extra por prints no campo de logs.
-- Removidas bibliotecas inócuas.
-- Código de complilação yinstaller --onefile --windowed --icon=icone.png --hidden-import=PIL._tkinter_finder autoreg.py
-- Realizados ajustes diversos de caminho de arquivos para o ambiente Linux.
-- Ajustado empacotamento em .deb.
+## 🔧 **v6.5.1-linux** - Maio de 2025
+- Removidos imports de bibliotecas não utilizadas
+- Removido argumento `zoomed` do ChromeOptions (incompatível com Linux)
+- Adicionado argumento `headless=new` para Chrome em modo oculto
+- Ajuste de foco para frame `f_principal` antes de chamar `configFicha`
+- Substituídos pop-ups por prints no campo de logs
+- Ajustes diversos de caminho de arquivos para ambiente Linux
 
-# Descrição:
-O AUTOREG é um programa desenvolvido para automatizar o processo de internação e alta de pacientes nos sistemas SISREG e G-HOSP, proporcionando maior eficiência e reduzindo o tempo gasto em processos manuais. Utilizando Python, Selenium e Tkinter, o programa oferece uma interface amigável para operar de forma automática o fluxo de trabalho hospitalar.
+## 🚀 **v6.0** - 2024
+- Implementada função de internação automatizada
+- Implementada função de alta automatizada
 
-A automação utiliza Selenium para navegação e manipulação de páginas web de forma automatizada. A interface gráfica foi implementada utilizando Tkinter, proporcionando uma experiência mais interativa e amigável.
+## 🔧 **v5.1.2** - 2024
+- Acrescentados motivos de saída ausentes
+- Rotina para execução autônoma do módulo de Alta
+- Reduzido tempo para captura de altas
 
-# Funcionalidades principais:
-Internação automatizada: Captura automaticamente os pacientes a serem internados, identificando nome e número de ficha no SISREG. Executa a internação automaticamente, abre a ficha do paciente, tira um screenshot, escolhe aleatoriamente o profissional internador e permite a entrada da data de internação diretamente pelo ambiente do programa.
+## 📊 **v5.0.1** - 2024
+- Funções `captura_cns_restos_alta()`, `motivo_alta_cns()`, `executa_saidas_cns()`
+- Estrutura de diretórios com versões anteriores
+- Interface do módulo alta redesenhada
+- Restaurada função `trazer_terminal()`
+- Atualizada para Python 3.13
 
-Alta automatizada: Extrai as informações dos pacientes do G-HOSP e SISREG, identifica os pacientes aptos para alta e realiza a alta automaticamente no SISREG com base nos motivos capturados.
+## 🏥 **v4.2.3** - 2023
+- Publicado em PyPI.org
+- Pop-ups concentrados em três funções
+- Convertido .ico em base64
 
-Comparar e tratar dados: Compara os dados de ambos os sistemas e identifica pacientes que podem ser internados ou receber alta.
+## 🎯 **v4.0** - 2023
+- **Funções de Internação**: Captura automatizada e processo completo
+- **Melhorias de Alta**: Configuração HTTP do G-HOSP
+- **Módulos independentes**: Internação e Alta separados
+- **Compilação binária**: .exe para Windows, .app beta para macOS
 
-Verificação e atualização do ChromeDriver: O programa verifica automaticamente a versão do Google Chrome instalada e atualiza o ChromeDriver para garantir compatibilidade.
+## 📝 **v3.0** - 2022
+- Extração de códigos de internação SISREG
+- Correlação Nome, Motivo de Alta G-HOSP e Código SISREG
+- Alta automática conforme motivo capturado
+- Interface visual melhorada
 
-Interface gráfica amigável: Dividida em módulos de Internação e Alta, permitindo uma experiência independente e flexível. Um menu intuitivo facilita a escolha das funções e o uso das funcionalidades de forma direta.
+## 🔄 **v2.0** - 2021
+- Atualização automática do ChromeDriver
+- Interface gráfica redesenhada com Tkinter
+- Menu "Informações" com documentação integrada
 
-# Intalação e utilização
+---
 
-## Requisitos Linux
-  - Google Chrome atualizado
-  - Ubuntu 24.04 LTS (não testado em outras distros)
-  
+# 📄 Licença e Créditos
 
-# Novidades da Versão 6.0
- - Implementada função de internação automatizada
- - Implementada função de alta automatizada
+## 👨‍💻 **Desenvolvimento**
+- **Autor Principal**: Michel Ribeiro Paes ([MrPaC6689](https://github.com/MrPaC6689))
+- **Contato**: michelrpaes@gmail.com
+- **Repositório**: https://github.com/Mrpac6689/AutoReg
 
-# Novidades da Versão 5.0
- - Acrescentadas as funções captura_cns_restos_alta(), motivo_alta_cns(), executa_saidas_cns() para trabalhar os pacientes não capturados em primeiro momento a dar alta.
- - Acrescentada estrutura de diretorios com versões anteriores
- - Redesenhada interfaçe do módulo alta
- - Redesenhada interfaçe do módulo principal
- - Versão python atualizada para 3.13 de 7 de outubro de 2024
+## 🤖 **Suporte de IA**
+- **ChatGPT 4.1**: Desenvolvimento e arquitetura
+- **Claude 3.7 Sonnet**: Refatoração e otimização
 
-# Versão 5.0.1
- - Acrescentadas as funções captura_cns_restos_alta(), motivo_alta_cns(), executa_saidas_cns() para trabalhar os pacientes não capturados em primeiro momento a dar alta.
- - Acrescentada estrutura de diretorios com versões anteriores
- - Redesenhada interfaçe do módulo alta
- - Redesenhada interfaçe do módulo principal
- - Restaurada função trazer_terminal(), com o G-Hosp, o selenium não consegue trabalhar se a pagina não estiver visível. Assim, foi necessário utilizaer o drive como um serviço do windows e utilizar a função para trazer a janela principal do programa à frente apos rodar o driver.
+## 📜 **Licença**
+Este projeto é desenvolvido sob **licença MIT** para fins educacionais e de automação hospitalar. 
 
-# Versão 5.1.2
- - Acrescentados motivos de saida ausentes
- - Acrescentada rotina para execução autônoma do modulo de Alta
- - Reduzido tempo para captura de altas
+### ⚖️ **Termos de Uso**
+- ✅ Uso comercial permitido
+- ✅ Modificação permitida
+- ✅ Distribuição permitida
+- ✅ Uso privado permitido
+- ❗ Sem garantia explícita
+- ❗ Responsabilidade do usuário
 
-# Novidades da Versão 4.0
-  Funções de Internação:
-    Captura de pacientes a serem internados com nome e número de ficha.
-    Processo de internação automatizado: abertura de ficha, captura de print, escolha aleatória do profissional, e entrada manual da data de internação.
-    Retornos em tempo real no ambiente do programa.
-  Melhorias nas Funções de Alta:
-    Inclusão da opção de configurar o caminho HTTP do sistema G-HOSP, possibilitando adaptação às variações entre diferentes servidores nas unidades de saúde.
-    Aumento da velocidade do processo de alta, resultando em uma experiência mais fluida e rápida.
-  Ambiente Gráfico Dividido em Dois Módulos: Internação e Alta
-    Janela inicial permite selecionar o módulo desejado.
-    Independência total entre os módulos, facilitando o uso e prevenindo interferências entre rotinas.
-  Compilação em Binário Único
-    Windows: Arquivo .exe que agrega todas as bibliotecas necessárias e imagens em Base64, permitindo executar sem necessidade de instalações adicionais.
-    MacOS: Versão .app em fase beta com funcionalidades similares, trazendo praticidade.
-    Splash Screen acrescentada com a ultima versão do Pyinstaller.
+## 🏥 **Finalidade**
+O AutoReg foi desenvolvido para facilitar e automatizar processos hospitalares, contribuindo para a eficiência dos profissionais de saúde e melhor atendimento aos pacientes.
 
-# Versão 4.2.1:
-   - Ajustada função executar_multiplas_internacoes() - movidos excepts para o bloco de looping, evitando a quebra do processo em caso de erro ao internar.
-   - Pop-ups concentrados em três funções def - Conclusão, Erro e Alerta - Agora chamam uma janela toplevel temporária paraâncora, evitando arrastar a janela de seleção de modulos de volta ao topo, ou deixando o pop-up escondido atrás da janela ativa.
-   - Convertido .ico em base64
+---
 
-# Versão 4.2.3:
-   -Publicado em Pypi.org   
+**AutoReg v8.0.0 Universe** - *Automatização inteligente para sistemas de saúde* 🚀
 
-# Novidades da Versão 3.0:
-  Inclusão de função para extrair o código da internação SISREG para todos os pacientes internados no sistema.
-  Inclusão de função para ajustar o rol em .csv para correlacionar Nome, Motivo de Alta G-HOSP e Código SISREG.
-  Incusão de função para dar alta automática no SISREG conforme motivo de alta capturado.
-  Melhorada interface visual
-
-# Novidades da Versão 2.0:
-  Atualização automática do ChromeDriver: O programa agora detecta a versão do Google Chrome e baixa automaticamente a versão compatível do ChromeDriver a partir de um JSON fornecido pela Google.
-  Nova Interface Gráfica: A interface foi redesenhada com Tkinter para melhorar a interatividade e facilitar o uso do programa.
-  Verificação de versão e documentação: O novo menu "Informações" inclui a opção de visualizar a versão do programa e acessar o conteúdo do arquivo README.md diretamente pela interface gráfica.
-
-# Clonando o Repostirório e instalando Dependências:
-Caso opte clonar o repositório, utilize o comando:
-
-      git clone https://github.com/Mrpac6689/AutoReg.git
-
-Nesse caso, é necessário instalar as seguintes bibliotecas e ferramentas:
-
-  Python (versão 3 ou superior)
-  Selenium: Biblioteca para automação de navegadores.
-  ConfigParser: Para ler arquivos de configuração.
-  Tkinter: Biblioteca gráfica para criar a interface (geralmente incluída com o Python)
-
-    Bibliotecas e versões específicas
-      altgraph==0.17.4
-      attrs==24.2.0
-      beautifulsoup4==4.12.3
-      bs4==0.0.2
-      certifi==2024.8.30
-      cffi==1.17.1
-      charset-normalizer==3.4.0
-      configparser==7.1.0
-      h11==0.14.0
-      idna==3.10
-      numpy==2.1.3
-      outcome==1.3.0.post0
-      packaging==24.1
-      pandas==2.2.3
-      pefile==2023.2.7
-      pillow==11.0.0
-      pycparser==2.22
-      PyGetWindow==0.0.9
-      pyinstaller==6.11.0
-      pyinstaller-hooks-contrib==2024.9
-      PyRect==0.2.0
-      PySocks==1.7.1
-      python-dateutil==2.9.0.post0
-      pytz==2024.2
-      pywin32-ctypes==0.2.3
-      requests==2.32.3
-      selenium==4.26.1
-      setuptools==75.3.0
-      six==1.16.0
-      sniffio==1.3.1
-      sortedcontainers==2.4.0
-      soupsieve==2.6
-      tk==0.1.0
-      trio==0.27.0
-      trio-websocket==0.11.1
-      typing_extensions==4.12.2
-      tzdata==2024.2
-      urllib3==2.2.3
-      websocket-client==1.8.0
-      wheel==0.44.0
-      wsproto==1.2.0
-
-
-Abra o Prompt de Comando ou Terminal no diretório do programa e execute os seguintes comandos:
-
-    pip install -r requirements.txt
-    pip install .
-    pip install setup.py install
-
-Para executar:
-     
-     python ./autoreg.py
-
-# Ferramentas externas necessárias:
-  Google Chrome: O navegador utilizado para a automação.
-  ChromeDriver: Ferramenta necessária para automatizar o Chrome. Caso a versão disponivel neste repositório seja incompativel com seu navegador, a versão compativel do ChromeDriver pode ser baixada atraves da interface principal.
-  
-# Configuração de Credenciais:
-  Antes de rodar o programa ou script, é necessário configurar suas credenciais de acesso ao SISREG e G-HOSP.
-
-## Passo a passo para inserir suas credenciais:
-  Após abrir o programa, clique em 'Configurações >  Editar cofig.ini' 
-  Edite o arquivo config.ini e insira suas credenciais conforme o exemplo abaixo:
-
-    [SISREG]
-    usuario = seu_usuario_sisreg
-    senha = sua_senha_sisreg
-
-    [G-HOSP]
-    usuario = seu_usuario_ghosp
-    senha = sua_senha_ghosp
-    caminho = http://10.0.0.0  #entre com o endereço local do G-Hosp. As portas serão selecionadas automaticamente.
-
-  Salve o arquivo após adicionar suas credenciais.
-  Agora você está pronto para executar o programa.
-
-# Erros Comuns e Soluções:
-  Erro de versão do ChromeDriver:
-    Se receber uma mensagem de erro indicando que a versão do ChromeDriver não é compatível, o programa já foi atualizado para corrigir isso automaticamente. Caso persista, baixe a versão correta manualmente ou verifique se o ChromeDriver foi atualizado corretamente no diretório do programa.
-
-  Erro de conexão ou acesso negado:
-    Certifique-se de que suas credenciais de acesso ao SISREG e G-HOSP estão corretas no arquivo config.ini.
-
-Créditos:
-  Desenvolvimento: Michel Ribeiro Paes (Github MrPaC6689)
-  Suporte técnico e IA de apoio: ChatGPT 4o
-Licença:
-  Este projeto foi desenvolvido para fins educacionais sob licença Creative Commons 1.0 Universal. Todos os direitos são reservados ao autor.
-
-Esperamos que o AUTOREG continue a facilitar sua rotina e ajude no processo de internação e alta de pacientes!
-
-FIM DO LEIA-ME
+*Esperamos que o AutoReg continue facilitando sua rotina e contribuindo para processos hospitalares mais eficientes!*
