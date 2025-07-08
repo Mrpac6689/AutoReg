@@ -50,7 +50,7 @@ def interna_pacientes():
 
         print("Lendo credenciais do SISREG...")
         logging.info("Lendo credenciais do SISREG...")
-        usuario_sisreg, senha_sisreg = ler_credenciais()
+        _, _, _, usuario_sisreg, senha_sisreg = ler_credenciais()
         print("Credenciais lidas.")
         logging.info("Credenciais lidas.")
 
