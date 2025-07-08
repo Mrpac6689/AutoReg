@@ -56,7 +56,6 @@
 # Importação de funções externas e bibliotecas Python  #
 ########################################################
 import os
-import imagens
 import csv
 import subprocess
 import platform
@@ -65,7 +64,6 @@ import time
 import pandas as pd
 import re
 import configparser
-import pygetwindow as gw
 import ctypes
 import threading
 import sys
