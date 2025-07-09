@@ -20,12 +20,12 @@ NC='\033[0m' # No Color
 # Função para imprimir mensagens coloridas
 print_header() {
     echo -e "${PURPLE}╔═══════════════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${PURPLE}║                              AutoReg Installer                               ║${NC}"
-    echo -e "${PURPLE}║                    Automatização de Sistemas de Saúde                        ║${NC}"
-    echo -e "${PURPLE}║                               SISREG & G-HOSP                                ║${NC}"
+    echo -e "${PURPLE}║                              AutoReg Installer                                ║${NC}"
+    echo -e "${PURPLE}║                    Automatização de Sistemas de Saúde                         ║${NC}"
+    echo -e "${PURPLE}║                               SISREG & G-HOSP                                 ║${NC}"
     echo -e "${PURPLE}╠═══════════════════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${PURPLE}║ Versão: 7.0.0-1                                                             ║${NC}"
-    echo -e "${PURPLE}║ Autor: Michel Ribeiro Paes (MrPaC6689)                                      ║${NC}"
+    echo -e "${PURPLE}║ Versão: 8.0.3-1                                                               ║${NC}"
+    echo -e "${PURPLE}║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║${NC}"
     echo -e "${PURPLE}╚═══════════════════════════════════════════════════════════════════════════════╝${NC}"
     echo
 }

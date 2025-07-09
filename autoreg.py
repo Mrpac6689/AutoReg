@@ -2,7 +2,7 @@
 """
 AutoReg - Coordenador de Workflow
 Automatização de Sistemas de Saúde - SISREG & G-HOSP
-Versão 7.0.0-1 - Julho de 2025
+Versão 8.0.3 - Julho de 2025
 Autor: Michel Ribeiro Paes (MrPaC6689)
 """
 
@@ -83,13 +83,13 @@ def mostrar_informacoes():
     print("""
 ╔═══════════════════════════════════════════════════════════════════════════════╗
 ║                                    AutoReg                                    ║
-║                    Automatização de Sistemas de Saúde                        ║
-║                               SISREG & G-HOSP                                ║
+║                    Automatização de Sistemas de Saúde                         ║
+║                               SISREG & G-HOSP                                 ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║ Versão: 7.0.0-1                                                             ║
-║ Autor: Michel Ribeiro Paes (MrPaC6689)                                      ║
-║ Contato: michelrpaes@gmail.com                                               ║
-║ Repositório: https://github.com/Mrpac6689/AutoReg                           ║
+║ Versão: 8.0.3-1                                                               ║
+║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║
+║ Contato: michelrpaes@gmail.com                                                ║
+║ Repositório: https://github.com/Mrpac6689/AutoReg                             ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 
 DESCRIÇÃO:

@@ -115,33 +115,44 @@ def motivo_alta():
         usuario = usuario_ghosp
         senha = senha_ghosp
         caminho = caminho_ghosp
-        driver = iniciar_driver()
-        
-        # Faz login no G-HOSP
-        login_ghosp(driver, usuario, senha, caminho)
-        
-        # Lê a lista de pacientes de alta
-        df_pacientes = ler_pacientes_de_alta()
-        
-        # Verifica cada paciente e adiciona o motivo de alta
-        for i, row in df_pacientes.iterrows():
-            nome = row['Nome']
-            print(f"Buscando motivo de alta para: {nome}")
-            logging.info(f"Buscando motivo de alta para: {nome}")
-            
-            motivo = obter_motivo_alta(driver, nome, caminho)
-            df_pacientes.at[i, 'Motivo da Alta'] = motivo
-            print(f"Motivo de alta para {nome}: {motivo}")
-            logging.info(f"Motivo de alta para {nome}: {motivo}")
-            
-            time.sleep(2)  # Tempo de espera entre as requisições
 
-        # Salva o CSV atualizado
-        salvar_pacientes_com_motivo(df_pacientes)
+        df_pacientes = ler_pacientes_de_alta()
+
+        i = 0
+        while i < len(df_pacientes):
+            nome = df_pacientes.at[i, 'Nome']
+            try:
+                print(f"Buscando motivo de alta para: {nome}")
+                logging.info(f"Buscando motivo de alta para: {nome}")
+
+                driver = iniciar_driver()
+                login_ghosp(driver, usuario, senha, caminho)
+
+                motivo = obter_motivo_alta(driver, nome, caminho)
+                df_pacientes.at[i, 'Motivo da Alta'] = motivo
+                print(f"Motivo de alta para {nome}: {motivo}")
+                logging.info(f"Motivo de alta para {nome}: {motivo}")
+
+                salvar_pacientes_com_motivo(df_pacientes)
+                driver.quit()
+                time.sleep(2)
+                i += 1  # Avança para o próximo paciente
+
+            except Exception as e:
+                print(f"Erro ao processar {nome}: {e}")
+                logging.error(f"Erro ao processar {nome}: {e}")
+                try:
+                    driver.quit()
+                except Exception:
+                    pass
+                print("Reiniciando driver e tentando novamente a partir do paciente problemático...")
+                logging.info("Reiniciando driver e tentando novamente a partir do paciente problemático...")
+                time.sleep(3)
+                # Não incrementa i, para tentar novamente o mesmo paciente
+
         print("Motivos de alta encontrados, CSV atualizado.")
         logging.info("Motivos de alta encontrados, CSV atualizado.")
         
-        driver.quit()
 
     # Execução do script
     
