@@ -52,56 +52,42 @@
 #
 #
 
-########################################################
-# Importação de funções externas e bibliotecas Python  #
-########################################################
-import os
 import csv
-import subprocess
-import platform
-import unicodedata
 import time
-import pandas as pd
-import re
 import configparser
-import ctypes
-import threading
 import sys
-import requests
-import zipfile
-import shutil
-import random
-import io
-import base64
-import argparse
-from datetime import datetime
-from io import BytesIO
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException, WebDriverException
+import os
+from datetime import datetime   
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait, Select
+from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
-from pathlib import Path
-import csv
-import time
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, JavascriptException
 from dateutil.relativedelta import relativedelta
+import pandas as pd 
+from autoreg.chrome_options import get_chrome_options
+from autoreg.ler_credenciais import ler_credenciais
+from autoreg.logging import setup_logging
+import logging
+setup_logging()
 
 def devolvidos():
-    # Função para ler as credenciais do arquivo config.ini
-    def ler_credenciais():
+    
+    def ler_credenciais_solicitante():
         config = configparser.ConfigParser()
-        config.read('config.ini')
-        
-        usuario_sisreg = config['SISREG']['usuario']
-        senha_sisreg = config['SISREG']['senha']
-        usuariosol_sisreg = config['SISREG']['usuariosol']
-        senhasol_sisreg = config['SISREG']['senhasol']
-        
-        return usuario_sisreg, senha_sisreg, usuariosol_sisreg, senhasol_sisreg
+        if getattr(sys, 'frozen', False):
+            # Executável PyInstaller
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            # Script Python
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(base_dir, '..', 'config.ini')
+        config.read(config_path)
+        usuariosol = config.get('SISREG', 'usuariosol')
+        senhasol = config.get('SISREG', 'senhasol')
+        return usuariosol, senhasol
 
     #Logar no sisreg e chegar à pagina de solicitações devolvida
 
@@ -109,7 +95,7 @@ def devolvidos():
     #Captura fichas devolvidas conforme periodo definido
     def captura_devolvidas(data_inicio, data_fim):
         print(f"Capturando devolvidas de {data_inicio} até {data_fim}")
-        chrome_options = Options()
+        chrome_options = get_chrome_options()
         navegador = webdriver.Chrome(options=chrome_options)
         wait = WebDriverWait(navegador, 20)
         print("Acessando a página de Internação...\n")
@@ -119,9 +105,9 @@ def devolvidos():
         usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
         senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
         
-        usuario_sisreg, senha_sisreg, usuariosol, senhasol = ler_credenciais()
-        usuario_field.send_keys(usuariosol)
-        senha_field.send_keys(senhasol)
+        usuariosol_sisreg, senhasol_sisreg = ler_credenciais_solicitante()
+        usuario_field.send_keys(usuariosol_sisreg)
+        senha_field.send_keys(senhasol_sisreg)
         
         login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
         login_button.click()
@@ -179,10 +165,11 @@ def devolvidos():
                     break
 
         print("Captura finalizada e dados salvos em fichas_devolvidas_sisreg.csv.")
+        navegador.quit()  # Fecha o navegador
 
     ##### Captura CNS de pacientes em FICHAS_DEVOLVIDAS_SISREG.CSV
     def captura_cns_devolvidas():
-        chrome_options = Options()
+        chrome_options = get_chrome_options()
         navegador = webdriver.Chrome(options=chrome_options)
         wait = WebDriverWait(navegador, 20)
         print("Acessando a página de Solicitações Devolvidas...\n")
@@ -192,9 +179,9 @@ def devolvidos():
         usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
         senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
         
-        usuario_sisreg, senha_sisreg, usuariosol, senhasol = ler_credenciais()
-        usuario_field.send_keys(usuariosol)
-        senha_field.send_keys(senhasol)
+        usuariosol_sisreg, senhasol_sisreg = ler_credenciais_solicitante()
+        usuario_field.send_keys(usuariosol_sisreg)
+        senha_field.send_keys(senhasol_sisreg)
         
         login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
         login_button.click()
@@ -268,120 +255,173 @@ def devolvidos():
             escritor_csv.writerows(linhas_atualizadas)
         
         print("Arquivo CSV atualizado com CNS salvo como 'fichas_devolvidas_atualizado.csv'.\n")
-
-    ### Definições Interhosp.py
-    def ler_credenciais_ghosp():
-        config = configparser.ConfigParser()
-        config.read('config.ini')
-        
-        usuario_ghosp = config['G-HOSP']['usuario']
-        senha_ghosp = config['G-HOSP']['senha']
-        caminho_ghosp = config['G-HOSP']['caminho']
-        
-        return usuario_ghosp, senha_ghosp, caminho_ghosp
-
+        navegador.quit()  # Fecha o navegador
 
     ####Capturar motivo alta por CNS
     def motivo_alta_cns_devolvidas():
-        # Carrega o arquivo CSV existente
-        df = pd.read_csv('fichas_devolvidas_atualizado.csv')
+        # Função para ler a lista de pacientes do CSV criado anteriormente
+        def ler_pacientes_devolvidas():
+            df = pd.read_csv('fichas_devolvidas_atualizado.csv')
+            print("Lista de pacientes devolvidas lida com sucesso.")
+            logging.info("Lista de pacientes devolvidas lida com sucesso.")
+            return df
 
-        # Adiciona uma nova coluna 'motivo' com valores vazios ou um valor padrão
-        df['motivo'] = ''  # ou use um valor padrão, como 'Sem motivo'
+        # Função para salvar a lista com o motivo de alta
+        def salvar_pacientes_com_motivo(df):
+            df.to_csv('fichas_devolvidas_motivo_alta.csv', index=False)
+            print("Lista de pacientes com motivo de alta salva com sucesso em 'fichas_devolvidas_motivo_alta.csv'.")
+            logging.info("Lista de pacientes com motivo de alta salva em 'fichas_devolvidas_motivo_alta.csv'.")
 
-        # Salva o arquivo com a nova coluna adicionada
-        df.to_csv('fichas_devolvidas_atualizado.csv', index=False)
-
-        print("Coluna 'motivo' adicionada com sucesso.")
-        
-        # Função para inicializar o ChromeDriver
+        # Inicializa o ChromeDriver
         def iniciar_driver():
-            chrome_driver_path = "chromedriver.exe"
-            service = Service(executable_path=chrome_driver_path)
-            driver = webdriver.Chrome(service=service)
-            driver.maximize_window()
+            chrome_options = get_chrome_options()
+            driver = webdriver.Chrome(options=chrome_options)
             print("Iniciando driver...\n")
             return driver
 
         # Função para realizar login no G-HOSP
         def login_ghosp(driver, usuario, senha, caminho):
-            driver.get(caminho + ':4002/users/sign_in')
+            # Remove espaços em branco e garante formatação correta da URL
+            caminho = caminho.strip()
+            if not caminho.startswith(('http://', 'https://')):
+                url = f'http://{caminho}:4002/users/sign_in'
+            else:
+                url = f'{caminho}:4002/users/sign_in'
+            
+            print(f"Tentando acessar G-HOSP em: {url}")
+            
+            # Tenta verificar se o servidor está acessível
+            try:
+                print("Verificando conectividade com o servidor G-HOSP...")
+                driver.get(url)
+                print("✅ Conectividade estabelecida com sucesso!")
+            except Exception as e:
+                print(f"❌ Erro de conectividade: {e}")
+                print("⚠️  Verificações sugeridas:")
+                print("   1. O servidor G-HOSP está rodando?")
+                print("   2. O endereço no config.ini está correto?") 
+                print("   3. Você tem acesso à rede onde o G-HOSP está hospedado?")
+                raise e
+
+            # Ajusta o zoom para 50%
             driver.execute_script("document.body.style.zoom='50%'")
             time.sleep(2)
             
-            # Localiza os campos de login
+            # Localiza os campos visíveis de login
             email_field = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "email")))
             email_field.send_keys(usuario)
+            
             senha_field = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "password")))
             senha_field.send_keys(senha)
-            print("Logando no G-Hosp driver...\n")
             
-            # Executa o login via script
+            # Atualiza os campos ocultos com os valores corretos e simula o clique no botão de login
             driver.execute_script("""
                 document.getElementById('user_email').value = arguments[0];
                 document.getElementById('user_password').value = arguments[1];
                 document.getElementById('new_user').submit();
             """, usuario, senha)
 
-        # Função para buscar o motivo de alta pelo CNS no G-HOSP
-        def obter_motivo_alta(driver, cns, caminho):
-            driver.get(caminho + ':4002/prontuarios')
+        # Função para pesquisar um nome e obter o motivo de alta via HTML
+        def obter_motivo_alta(driver, nome, caminho):
+            # Remove espaços em branco e garante formatação correta da URL
+            caminho = caminho.strip()
+            if not caminho.startswith(('http://', 'https://')):
+                url = f'http://{caminho}:4002/prontuarios'
+            else:
+                url = f'{caminho}:4002/prontuarios'
+            
+            driver.get(url)
+            driver.maximize_window()     
+            time.sleep(5) 
 
-            # Insere o CNS no campo de busca
-            cns_field = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "cns")))
-            cns_field.send_keys(cns)
+            # Localiza o campo de nome e insere o nome do paciente
+            nome_field = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "nome")))
+            nome_field.send_keys(nome)
             
             # Clica no botão de procurar
-            procurar_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//input[@value='Procurar']")))
+            procurar_button = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@value='Procurar']")))
             procurar_button.click()
 
             # Aguarda a página carregar
-            time.sleep(2)
+            time.sleep(5)
             
             try:
-                # Tenta localizar o rótulo "Motivo da alta" e o conteúdo
+                # Localiza o elemento com o rótulo "Motivo da alta"
+                motivo_element = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, "//small[text()='Motivo da alta: ']"))
+                )
+
+                # Agora captura o conteúdo do próximo elemento <div> após o rótulo
                 motivo_conteudo_element = WebDriverWait(driver, 5).until(
                     EC.presence_of_element_located((By.XPATH, "//small[text()='Motivo da alta: ']/following::div[@class='pl5 pb5']"))
                 )
-                motivo_alta = motivo_conteudo_element.text
-                print(f"Motivo de alta capturado: {motivo_alta}\n")
                 
-            except (TimeoutException, NoSuchElementException):
+                motivo_alta = motivo_conteudo_element.text
+                print(f"Motivo de alta capturado: {motivo_alta}")
+                logging.info(f"Motivo de alta capturado para {nome}: {motivo_alta}")
+                
+            except Exception as e:
                 motivo_alta = "Motivo da alta não encontrado"
-                print(f"Erro ao capturar motivo da alta para CNS {cns}: Motivo não encontrado\n")
+                print(f"Erro ao capturar motivo da alta para {nome}: {e}")
+                logging.error(f"Erro ao capturar motivo da alta para {nome}: {e}")
             
             return motivo_alta
 
-        # Código principal da função motivo_alta_cns_devolvidas
-        usuario, senha, caminho = ler_credenciais_ghosp()  # Lê as credenciais de fora da função
-        driver = iniciar_driver()
+        # Função principal para processar a lista de pacientes e buscar o motivo de alta
+        def processar_lista():
+            usuario_ghosp, senha_ghosp, caminho_ghosp, _, _ = ler_credenciais()
+            usuario = usuario_ghosp
+            senha = senha_ghosp
+            caminho = caminho_ghosp
 
-        # Faz login no G-HOSP
-        login_ghosp(driver, usuario, senha, caminho)
-
-        # Lê a lista de pacientes de alta, pulando a primeira linha (cabeçalho)
-        df_pacientes = pd.read_csv('fichas_devolvidas_atualizado.csv')
-
-        # Verifica cada paciente a partir da segunda linha e adiciona o motivo de alta
-        for i, row in df_pacientes.iloc[1:].iterrows():  # .iloc[1:] para ignorar o cabeçalho
-            cns = row[2]  # CNS está na terceira coluna (índice 2)
-            print(f"Buscando motivo de alta para CNS: {cns}\n")
+            df_pacientes = ler_pacientes_devolvidas()
             
-            motivo = obter_motivo_alta(driver, cns, caminho)
-            df_pacientes.at[i, df_pacientes.columns[3]] = motivo  # Atualiza a quarta coluna com o motivo
-            print(f"Motivo de alta para CNS {cns}: {motivo}\n")
-            
-            time.sleep(2)  # Tempo de espera entre as requisições
+            # Adiciona coluna 'Motivo da Alta' se não existir
+            if 'Motivo da Alta' not in df_pacientes.columns:
+                df_pacientes['Motivo da Alta'] = ''
 
-        # Salva o CSV atualizado com o motivo de alta
-        df_pacientes.to_csv('fichas_devolvidas_motivo_alta.csv', index=False)
-        print("Motivos de alta encontrados, CSV atualizado.\n")
+            i = 0
+            while i < len(df_pacientes):
+                nome = df_pacientes.at[i, 'Nome']  # Nome está na coluna 'Nome'
+                try:
+                    print(f"Buscando motivo de alta para: {nome}")
+                    logging.info(f"Buscando motivo de alta para: {nome}")
 
-        driver.quit()
+                    driver = iniciar_driver()
+                    login_ghosp(driver, usuario, senha, caminho)
+
+                    motivo = obter_motivo_alta(driver, nome, caminho)
+                    df_pacientes.at[i, 'Motivo da Alta'] = motivo
+                    print(f"Motivo de alta para {nome}: {motivo}")
+                    logging.info(f"Motivo de alta para {nome}: {motivo}")
+
+                    salvar_pacientes_com_motivo(df_pacientes)
+                    driver.quit()
+                    time.sleep(2)
+                    i += 1  # Avança para o próximo paciente
+
+                except Exception as e:
+                    print(f"Erro ao processar {nome}: {e}")
+                    logging.error(f"Erro ao processar {nome}: {e}")
+                    try:
+                        driver.quit()
+                    except Exception:
+                        pass
+                    print("Reiniciando driver e tentando novamente a partir do paciente problemático...")
+                    logging.info("Reiniciando driver e tentando novamente a partir do paciente problemático...")
+                    time.sleep(3)
+                    # Não incrementa i, para tentar novamente o mesmo paciente
+
+            print("Motivos de alta encontrados, CSV atualizado.")
+            logging.info("Motivos de alta encontrados, CSV atualizado.")
+
+        # Execução da função
+        print("Coluna 'motivo' adicionada com sucesso.")
+        processar_lista()
 
     #Reenviar solicitação
     def reenvia_solicitacoes():
-        chrome_options = Options()
+        chrome_options = get_chrome_options()
         navegador = webdriver.Chrome(options=chrome_options)
         wait = WebDriverWait(navegador, 20)
         print("Acessando a página de Internação...\n")
@@ -391,9 +431,9 @@ def devolvidos():
         usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
         senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
         
-        usuario_sisreg, senha_sisreg, usuariosol, senhasol = ler_credenciais()
-        usuario_field.send_keys(usuariosol)
-        senha_field.send_keys(senhasol)
+        usuariosol_sisreg, senhasol_sisreg = ler_credenciais_solicitante()
+        usuario_field.send_keys(usuariosol_sisreg)
+        senha_field.send_keys(senhasol_sisreg)
         
         login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
         login_button.click()
@@ -406,28 +446,42 @@ def devolvidos():
         wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
         print("Login realizado e navegação para página de Solicitações Devolvidas...\n")
         
-            # Lê o arquivo CSV para obter as fichas e motivos de alta
-        df_fichas = pd.read_csv('fichas_devolvidas_motivo_alta.csv')
+        # Verifica se o arquivo com motivos de alta existe
+        if os.path.exists('fichas_devolvidas_motivo_alta.csv'):
+            print("📁 Arquivo com motivos de alta encontrado. Usando dados completos...")
+            df_fichas = pd.read_csv('fichas_devolvidas_motivo_alta.csv')
+            usar_motivo = True
+        elif os.path.exists('fichas_devolvidas_atualizado.csv'):
+            print("📁 Arquivo com motivos não encontrado. Usando arquivo base sem motivos...")
+            df_fichas = pd.read_csv('fichas_devolvidas_atualizado.csv')
+            usar_motivo = False
+        else:
+            print("❌ Nenhum arquivo CSV encontrado para reenvio de solicitações!")
+            navegador.quit()
+            return
         
-        # Itera sobre as linhas do CSV a partir da segunda linha (ignora o cabeçalho)
-        for i, row in df_fichas.iloc[1:].iterrows():
-            motivo = row[3]  # Motivo de alta está na quarta coluna
-            ficha = str(row[1])  # Número da ficha está na segunda coluna
+        # Itera sobre as linhas do CSV (ignora o cabeçalho automaticamente)
+        for i, row in df_fichas.iterrows():
+            # Acessa as colunas pelo nome
+            nome = row['Nome']
+            ficha = str(row['Numero da Ficha'])
             
-            # Verifica se o motivo de alta é válido antes de proceder
-            if not motivo or motivo ==  "" or motivo == "Motivo da alta não encontrado":
-                print(f"Motivo de alta inválido para ficha {ficha}. Pulando...\n")
-                continue  # Pula para a próxima ficha
-            
-            print(f"Processando ficha: {ficha} com motivo: {motivo}\n")
+            if usar_motivo and 'Motivo da Alta' in df_fichas.columns:
+                motivo = row['Motivo da Alta']
+                # Verifica se o motivo de alta é válido antes de proceder
+                if pd.isna(motivo) or motivo == "" or motivo == "Motivo da alta não encontrado":
+                    print(f"Motivo de alta inválido para ficha {ficha} (paciente: {nome}). Pulando...\n")
+                    continue  # Pula para a próxima ficha
+                print(f"Processando ficha: {ficha} (paciente: {nome}) com motivo: {motivo}\n")
+                motivo_texto = f"{motivo}. FAVOR CANCELAR/NEGAR A SOLICITAÇÃO"
+            else:
+                print(f"Processando ficha: {ficha} (paciente: {nome}) sem motivo específico...\n")
+                motivo_texto = "PACIENTE JÁ TEVE ALTA. FAVOR CANCELAR/NEGAR A SOLICITAÇÃO"
 
             # Executa o JavaScript para abrir a ficha do paciente
             navegador.execute_script(f"mostrarFicha('{ficha}')")
             print(f"Executando a função mostrarFicha para a ficha: {ficha}\n")
             time.sleep(5)  # Tempo para garantir que a ficha foi carregada
-            
-            # Formata o motivo no formato desejado
-            motivo_texto = f"{motivo}. FAVOR CANCELAR/NEGAR A SOLICITAÇÃO"
             
             # Preenche os três campos <textarea> com o motivo formatado
             try:
@@ -476,27 +530,41 @@ def devolvidos():
         print("Processo de reenviar solicitação concluído.\n")
 
     # Utilização - Comentar funções conforme necessário
+    hoje = datetime.today()
+    # Determina o primeiro mês do semestre anterior (6 meses atrás, início do mês)
+    primeiro_mes = (hoje.replace(day=1) - relativedelta(months=6))
+    meses = []
+    for i in range(6):
+        inicio = (primeiro_mes + relativedelta(months=i)).replace(day=1)
+        # Último dia do mês: pega o primeiro dia do mês seguinte e subtrai um dia
+        fim = (inicio + relativedelta(months=1)) - relativedelta(days=1)
+        meses.append((inicio, fim))
 
-    if __name__ == "__main__":
+    for data_inicio, data_fim in meses:
+        data_inicio_str = data_inicio.strftime("%d/%m/%Y")
+        data_fim_str = data_fim.strftime("%d/%m/%Y")
+        print(f"Processando período: {data_inicio_str} a {data_fim_str}")
+        
+        print("🔄 Iniciando captura_devolvidas...")
+        captura_devolvidas(data_inicio_str, data_fim_str)
+        print("✅ captura_devolvidas concluída com sucesso!")
+        
+        print("🔄 Iniciando captura_cns_devolvidas...")
+        captura_cns_devolvidas()
+        print("✅ captura_cns_devolvidas concluída com sucesso!")
+        
+        print("🔄 Iniciando motivo_alta_cns_devolvidas...")
+        motivo_alta_cns_devolvidas()
+        print("✅ motivo_alta_cns_devolvidas concluída com sucesso!")
+        
+        print("🔄 Iniciando reenvia_solicitacoes...")
+        reenvia_solicitacoes()
+        print("✅ reenvia_solicitacoes concluída com sucesso!")
+        
+        print(f"✅ Período {data_inicio_str} a {data_fim_str} processado completamente!")
 
-        hoje = datetime.today()
-        # Determina o primeiro mês do semestre anterior (6 meses atrás, início do mês)
-        primeiro_mes = (hoje.replace(day=1) - relativedelta(months=6))
-        meses = []
-        for i in range(6):
-            inicio = (primeiro_mes + relativedelta(months=i)).replace(day=1)
-            # Último dia do mês: pega o primeiro dia do mês seguinte e subtrai um dia
-            fim = (inicio + relativedelta(months=1)) - relativedelta(days=1)
-            meses.append((inicio, fim))
-
-        for data_inicio, data_fim in meses:
-            data_inicio_str = data_inicio.strftime("%d/%m/%Y")
-            data_fim_str = data_fim.strftime("%d/%m/%Y")
-            print(f"Processando período: {data_inicio_str} a {data_fim_str}")
-            captura_devolvidas(data_inicio_str, data_fim_str)
-            captura_cns_devolvidas()
-            motivo_alta_cns_devolvidas()
-            reenvia_solicitacoes()
+if __name__ == "__main__":
+    devolvidos()
 
 
 
