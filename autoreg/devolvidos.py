@@ -85,6 +85,10 @@ from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from pathlib import Path
+import csv
+import time
+from selenium.common.exceptions import NoSuchElementException
+from dateutil.relativedelta import relativedelta
 
 def devolvidos():
     # Função para ler as credenciais do arquivo config.ini
@@ -100,9 +104,7 @@ def devolvidos():
         return usuario_sisreg, senha_sisreg, usuariosol_sisreg, senhasol_sisreg
 
     #Logar no sisreg e chegar à pagina de solicitações devolvida
-    import csv
-    import time
-    from selenium.common.exceptions import NoSuchElementException
+
 
     #Captura fichas devolvidas conforme periodo definido
     def captura_devolvidas(data_inicio, data_fim):
@@ -476,31 +478,25 @@ def devolvidos():
     # Utilização - Comentar funções conforme necessário
 
     if __name__ == "__main__":
-        parser = argparse.ArgumentParser(description="Captura devolvidas dentro do intervalo de datas.")
-        parser.add_argument("--data_inicio", required=True, help="Data inicial no formato DD/MM/AAAA")
-        parser.add_argument("--data_fim", required=True, help="Data final no formato DD/MM/AAAA")
-        
-        args = parser.parse_args()
-        
-        # Validação e conversão de datas
-        try:
-            data_inicio = datetime.strptime(args.data_inicio, "%d/%m/%Y").date()
-            data_fim = datetime.strptime(args.data_fim, "%d/%m/%Y").date()
-            
-            if data_inicio > data_fim:
-                raise ValueError("A data inicial não pode ser maior que a data final.")
-            
-            # Convertendo as datas para string antes de usá-las no Selenium
+
+        hoje = datetime.today()
+        # Determina o primeiro mês do semestre anterior (6 meses atrás, início do mês)
+        primeiro_mes = (hoje.replace(day=1) - relativedelta(months=6))
+        meses = []
+        for i in range(6):
+            inicio = (primeiro_mes + relativedelta(months=i)).replace(day=1)
+            # Último dia do mês: pega o primeiro dia do mês seguinte e subtrai um dia
+            fim = (inicio + relativedelta(months=1)) - relativedelta(days=1)
+            meses.append((inicio, fim))
+
+        for data_inicio, data_fim in meses:
             data_inicio_str = data_inicio.strftime("%d/%m/%Y")
             data_fim_str = data_fim.strftime("%d/%m/%Y")
-
+            print(f"Processando período: {data_inicio_str} a {data_fim_str}")
             captura_devolvidas(data_inicio_str, data_fim_str)
             captura_cns_devolvidas()
             motivo_alta_cns_devolvidas()
             reenvia_solicitacoes()
-
-        except ValueError as e:
-            print(f"Erro: {e}")
 
 
 
