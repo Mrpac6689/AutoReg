@@ -25,6 +25,8 @@ from autoreg import atualiza_restos
 from autoreg import extrai_internacoes_duplicadas
 from autoreg import trata_duplicados
 from autoreg import devolvidos
+from autoreg import pdf2csv
+from autoreg import ghosp_nota  # Adicione este import
 
 # Dicionário com as funções e suas descrições
 FUNCOES = {
@@ -75,6 +77,14 @@ FUNCOES = {
     'devolvidos': {
         'func': devolvidos,
         'desc': 'Processa solicitações devolvidas'
+    },
+    'pdf2csv': {
+        'func': pdf2csv,
+        'desc': 'Converte PDF de solicitações em CSV'
+    },
+    'ghosp_nota': {
+        'func': ghosp_nota,
+        'desc': 'Extrair notas de prontuários Ghosp'
     }
 }
 
@@ -112,7 +122,9 @@ FUNÇÕES DISPONÍVEIS:
         ('-ar', '--atualiza-restos', 'atualiza_restos'),
         ('-eid', '--extrai-internacoes-duplicadas', 'extrai_internacoes_duplicadas'),
         ('-td', '--trata-duplicados', 'trata_duplicados'),
-        ('-dev', '--devolvidos', 'devolvidos')
+        ('-dev', '--devolvidos', 'devolvidos'),
+        ('-p2c', '--pdf2csv', 'pdf2csv'),
+        ('-ghn', '--ghosp-nota', 'ghosp_nota')
     ]
     
     for short, long, func_name in flags:
@@ -275,6 +287,9 @@ Exemplos de uso:
                        help='Processa pacientes com duplicações')
     parser.add_argument('-dev', '--devolvidos', action='store_true',
                        help='Processa solicitações devolvidas')
+    parser.add_argument('-p2c', '--pdf2csv', nargs='?', metavar='PDF', help='Converte PDF de solicitações em CSV')
+    parser.add_argument('-ghn', '--ghosp-nota', action='store_true',
+                       help='Extrair notas de prontuários Ghosp')
     
     # Funções especiais
     parser.add_argument('-all', '--all', action='store_true',
@@ -304,7 +319,9 @@ Exemplos de uso:
         'atualiza_restos': 'atualiza_restos',
         'extrai_internacoes_duplicadas': 'extrai_internacoes_duplicadas',
         'trata_duplicados': 'trata_duplicados',
-        'devolvidos': 'devolvidos'
+        'devolvidos': 'devolvidos',
+        'pdf2csv': 'pdf2csv',
+        'ghosp_nota': 'ghosp_nota'
     }
     
     # Processa funções especiais primeiro
@@ -323,19 +340,30 @@ Exemplos de uso:
     # Executa funções regulares em sequência
     funcoes_para_executar = []
     for arg, func_name in arg_to_func.items():
-        if getattr(args, arg.replace('-', '_')):
-            funcoes_para_executar.append(func_name)
-    
+        # pdf2csv recebe argumento de caminho
+        if arg == 'pdf2csv' and getattr(args, 'pdf2csv'):
+            funcoes_para_executar.append((func_name, getattr(args, 'pdf2csv')))
+        elif getattr(args, arg.replace('-', '_')):
+            funcoes_para_executar.append((func_name, None))
+
     if funcoes_para_executar:
         print(f"🔄 Executando {len(funcoes_para_executar)} função(ões) em sequência...")
-        for i, func_name in enumerate(funcoes_para_executar, 1):
+        for i, (func_name, extra_arg) in enumerate(funcoes_para_executar, 1):
             print(f"\n[{i}/{len(funcoes_para_executar)}] ", end="")
-            if not executar_funcao(func_name):
-                print(f"❌ Parando execução devido ao erro em {func_name}")
-                break
+            if func_name == 'pdf2csv' and extra_arg:
+                try:
+                    FUNCOES[func_name]['func'](extra_arg)
+                    print(f"✅ Concluído: {FUNCOES[func_name]['desc']}")
+                except Exception as e:
+                    print(f"❌ Erro ao executar {func_name}: {e}")
+                    break
+            else:
+                if not executar_funcao(func_name):
+                    print(f"❌ Parando execução devido ao erro em {func_name}")
+                    break
     else:
         print("❌ Nenhuma função válida foi especificada!")
         print("💡 Use --help para ver as opções disponíveis")
 
 if __name__ == "__main__":
-    main()  
+    main()

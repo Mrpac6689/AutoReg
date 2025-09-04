@@ -1,6 +1,42 @@
 # AutoReg
 Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 
+## 🌌 Versão 8.0.5 Universe - Setembro de 2025
+
+### 🆕 Novas Funcionalidades v8.0.5
+
+- **pdf2csv**: Conversão automática de PDF para CSV, extraindo nome, código e data, com limpeza de dados.
+- **ghosp_nota**: Automação completa para extração de notas de prontuários do G-HOSP, processando múltiplos códigos do CSV e salvando resultados na coluna 'dados'.
+- **Loop automatizado**: Busca sequencial de prontuários e extração de lembretes para todos os códigos presentes em lista_same.csv.
+- **Atualização dinâmica do CSV**: Criação automática da coluna 'dados' e salvamento dos resultados extraídos.
+
+### 📋 Funções Disponíveis:
+
+Flag	Função	Descrição
+-eci	extrai_codigos_internacao	Extrai códigos de internação do SISREG
+-ip	    interna_pacientes	        Realiza internação de pacientes no SISREG
+-eis	extrai_internados_sisreg	Extrai lista de internados do SISREG
+-eig	extrai_internados_ghosp	    Extrai lista de internados do G-HOSP
+-ci	    compara_internados	        Compara listas de internados entre sistemas
+-ma	    motivo_alta	                Captura motivos de alta no G-HOSP
+-ecsa	extrai_codigos_sisreg_alta	Extrai códigos SISREG para alta
+-ea	    executa_alta	            Executa altas no SISREG
+-ar	    atualiza_restos	            Atualiza arquivo de pacientes restantes
+-eid	extrai_internacoes_duplicadas	Identifica internações duplicadas
+-td	    trata_duplicados	        Processa pacientes com duplicações
+-dev	devolvidos	                Processa solicitações devolvidas
+-p2c	pdf2csv	                    Converte PDF de solicitações em CSV
+-ghn	ghosp_nota	                Extrair notas de prontuários Ghosp
+
+### 📜 Histórico de Versões
+
+## 🌌 v8.0.5 Universe - Setembro de 2025
+
+Função pdf2csv para conversão de PDF em CSV com extração e limpeza de dados.
+Função ghosp_nota para extração automatizada de notas de prontuários do G-HOSP, processando múltiplos códigos do CSV e salvando resultados.
+Loop automatizado para busca sequencial de prontuários e extração de lembretes.
+Atualização dinâmica do CSV com coluna 'dados'.
+
 ## 🌌 Versão 8.0.0 Universe - Julho de 2025
 
 **Coordenador de Workflow Multiplataforma**
