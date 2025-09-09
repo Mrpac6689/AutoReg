@@ -16,3 +16,4 @@ from .executa_alta import dar_alta
 from .devolvidos import devolvidos
 from .escaneia_pdf import pdf2csv
 from .ghosp_nota import ghosp_nota
+from .ghosp_cns import ghosp_cns

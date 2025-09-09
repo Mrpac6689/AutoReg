@@ -2,15 +2,15 @@
 """
 AutoReg - Coordenador de Workflow
 Automatização de Sistemas de Saúde - SISREG & G-HOSP
-Versão 8.0.3 - Julho de 2025
+Versão 8.5.0 - Setembro de 2025
 Autor: Michel Ribeiro Paes (MrPaC6689)
 """
 
 import argparse
 import sys
 import os
-import subprocess
 import configparser
+import subprocess
 from pathlib import Path
 
 from autoreg import extrai_codigos_internacao
@@ -27,6 +27,7 @@ from autoreg import trata_duplicados
 from autoreg import devolvidos
 from autoreg import pdf2csv
 from autoreg import ghosp_nota  # Adicione este import
+from autoreg import ghosp_cns  # Importa a função ghosp_cns
 
 # Dicionário com as funções e suas descrições
 FUNCOES = {
@@ -85,6 +86,10 @@ FUNCOES = {
     'ghosp_nota': {
         'func': ghosp_nota,
         'desc': 'Extrair notas de prontuários Ghosp'
+        },
+        'ghosp_cns': {
+            'func': ghosp_cns,
+            'desc': 'Extrai CNSs dos prontuários e cria lista_same_cns.csv'
     }
 }
 
@@ -96,7 +101,7 @@ def mostrar_informacoes():
 ║                    Automatização de Sistemas de Saúde                         ║
 ║                               SISREG & G-HOSP                                 ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║ Versão: 8.0.3-1                                                               ║
+║ Versão: 8.5.0                                                                 ║
 ║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║
 ║ Contato: michelrpaes@gmail.com                                                ║
 ║ Repositório: https://github.com/Mrpac6689/AutoReg                             ║
@@ -124,11 +129,24 @@ FUNÇÕES DISPONÍVEIS:
         ('-td', '--trata-duplicados', 'trata_duplicados'),
         ('-dev', '--devolvidos', 'devolvidos'),
         ('-p2c', '--pdf2csv', 'pdf2csv'),
-        ('-ghn', '--ghosp-nota', 'ghosp_nota')
+        ('-ghn', '--ghosp-nota', 'ghosp_nota'),
+        ('-ghc', '--ghosp-cns', 'ghosp_cns'),
+        ('-interna', '--interna', None),
+        ('-analisa', '--analisa', None),
+        ('-alta', '--alta', None)
     ]
     
     for short, long, func_name in flags:
-        desc = FUNCOES[func_name]['desc']
+        if func_name:
+            desc = FUNCOES[func_name]['desc']
+        elif short == '-interna':
+            desc = 'Executa sequência de internação: -eci -ip'
+        elif short == '-analisa':
+            desc = 'Executa sequência de análise: -eis -eig -ci -ma'
+        elif short == '-alta':
+            desc = 'Executa sequência de alta: -ecsa -ea -ar -eid -td'
+        else:
+            desc = ''
         print(f"    {short:<6} {long:<32} {desc}")
     
     print(f"""
@@ -290,6 +308,15 @@ Exemplos de uso:
     parser.add_argument('-p2c', '--pdf2csv', nargs='?', metavar='PDF', help='Converte PDF de solicitações em CSV')
     parser.add_argument('-ghn', '--ghosp-nota', action='store_true',
                        help='Extrair notas de prontuários Ghosp')
+    parser.add_argument('-ghc', '--ghosp-cns', action='store_true',
+                       help='Extrai CNSs dos prontuários e cria lista_same_cns.csv')
+    # Novas funções de workflow
+    parser.add_argument('-interna', '--interna', action='store_true',
+                       help='Executa sequência de internação: -eci -ip')
+    parser.add_argument('-analisa', '--analisa', action='store_true',
+                       help='Executa sequência de análise: -eis -eig -ci -ma')
+    parser.add_argument('-alta', '--alta', action='store_true',
+                       help='Executa sequência de alta: -ecsa -ea -ar -eid -td')
     
     # Funções especiais
     parser.add_argument('-all', '--all', action='store_true',
@@ -321,14 +348,44 @@ Exemplos de uso:
         'trata_duplicados': 'trata_duplicados',
         'devolvidos': 'devolvidos',
         'pdf2csv': 'pdf2csv',
-        'ghosp_nota': 'ghosp_nota'
+        'ghosp_nota': 'ghosp_nota',
+        'ghosp_cns': 'ghosp_cns'
     }
     
     # Processa funções especiais primeiro
     if args.all:
         executar_todas()
         return
-    
+
+    if args.interna:
+        print("🔄 Executando sequência de internação (-eci -ip)...")
+        for i, func_name in enumerate(['extrai_codigos_internacao', 'interna_pacientes'], 1):
+            print(f"\n[{i}/2] ", end="")
+            if not executar_funcao(func_name):
+                print(f"❌ Parando execução devido ao erro em {func_name}")
+                break
+        return
+
+    if args.analisa:
+        print("🔄 Executando sequência de análise (-eis -eig -ci -ma)...")
+        seq = ['extrai_internados_sisreg', 'extrai_internados_ghosp', 'compara_internados', 'motivo_alta']
+        for i, func_name in enumerate(seq, 1):
+            print(f"\n[{i}/{len(seq)}] ", end="")
+            if not executar_funcao(func_name):
+                print(f"❌ Parando execução devido ao erro em {func_name}")
+                break
+        return
+
+    if args.alta:
+        print("🔄 Executando sequência de alta (-ecsa -ea -ar -eid -td)...")
+        seq = ['extrai_codigos_sisreg_alta', 'executa_alta', 'atualiza_restos', 'extrai_internacoes_duplicadas', 'trata_duplicados']
+        for i, func_name in enumerate(seq, 1):
+            print(f"\n[{i}/{len(seq)}] ", end="")
+            if not executar_funcao(func_name):
+                print(f"❌ Parando execução devido ao erro em {func_name}")
+                break
+        return
+
     if args.config:
         editar_config()
         return

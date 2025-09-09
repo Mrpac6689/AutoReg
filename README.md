@@ -1,41 +1,59 @@
 # AutoReg
 Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 
-## 🌌 Versão 8.0.5 Universe - Setembro de 2025
+## 🌌 Versão 8.5.0 Universe - Setembro de 2025
 
-### 🆕 Novas Funcionalidades v8.0.5
+# Instruções de instalação em INSTALL.md
+
+### 🆕 Novas Funcionalidades v8.5.0
+
+- **Instalador Universal Refeito**: Scripts `install.sh` (Linux/macOS) e `install.bat` (Windows) totalmente reconstruídos para a versão 8.5.0.
+- **Instalação inteligente**: Detecta pasta do usuário, move dados para `~/.autoreg`, cria pasta `~/AutoReg`, gera log vazio, verifica Python3, cria venv se necessário, instala dependências, configura alias global no terminal padrão (bash/zsh).
+- **Workflows agrupados**: Novas flags `-interna`, `-analisa`, `-alta` para execução de rotinas agrupadas (internação, análise, alta) diretamente pelo CLI.
+- **Ajuda CLI aprimorada**: Todas as flags e agrupamentos agora aparecem corretamente no `--help`.
+- **Logs e arquivos**: Criação automática de `autoreg.log` e organização dos arquivos de trabalho.
 
 - **pdf2csv**: Conversão automática de PDF para CSV, extraindo nome, código e data, com limpeza de dados.
 - **ghosp_nota**: Automação completa para extração de notas de prontuários do G-HOSP, processando múltiplos códigos do CSV e salvando resultados na coluna 'dados'.
 - **Loop automatizado**: Busca sequencial de prontuários e extração de lembretes para todos os códigos presentes em lista_same.csv.
 - **Atualização dinâmica do CSV**: Criação automática da coluna 'dados' e salvamento dos resultados extraídos.
 
-### 📋 Funções Disponíveis:
 
-Flag	Função	Descrição
--eci	extrai_codigos_internacao	Extrai códigos de internação do SISREG
--ip	    interna_pacientes	        Realiza internação de pacientes no SISREG
--eis	extrai_internados_sisreg	Extrai lista de internados do SISREG
--eig	extrai_internados_ghosp	    Extrai lista de internados do G-HOSP
--ci	    compara_internados	        Compara listas de internados entre sistemas
--ma	    motivo_alta	                Captura motivos de alta no G-HOSP
--ecsa	extrai_codigos_sisreg_alta	Extrai códigos SISREG para alta
--ea	    executa_alta	            Executa altas no SISREG
--ar	    atualiza_restos	            Atualiza arquivo de pacientes restantes
--eid	extrai_internacoes_duplicadas	Identifica internações duplicadas
--td	    trata_duplicados	        Processa pacientes com duplicações
--dev	devolvidos	                Processa solicitações devolvidas
--p2c	pdf2csv	                    Converte PDF de solicitações em CSV
--ghn	ghosp_nota	                Extrair notas de prontuários Ghosp
+### 📋 Funções Disponíveis e Workflows Agrupados
+
+| Flag         | Função                        | Descrição |
+|--------------|-------------------------------|-----------|
+| `-eci`       | extrai_codigos_internacao     | Extrai códigos de internação do SISREG |
+| `-ip`        | interna_pacientes             | Realiza internação de pacientes no SISREG |
+| `-eis`       | extrai_internados_sisreg      | Extrai lista de internados do SISREG |
+| `-eig`       | extrai_internados_ghosp       | Extrai lista de internados do G-HOSP |
+| `-ci`        | compara_internados            | Compara listas de internados entre sistemas |
+| `-ma`        | motivo_alta                   | Captura motivos de alta no G-HOSP |
+| `-ecsa`      | extrai_codigos_sisreg_alta    | Extrai códigos SISREG para alta |
+| `-ea`        | executa_alta                  | Executa altas no SISREG |
+| `-ar`        | atualiza_restos               | Atualiza arquivo de pacientes restantes |
+| `-eid`       | extrai_internacoes_duplicadas | Identifica internações duplicadas |
+| `-td`        | trata_duplicados              | Processa pacientes com duplicações |
+| `-dev`       | devolvidos                    | Processa solicitações devolvidas |
+| `-p2c`       | pdf2csv                       | Converte PDF de solicitações em CSV |
+| `-ghn`       | ghosp_nota                    | Extrair notas de prontuários Ghosp |
+| `-interna`   | [workflow agrupado]           | Executa rotina de internação completa |
+| `-analisa`   | [workflow agrupado]           | Executa rotina de análise/comparação |
+| `-alta`      | [workflow agrupado]           | Executa rotina de alta completa |
+| `--all`      | [workflow completo]           | Executa todas as funções principais |
 
 ### 📜 Histórico de Versões
 
-## 🌌 v8.0.5 Universe - Setembro de 2025
 
-Função pdf2csv para conversão de PDF em CSV com extração e limpeza de dados.
-Função ghosp_nota para extração automatizada de notas de prontuários do G-HOSP, processando múltiplos códigos do CSV e salvando resultados.
-Loop automatizado para busca sequencial de prontuários e extração de lembretes.
-Atualização dinâmica do CSV com coluna 'dados'.
+## 🌌 v8.5.0 Universe - Setembro de 2025
+
+- Instalador universal refeito: install.sh (Linux/macOS) e install.bat (Windows) agora detectam pasta do usuário, movem dados para ~/.autoreg, criam pasta ~/AutoReg, geram log, verificam Python3, criam venv, instalam dependências e configuram alias global.
+- Novos workflows agrupados: flags -interna, -analisa, -alta para execução de rotinas completas.
+- Ajuda CLI aprimorada: todas as flags e agrupamentos aparecem corretamente no --help.
+- Função pdf2csv para conversão de PDF em CSV com extração e limpeza de dados.
+- Função ghosp_nota para extração automatizada de notas de prontuários do G-HOSP, processando múltiplos códigos do CSV e salvando resultados.
+- Loop automatizado para busca sequencial de prontuários e extração de lembretes.
+- Atualização dinâmica do CSV com coluna 'dados'.
 
 ## 🌌 Versão 8.0.0 Universe - Julho de 2025
 
@@ -145,7 +163,8 @@ O **AutoReg v8.0.0 Universe** é um sistema completo de automação para process
 - **Workflow completo**: Todas as funções automaticamente (`autoreg --all`)
 - **Recuperação de erros**: Parada inteligente e relatórios detalhados
 
-# 🚀 Instalação Rápida
+
+# 🚀 Instalação Rápida (v8.5.0)
 
 ## 📋 Pré-requisitos
 - Python 3.7+
@@ -168,6 +187,22 @@ cd AutoReg
 install.bat
 ```
 
+### 🛠️ O que o instalador faz (v8.5.0)
+1. Identifica a pasta do usuário
+2. Move os dados da aplicação para `~/.autoreg`
+3. Cria a pasta `~/AutoReg`
+4. Cria o arquivo vazio `~/AutoReg/autoreg.log`
+5. Acessa o diretório da aplicação `~/.autoreg`
+6. Verifica a existência do Python3.x, se não houver, avisa o usuário para instalar
+7. Verifica a existência do ambiente virtual venv. Se não houver, cria em `~/.autoreg/venv`
+8. No ambiente virtual, executa `pip install -r requirements.txt`
+9. Determina o caminho absoluto de `~/.autoreg/venv/bin/python3` e de `~/.autoreg/autoreg.py`
+10. Identifica o terminal padrão, bash ou zsh
+11. Acrescenta em `~/.bashrc` ou `~/.zshrc` o alias para execução global:
+	```bash
+	alias autoreg="/caminho/absoluto/venv/bin/python3 /caminho/absoluto/.autoreg/autoreg.py"
+	```
+
 ## 🎯 Uso Rápido
 
 Após a instalação, use o comando `autoreg` de qualquer lugar no sistema:
@@ -184,7 +219,8 @@ autoreg --config
 autoreg --directory
 ```
 
-### 🔧 **Execução de Funções**
+
+### 🔧 **Execução de Funções e Workflows Agrupados**
 ```bash
 # Função individual
 autoreg -eci                    # Extrai códigos de internação
@@ -196,7 +232,12 @@ autoreg -eci -ip                # Extrai códigos e interna
 autoreg -eis -eig -ci           # Extrai listas e compara
 autoreg -ma -ecsa -ea           # Workflow de alta completo
 
-# Workflow completo (11 funções automaticamente)
+# Workflows agrupados
+autoreg -interna                # Executa rotina de internação completa
+autoreg -analisa                # Executa rotina de análise/comparação
+autoreg -alta                   # Executa rotina de alta completa
+
+# Workflow completo (todas as funções principais)
 autoreg --all                   # Executa tudo exceto devolvidos
 
 # Função especializada
@@ -206,13 +247,13 @@ autoreg -dev                    # Processa devolvidos (separadamente)
 ### 💡 **Exemplos Práticos**
 ```bash
 # Rotina matinal de internação
-autoreg -eci -ip -eid -td
+autoreg -interna
 
 # Rotina de alta de pacientes
-autoreg -eis -eig -ci -ma -ecsa -ea -ar
+autoreg -alta
 
-# Verificação e limpeza de dados
-autoreg -eid -td -ar
+# Rotina de análise/comparação
+autoreg -analisa
 
 # Processamento completo automatizado
 autoreg --all && autoreg -dev

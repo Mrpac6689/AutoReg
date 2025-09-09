@@ -1,159 +1,130 @@
+import os
+import time
+from selenium import webdriver
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC        
-import pandas as pd
-import os
-import time 
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import Select
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from autoreg.logging import setup_logging
 import logging
 
-setup_logging()
-
 def motivo_alta():
-    # Função para ler a lista de pacientes de alta do CSV
-    def ler_pacientes_de_alta():
-        user_dir = os.path.expanduser('~/AutoReg')
-        csv_path = os.path.join(user_dir, 'pacientes_de_alta.csv')
-        df = pd.read_csv(csv_path)
-        print("Lista de pacientes de alta lida com sucesso.")
-        logging.info("Lista de pacientes de alta lida com sucesso.")
-        return df
+    print("\n---===> ACESSO AO GHOSP <===---")
+    usuario_ghosp, senha_ghosp, caminho_ghosp, _, _ = ler_credenciais()
 
-    # Função para salvar a lista com o motivo de alta
-    def salvar_pacientes_com_motivo(df):
-        user_dir = os.path.expanduser('~/AutoReg')
-        os.makedirs(user_dir, exist_ok=True)
-        csv_path = os.path.join(user_dir, 'pacientes_de_alta.csv')
-        df.to_csv(csv_path, index=False)
-        print(f"Lista de pacientes com motivo de alta salva com sucesso em '{csv_path}'.")
-        logging.info(f"Lista de pacientes com motivo de alta salva em '{csv_path}'.")
+    # Inicializa o navegador (Chrome)
+    chrome_options = get_chrome_options()
+    driver = webdriver.Chrome(options=chrome_options)
 
-    # Inicializa o ChromeDriver
-    def iniciar_driver():
+    print("Iniciando o Chromedriver...")
 
-        chrome_options = get_chrome_options()
-        driver = webdriver.Chrome(options=chrome_options)
-        return driver
+    # Acesse a página de login do G-HOSP na porta 4002
+    url_login = f"{caminho_ghosp}:4002/users/sign_in"
+    driver.get(url_login)
 
-    # Função para realizar login no G-HOSP
-    def login_ghosp(driver, usuario, senha, caminho):
-        
-        driver.get(caminho + ':4002/users/sign_in')
 
-        # Ajusta o zoom para 50%
-        driver.execute_script("document.body.style.zoom='50%'")
-        time.sleep(2)
-        #trazer_terminal()
-        
-        # Localiza os campos visíveis de login
-        email_field = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "email")))
-        email_field.send_keys(usuario)
-        
-        senha_field = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "password")))
-        senha_field.send_keys(senha)
-        
-        # Atualiza os campos ocultos com os valores corretos e simula o clique no botão de login
-        driver.execute_script("""
-            document.getElementById('user_email').value = arguments[0];
-            document.getElementById('user_password').value = arguments[1];
-            document.getElementById('new_user').submit();
-        """, usuario, senha)
+    # Localiza e preenche o campo de e-mail
+    print("Localizando campo de e-mail...")
+    email_field = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.ID, "email"))
+    )
+    email_field.send_keys(usuario_ghosp)
 
-    # Função para pesquisar um nome e obter o motivo de alta via HTML
-    def obter_motivo_alta(driver, nome, caminho):
-        driver.get(caminho + ':4002/prontuarios')
-        driver.maximize_window()     
-        time.sleep(5) 
+    # Localiza e preenche o campo de senha (//*[@id="password"])
+    print("Localizando campo de senha...")
+    senha_field = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.XPATH, '//*[@id="password"]'))
+    )
+    senha_field.send_keys(senha_ghosp)
 
-        # Localiza o campo de nome e insere o nome do paciente
-        nome_field = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "nome")))
-        nome_field.send_keys(nome)
-        
-        # Clica no botão de procurar
-        procurar_button = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@value='Procurar']")))
-        procurar_button.click()
+    # Localiza e clica no botão de login (//*[@id="new_user"]/div/input)
+    print("Localizando botão de login...")
+    login_button = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.XPATH, '//*[@id="new_user"]/div/input'))
+    )
+    login_button.click()
 
-        # Aguarda a página carregar
-        time.sleep(5)
-        
+    print("Login realizado com sucesso!")
+    # Localiza o menu dropdown e passa o mouse para abrir
+    from selenium.webdriver.common.action_chains import ActionChains
+
+
+    time.sleep(2)
+
+    # Clica no link 'Prontuários'
+    print("Clicando no link Prontuários...")
+
+    driver.get(f"{caminho_ghosp}:4002/prontuarios")
+
+    import pandas as pd
+    user_dir = os.path.expanduser('~/AutoReg')
+    os.makedirs(user_dir, exist_ok=True)
+    csv_path = os.path.join(user_dir, 'pacientes_de_alta.csv')
+
+
+    df = pd.read_csv(csv_path)
+    if 'Motivo da Alta' not in df.columns:
+        df['Motivo da Alta'] = ''
+
+    for idx, row in df.iterrows():
+        nome = str(row[0]).strip()
+        print(f"[{idx+1}/{len(df)}] Buscando motivo de alta para: {nome}")
+        # Localiza campo de nome e insere o valor
+        campo_nome = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, '//*[@id="nome"]'))
+        )
+        campo_nome.clear()
+        campo_nome.send_keys(nome)
+
+        # Clica no botão de busca
+        botao_busca = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, '//*[@id="cabecalho"]/form/fieldset/div[10]/div/input'))
+        )
+        botao_busca.click()
+
+        motivoalta = None
         try:
-            # Localiza o elemento com o rótulo "Motivo da alta"
-            motivo_element = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.XPATH, "//small[text()='Motivo da alta: ']"))
+            motivo_elem = WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.XPATH, '//*[starts-with(@id,"ra-vw-")]/div/div[3]/div[1]/div[2]'))
             )
-
-            # Agora captura o conteúdo do próximo elemento <div> após o rótulo
-            motivo_conteudo_element = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.XPATH, "//small[text()='Motivo da alta: ']/following::div[@class='pl5 pb5']"))
-            )
-            
-            motivo_alta = motivo_conteudo_element.text
-            print(f"Motivo de alta capturado: {motivo_alta}")
-            logging.info(f"Motivo de alta capturado para {nome}: {motivo_alta}")
-            
-        except Exception as e:
-            motivo_alta = "Motivo da alta não encontrado"
-            print(f"Erro ao capturar motivo da alta para {nome}: {e}")
-            logging.error(f"Erro ao capturar motivo da alta para {nome}: {e}")
-        
-        return motivo_alta
-
-    # Função principal para processar a lista de pacientes e buscar o motivo de alta
-    def processar_lista():
-        usuario_ghosp, senha_ghosp, caminho_ghosp, _, _ = ler_credenciais()
-        usuario = usuario_ghosp
-        senha = senha_ghosp
-        caminho = caminho_ghosp
-
-        df_pacientes = ler_pacientes_de_alta()
-
-        i = 0
-        while i < len(df_pacientes):
-            nome = df_pacientes.at[i, 'Nome']
+            motivoalta = motivo_elem.text
+            print(f"Motivo de alta extraído: {motivoalta}")
+        except Exception:
+            print("Elemento de motivo de alta não encontrado.")
+            # Nova verificação na tabela
             try:
-                print(f"Buscando motivo de alta para: {nome}")
-                logging.info(f"Buscando motivo de alta para: {nome}")
+                nome_elem = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, '//*[@id="cabecalho"]/table/tbody/tr[1]/td[2]'))
+                )
+                nome_tabela = nome_elem.text.strip().lower()
+                if nome_tabela == nome.strip().lower():
+                    href_elem = driver.find_element(By.XPATH, '//*[@id="cabecalho"]/table/tbody/tr[1]/td[1]/a')
+                    href = href_elem.get_attribute('href')
+                    if not href.startswith('http'):
+                        href = f"{caminho_ghosp}:4002{href_elem.get_attribute('href')}"
+                    print(f"Acessando prontuário pelo link: {href}")
+                    driver.get(href)
+                    # Tenta novamente extrair motivo de alta
+                    try:
+                        motivo_elem2 = WebDriverWait(driver, 5).until(
+                            EC.presence_of_element_located((By.XPATH, '//*[starts-with(@id,"ra-vw-")]/div/div[3]/div[1]/div[2]'))
+                        )
+                        motivoalta = motivo_elem2.text
+                        print(f"Motivo de alta extraído na nova página: {motivoalta}")
+                    except Exception:
+                        print("Motivo de alta não encontrado na nova página.")
+                else:
+                    print("Nome na tabela não corresponde ao paciente buscado.")
+            except Exception:
+                print("Tabela de pacientes não encontrada ou erro ao comparar nomes.")
 
-                driver = iniciar_driver()
-                login_ghosp(driver, usuario, senha, caminho)
+        df.at[idx, 'Motivo da Alta'] = motivoalta if motivoalta else ''
+        # Retorna à página de prontuários para o próximo paciente
+        driver.get(f"{caminho_ghosp}:4002/prontuarios")
 
-                motivo = obter_motivo_alta(driver, nome, caminho)
-                df_pacientes.at[i, 'Motivo da Alta'] = motivo
-                print(f"Motivo de alta para {nome}: {motivo}")
-                logging.info(f"Motivo de alta para {nome}: {motivo}")
-
-                salvar_pacientes_com_motivo(df_pacientes)
-                driver.quit()
-                time.sleep(2)
-                i += 1  # Avança para o próximo paciente
-
-            except Exception as e:
-                print(f"Erro ao processar {nome}: {e}")
-                logging.error(f"Erro ao processar {nome}: {e}")
-                try:
-                    driver.quit()
-                except Exception:
-                    pass
-                print("Reiniciando driver e tentando novamente a partir do paciente problemático...")
-                logging.info("Reiniciando driver e tentando novamente a partir do paciente problemático...")
-                time.sleep(3)
-                # Não incrementa i, para tentar novamente o mesmo paciente
-
-        print("Motivos de alta encontrados, CSV atualizado.")
-        logging.info("Motivos de alta encontrados, CSV atualizado.")
-        
-
-    # Execução do script
+    # Salva o resultado no próprio arquivo
+    df.to_csv(csv_path, index=False)
+    print(f"Arquivo atualizado com motivos de alta salvo em {csv_path}")
     
-    processar_lista()

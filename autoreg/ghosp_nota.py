@@ -103,7 +103,8 @@ def ghosp_nota():
                         EC.presence_of_element_located((By.XPATH, '//*[@id="paclembretes"]'))
                     )
                     lembretes_texto = lembretes_elem.get_attribute('innerText')
-                    print(f"Conteúdo de paclembretes para código {codigo}:")
+                    lembretes_texto = lembretes_texto.replace('\n', ' ').replace('\r', ' ')
+                    print(f"Conteúdo de paclembretes para código {codigo} (sem quebras de linha):")
                     print(lembretes_texto)
                     df.at[idx, 'dados'] = lembretes_texto
                 except Exception as e:

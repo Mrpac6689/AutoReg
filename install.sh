@@ -1,12 +1,88 @@
 #!/bin/bash
 #
+#!/bin/bash
 # AutoReg - Script de Instalação
-# Versão 7.0.0-1 - Julho de 2025
+# Versão 8.5.0 - Setembro de 2025
 # Autor: Michel Ribeiro Paes (MrPaC6689)
-#
-# Script de instalação multiplataforma para AutoReg
-# Compatível com Linux, macOS e Windows (Git Bash/WSL)
-#
+
+# Funções de output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+print_success() { echo -e "${GREEN}✅ $1${NC}"; }
+print_error() { echo -e "${RED}❌ $1${NC}"; }
+print_warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
+
+# 1. Identifica pasta do usuário
+USERDIR="$HOME"
+
+# 2. Move dados da aplicação para ~/.autoreg
+INSTALLDIR="$USERDIR/.autoreg"
+if [ -d "$INSTALLDIR" ]; then
+    print_warning "Removendo instalação anterior em $INSTALLDIR..."
+    rm -rf "$INSTALLDIR"
+fi
+mkdir -p "$INSTALLDIR"
+cp -r . "$INSTALLDIR/"
+
+# 3. Cria pasta ~/AutoReg
+LOGDIR="$USERDIR/AutoReg"
+mkdir -p "$LOGDIR"
+
+# 4. Cria arquivo vazio ~/AutoReg/autoreg.log
+touch "$LOGDIR/autoreg.log"
+
+# 5. Acessa o diretório da aplicação
+cd "$INSTALLDIR"
+
+# 6. Verifica existência do Python3
+if ! command -v python3 &> /dev/null; then
+    print_error "Python3 não encontrado. Instale Python 3.7+ antes de continuar."
+    exit 1
+fi
+
+# 7. Verifica/cria ambiente virtual venv
+if [ ! -d "$INSTALLDIR/venv" ]; then
+    print_success "Criando ambiente virtual..."
+    python3 -m venv "$INSTALLDIR/venv"
+fi
+
+# 8. Instala dependências
+source "$INSTALLDIR/venv/bin/activate"
+if [ -f "requirements.txt" ]; then
+    pip install --upgrade pip
+    pip install -r requirements.txt
+else
+    pip install selenium pandas beautifulsoup4 pillow
+fi
+deactivate
+
+# 9. Determina caminhos absolutos
+PYTHONBIN="$INSTALLDIR/venv/bin/python3"
+AUTOREGPY="$INSTALLDIR/autoreg.py"
+
+# 10. Identifica terminal padrão
+SHELLNAME=$(basename "$SHELL")
+if [ "$SHELLNAME" = "zsh" ]; then
+    RCFILE="$USERDIR/.zshrc"
+else
+    RCFILE="$USERDIR/.bashrc"
+fi
+
+# 11. Acrescenta alias
+ALIAS="alias autoreg=\"$PYTHONBIN $AUTOREGPY\""
+if ! grep -q "$ALIAS" "$RCFILE"; then
+    echo "$ALIAS" >> "$RCFILE"
+    print_success "Alias 'autoreg' adicionado em $RCFILE"
+    print_warning "Execute: source $RCFILE ou reinicie o terminal para ativar o comando 'autoreg'"
+else
+    print_warning "Alias já existe em $RCFILE"
+fi
+
+print_success "Instalação do AutoReg 8.5.0 concluída!"
+print_success "Para usar, digite: autoreg --help"
 
 # Cores para output
 RED='\033[0;31m'
@@ -24,7 +100,7 @@ print_header() {
     echo -e "${PURPLE}║                    Automatização de Sistemas de Saúde                         ║${NC}"
     echo -e "${PURPLE}║                               SISREG & G-HOSP                                 ║${NC}"
     echo -e "${PURPLE}╠═══════════════════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${PURPLE}║ Versão: 8.0.3-1                                                               ║${NC}"
+    echo -e "${PURPLE}║ Versão: 8.5.0                                                                 ║${NC}"
     echo -e "${PURPLE}║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║${NC}"
     echo -e "${PURPLE}╚═══════════════════════════════════════════════════════════════════════════════╝${NC}"
     echo

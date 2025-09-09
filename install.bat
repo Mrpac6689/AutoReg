@@ -1,171 +1,91 @@
 @echo off
+@echo off
 REM AutoReg - Script de Instalação para Windows
-REM Versão 7.0.0-1 - Julho de 2025
+REM Versão 8.5.0 - Setembro de 2025
 REM Autor: Michel Ribeiro Paes (MrPaC6689)
 
 setlocal enabledelayedexpansion
 
-echo.
-echo ╔═══════════════════════════════════════════════════════════════════════════════╗
-echo ║                              AutoReg Installer                                ║
-echo ║                    Automatização de Sistemas de Saúde                         ║
-echo ║                               SISREG ^& G-HOSP                                ║
-echo ╠═══════════════════════════════════════════════════════════════════════════════╣
-echo ║ Versão: 7.0.0-1                                                               ║
-echo ║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║
-echo ╚═══════════════════════════════════════════════════════════════════════════════╝
-echo.
+REM 1. Identifica pasta do usuário
+set USERDIR=%USERPROFILE%
 
-REM Verificar se Python está instalado
-echo [INFO] Verificando instalação do Python...
+REM 2. Move dados da aplicação para %USERDIR%\.autoreg
+set INSTALLDIR=%USERDIR%\.autoreg
+if exist "%INSTALLDIR%" (
+    echo [AVISO] Removendo instalação anterior em %INSTALLDIR%...
+    rmdir /s /q "%INSTALLDIR%"
+)
+mkdir "%INSTALLDIR%"
+xcopy /E /I /Q . "%INSTALLDIR%" >nul
+
+REM 3. Cria pasta %USERDIR%\AutoReg
+set LOGDIR=%USERDIR%\AutoReg
+if not exist "%LOGDIR%" mkdir "%LOGDIR%"
+
+REM 4. Cria arquivo vazio %USERDIR%\AutoReg\autoreg.log
+type nul > "%LOGDIR%\autoreg.log"
+
+REM 5. Acessa o diretório da aplicação
+cd /d "%INSTALLDIR%"
+
+REM 6. Verifica existência do Python3
 python --version >nul 2>&1
 if errorlevel 1 (
     python3 --version >nul 2>&1
     if errorlevel 1 (
-        echo [ERRO] Python não está instalado ou não está no PATH
-        echo [INFO] Baixe o Python em: https://python.org
-        echo [INFO] Certifique-se de marcar 'Add Python to PATH' durante a instalação
+        echo [ERRO] Python3 não encontrado. Instale Python 3.7+ antes de continuar.
         pause
         exit /b 1
     ) else (
         set PYTHON_CMD=python3
-        echo [OK] Python3 encontrado
     )
 ) else (
     set PYTHON_CMD=python
-    echo [OK] Python encontrado
 )
 
-REM Verificar versão do Python
-for /f "tokens=2" %%i in ('%PYTHON_CMD% --version 2^>^&1') do set PYTHON_VERSION=%%i
-echo [INFO] Versão do Python: !PYTHON_VERSION!
-
-REM Verificar se pip está instalado
-echo [INFO] Verificando instalação do pip...
-%PYTHON_CMD% -m pip --version >nul 2>&1
-if errorlevel 1 (
-    echo [ERRO] pip não está instalado
-    echo [INFO] Execute: %PYTHON_CMD% -m ensurepip --upgrade
-    pause
-    exit /b 1
-) else (
-    echo [OK] pip encontrado
+REM 7. Verifica/cria ambiente virtual venv
+if not exist "%INSTALLDIR%\venv" (
+    echo [INFO] Criando ambiente virtual...
+    %PYTHON_CMD% -m venv "%INSTALLDIR%\venv"
 )
 
-REM Verificar se venv está disponível
-echo [INFO] Verificando disponibilidade do venv...
-%PYTHON_CMD% -m venv --help >nul 2>&1
-if errorlevel 1 (
-    echo [ERRO] venv não está disponível
-    echo [INFO] Execute: %PYTHON_CMD% -m pip install virtualenv
-    pause
-    exit /b 1
-) else (
-    echo [OK] venv está disponível
-)
-
-REM Definir diretório de instalação
-set INSTALL_DIR=%USERPROFILE%\.autoreg
-
-REM Remover instalação anterior se existir
-if exist "%INSTALL_DIR%" (
-    echo [INFO] Removendo instalação anterior...
-    rmdir /s /q "%INSTALL_DIR%"
-)
-
-REM Criar diretório de instalação
-echo [INFO] Criando diretório de instalação...
-mkdir "%INSTALL_DIR%"
-if errorlevel 1 (
-    echo [ERRO] Não foi possível criar o diretório %INSTALL_DIR%
-    pause
-    exit /b 1
-)
-
-echo [OK] Diretório criado: %INSTALL_DIR%
-
-REM Copiar arquivos
-echo [INFO] Copiando arquivos do AutoReg...
-xcopy /E /I /Q . "%INSTALL_DIR%" >nul 2>&1
-if errorlevel 1 (
-    echo [ERRO] Falha ao copiar arquivos
-    pause
-    exit /b 1
-)
-
-REM Limpar arquivos desnecessários
-cd /d "%INSTALL_DIR%"
-if exist ".git" rmdir /s /q ".git" >nul 2>&1
-if exist "__pycache__" rmdir /s /q "__pycache__" >nul 2>&1
-if exist "Versoes Historicas" rmdir /s /q "Versoes Historicas" >nul 2>&1
-del /q *.pyc >nul 2>&1
-
-echo [OK] Arquivos copiados com sucesso
-
-REM Criar ambiente virtual
-echo [INFO] Criando ambiente virtual...
-%PYTHON_CMD% -m venv venv
-if errorlevel 1 (
-    echo [ERRO] Falha ao criar ambiente virtual
-    pause
-    exit /b 1
-)
-
-echo [OK] Ambiente virtual criado
-
-REM Instalar dependências
-echo [INFO] Instalando dependências Python...
-"%INSTALL_DIR%\venv\Scripts\python.exe" -m pip install --upgrade pip >nul 2>&1
-
+REM 8. Instala dependências
 if exist "requirements.txt" (
-    "%INSTALL_DIR%\venv\Scripts\pip.exe" install -r requirements.txt
-    if errorlevel 1 (
-        echo [AVISO] Falha ao instalar algumas dependências do requirements.txt
-        echo [INFO] Instalando dependências básicas...
-        "%INSTALL_DIR%\venv\Scripts\pip.exe" install selenium pandas beautifulsoup4 pillow
-    ) else (
-        echo [OK] Dependências instaladas com sucesso
-    )
+    "%INSTALLDIR%\venv\Scripts\pip.exe" install --upgrade pip
+    "%INSTALLDIR%\venv\Scripts\pip.exe" install -r requirements.txt
 ) else (
-    echo [AVISO] Arquivo requirements.txt não encontrado
-    echo [INFO] Instalando dependências básicas...
-    "%INSTALL_DIR%\venv\Scripts\pip.exe" install selenium pandas beautifulsoup4 pillow
+    "%INSTALLDIR%\venv\Scripts\pip.exe" install selenium pandas beautifulsoup4 pillow
 )
 
-REM Criar script executável
-echo [INFO] Criando script executável...
-(
-echo @echo off
-echo cd /d "%INSTALL_DIR%"
-echo "%INSTALL_DIR%\venv\Scripts\python.exe" autoreg.py %%*
-) > "%INSTALL_DIR%\autoreg.bat"
+REM 9. Determina caminhos absolutos
+set PYTHONBIN=%INSTALLDIR%\venv\Scripts\python.exe
+set AUTOREGPY=%INSTALLDIR%\autoreg.py
 
-echo [OK] Script executável criado
+REM 10. Cria script autoreg.bat
+(echo @echo off
+echo cd /d "%INSTALLDIR%"
+echo "%PYTHONBIN%" "%AUTOREGPY%" %%*
+) > "%INSTALLDIR%\autoreg.bat"
 
-REM Adicionar ao PATH do usuário
-echo [INFO] Configurando PATH do usuário...
-for /f "tokens=3*" %%i in ('reg query "HKCU\Environment" /v PATH 2^>nul') do set USER_PATH=%%i %%j
-if "!USER_PATH!"=="" set USER_PATH=%INSTALL_DIR%
-if "!USER_PATH!"=="!USER_PATH:%INSTALL_DIR%=!" (
-    set NEW_PATH=!USER_PATH!;%INSTALL_DIR%
+REM 11. Adiciona ao PATH
+set KEY="HKCU\Environment"
+for /f "tokens=3*" %%i in ('reg query %KEY% /v PATH 2^>nul') do set USER_PATH=%%i %%j
+if "!USER_PATH!"=="" set USER_PATH=%INSTALLDIR%
+if "!USER_PATH!"=="!USER_PATH:%INSTALLDIR%=!" (
+    set NEW_PATH=!USER_PATH!;%INSTALLDIR%
 ) else (
     set NEW_PATH=!USER_PATH!
 )
-
-reg add "HKCU\Environment" /v PATH /t REG_EXPAND_SZ /d "!NEW_PATH!" /f >nul 2>&1
+reg add %KEY% /v PATH /t REG_EXPAND_SZ /d "!NEW_PATH!" /f >nul 2>&1
 if errorlevel 1 (
-    echo [AVISO] Não foi possível atualizar o PATH automaticamente
-    echo [INFO] Adicione manualmente ao PATH: %INSTALL_DIR%
+    echo [AVISO] Não foi possível atualizar o PATH automaticamente.
+    echo [INFO] Adicione manualmente ao PATH: %INSTALLDIR%
 ) else (
-    echo [OK] PATH atualizado
+    echo [OK] PATH atualizado.
 )
 
 echo.
-echo ═══════════════════════════════════════════════════════════════
-echo           INSTALAÇÃO CONCLUÍDA COM SUCESSO!
-echo ═══════════════════════════════════════════════════════════════
-echo.
-echo [INFO] AutoReg foi instalado em: %INSTALL_DIR%
+echo [OK] Instalação do AutoReg 8.5.0 concluída!
 echo [INFO] Para usar, abra um novo prompt de comando e digite: autoreg --help
 echo.
 echo [INFO] Exemplos de uso:
@@ -178,5 +98,4 @@ echo [INFO] Execute: autoreg --config
 echo.
 echo [INFO] Reinicie o prompt de comando para usar o comando 'autoreg'
 echo.
-
 pause

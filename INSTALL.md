@@ -3,49 +3,42 @@
 ## 📋 Pré-requisitos
 
 ### 🐧 Linux / 🍎 macOS
-- Python 3.7+ 
-- pip
-- venv (geralmente incluído com Python 3.3+)
+- Python 3.7+ instalado
 
 ### 🪟 Windows
 - Python 3.7+ (baixar de [python.org](https://python.org))
 - Marcar "Add Python to PATH" durante a instalação
 
-## 🔧 Instalação Automática
+## 🔧 Instalação Automática (Versão 8.5.0)
 
 ### 🐧 Linux / 🍎 macOS
 ```bash
-# Clonar o repositório
 git clone https://github.com/Mrpac6689/AutoReg.git
 cd AutoReg
-
-# Executar o instalador
+chmod +x install.sh
 ./install.sh
-
-# Ou com bash
-bash install.sh
 ```
 
 ### 🪟 Windows
 ```cmd
-# Clonar o repositório
 git clone https://github.com/Mrpac6689/AutoReg.git
 cd AutoReg
-
-# Executar o instalador
 install.bat
 ```
 
 ## 📁 O que o instalador faz
 
-1. **Verifica dependências**: Python3, pip e venv
-2. **Instala dependências** automaticamente (se necessário)
-3. **Cria diretório**: `~/.autoreg` (ou `%USERPROFILE%\.autoreg` no Windows)
-4. **Copia arquivos**: Todo o projeto para o diretório de instalação
-5. **Cria ambiente virtual**: Isolado para as dependências do projeto
-6. **Instala pacotes Python**: Do arquivo `requirements.txt`
-7. **Cria executável**: Script que pode ser chamado de qualquer lugar
-8. **Configura PATH**: Para usar o comando `autoreg` globalmente
+1. Identifica a pasta do usuário
+2. Move os dados da aplicação para `~/.autoreg` (ou `%USERPROFILE%\.autoreg` no Windows)
+3. Cria a pasta `~/AutoReg` (ou `%USERPROFILE%\AutoReg`)
+4. Cria o arquivo vazio `~/AutoReg/autoreg.log`
+5. Acessa o diretório da aplicação
+6. Verifica a existência do Python3 (avisa se não houver)
+7. Verifica/cria ambiente virtual venv
+8. Instala dependências do `requirements.txt` (ou básicas)
+9. Determina o caminho absoluto do Python e do script principal
+10. Cria alias no terminal (`~/.bashrc` ou `~/.zshrc`) ou script no Windows
+11. Adiciona ao PATH (Windows)
 
 ## 🎯 Após a Instalação
 
@@ -89,8 +82,10 @@ Após a instalação:
 │   └── ...
 ├── config.ini          # Configurações (criar após instalação)
 ├── requirements.txt    # Dependências Python
-├── venv/              # Ambiente virtual
-└── README.md          # Documentação
+├── venv/               # Ambiente virtual
+└── README.md           # Documentação
+~/AutoReg/
+└── autoreg.log         # Log de execução
 ```
 
 ## 🔧 Instalação Manual (Alternativa)
@@ -109,55 +104,44 @@ cp -r /caminho/para/AutoReg/* .
 python3 -m venv venv
 
 # 4. Ativar ambiente virtual
-# Linux/macOS:
 source venv/bin/activate
-# Windows:
-venv\Scripts\activate
 
 # 5. Instalar dependências
 pip install -r requirements.txt
 
 # 6. Criar alias (adicionar ao ~/.bashrc ou ~/.zshrc)
-echo 'alias autoreg="~/.autoreg/venv/bin/python ~/.autoreg/autoreg.py"' >> ~/.bashrc
+echo 'alias autoreg="~/.autoreg/venv/bin/python3 ~/.autoreg/autoreg.py"' >> ~/.bashrc
 ```
 
 ## 🚨 Solução de Problemas
 
 ### Python não encontrado
-- **Linux**: `sudo apt install python3 python3-pip python3-venv`
+- **Linux**: `sudo apt install python3 python3-venv`
 - **macOS**: `brew install python3` (instalar Homebrew primeiro)
 - **Windows**: Baixar de [python.org](https://python.org)
 
 ### Permissões negadas
 ```bash
-# Dar permissão ao script
 chmod +x install.sh
-
-# Executar como usuário normal (não root)
 ./install.sh
 ```
 
-### PATH não atualizado
+### PATH/alias não atualizado
 - **Linux/macOS**: `source ~/.bashrc` ou reiniciar terminal
 - **Windows**: Reiniciar prompt de comando
 
 ### Dependências com falha
 ```bash
-# Instalar manualmente
 cd ~/.autoreg
-source venv/bin/activate  # Linux/macOS
+source venv/bin/activate
 pip install selenium pandas beautifulsoup4 pillow
 ```
 
 ## 🔄 Desinstalação
 
 ```bash
-# Remover diretório
-rm -rf ~/.autoreg
-
-# Remover do PATH (Linux/macOS)
-# Editar ~/.bashrc e remover linha do autoreg
-
+rm -rf ~/.autoreg ~/AutoReg
+# Remover alias do ~/.bashrc ou ~/.zshrc
 # Windows: Remover do PATH nas variáveis de ambiente
 ```
 
