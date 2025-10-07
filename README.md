@@ -1,11 +1,17 @@
 # AutoReg
 Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 
-## 🌌 Versão 8.5.0 Universe - Setembro de 2025
+## 🌌 Versão 9.0.0 Universe - Outubro de 2025
 
 # Instruções de instalação em INSTALL.md
 
-### 🆕 Novas Funcionalidades v8.5.0
+### 🆕 Novas Funcionalidades v9.0.0
+
+- **Workflow de Solicitações**: Nova sequência `-solicita` que executa automaticamente as funções de solicitação `-sia -ssr -snt`
+- **Verificação de dados**: Sistema inteligente para detecção e tratamento de dados faltantes nos CSVs
+- **Rotina de solicitação**: Nova função `-snt` para inserção de números de solicitação SISREG nas notas de prontuário
+- **Tratamento de dados**: Limpeza automática de formatos numéricos (.0) nos códigos de solicitação
+- **Dados para revisão**: Marcação automática de registros com dados faltantes para revisão posterior
 
 - **Instalador Universal Refeito**: Scripts `install.sh` (Linux/macOS) e `install.bat` (Windows) totalmente reconstruídos para a versão 8.5.0.
 - **Instalação inteligente**: Detecta pasta do usuário, move dados para `~/.autoreg`, cria pasta `~/AutoReg`, gera log vazio, verifica Python3, cria venv se necessário, instala dependências, configura alias global no terminal padrão (bash/zsh).
@@ -37,13 +43,27 @@ Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 | `-dev`       | devolvidos                    | Processa solicitações devolvidas |
 | `-p2c`       | pdf2csv                       | Converte PDF de solicitações em CSV |
 | `-ghn`       | ghosp_nota                    | Extrair notas de prontuários Ghosp |
+| `-especial`   | [workflow agrupado]           | Extração de dados personalizados do GHOSP |
+| `-sia`       | solicita_inf_aih             | Extrai informações da AIH |
+| `-ssr`       | solicita_sisreg              | Executa Solicitações no Sistema SISREG |
+| `-snt`       | solicita_nota                | Insere numero da solicitação SISREG na nota de prontuário |
 | `-interna`   | [workflow agrupado]           | Executa rotina de internação completa |
 | `-analisa`   | [workflow agrupado]           | Executa rotina de análise/comparação |
 | `-alta`      | [workflow agrupado]           | Executa rotina de alta completa |
+| `-solicita`  | [workflow agrupado]           | Executa rotina de Solicitação: -sia -ssr -snt |
 | `--all`      | [workflow completo]           | Executa todas as funções principais |
 
 ### 📜 Histórico de Versões
 
+## 🌌 v9.0.0 Universe - Outubro de 2025
+
+- Nova sequência de workflow `-solicita` para automatizar o processo completo de solicitações
+- Nova função `-snt` para inserir números de solicitação SISREG em notas de prontuário
+- Sistema inteligente de detecção e tratamento de dados faltantes em CSVs
+- Limpeza automática de formatos numéricos (.0) nos códigos de solicitação
+- Marcação automática de registros que precisam de revisão
+- Interface CLI atualizada com novas opções e feedbacks
+- Melhorias na robustez do tratamento de dados
 
 ## 🌌 v8.5.0 Universe - Setembro de 2025
 
@@ -226,16 +246,19 @@ autoreg --directory
 autoreg -eci                    # Extrai códigos de internação
 autoreg -ip                     # Interna pacientes
 autoreg -ma                     # Captura motivos de alta
+autoreg -snt                    # Insere número da solicitação na nota
 
 # Múltiplas funções em sequência
 autoreg -eci -ip                # Extrai códigos e interna
 autoreg -eis -eig -ci           # Extrai listas e compara
 autoreg -ma -ecsa -ea           # Workflow de alta completo
+autoreg -sia -ssr -snt          # Workflow de solicitação manual
 
 # Workflows agrupados
 autoreg -interna                # Executa rotina de internação completa
 autoreg -analisa                # Executa rotina de análise/comparação
 autoreg -alta                   # Executa rotina de alta completa
+autoreg -solicita              # Executa rotina de solicitação completa
 
 # Workflow completo (todas as funções principais)
 autoreg --all                   # Executa tudo exceto devolvidos

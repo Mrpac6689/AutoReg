@@ -28,6 +28,10 @@ from autoreg import devolvidos
 from autoreg import pdf2csv
 from autoreg import ghosp_nota  # Adicione este import
 from autoreg import ghosp_cns  # Importa a função ghosp_cns
+from autoreg import ghosp_especial  # Importa a função ghosp_especial
+from autoreg import solicita_inf_aih  # Importa a função solicita_inf_aih
+from autoreg import solicita_sisreg  # Importa a função solicita_sisreg
+from autoreg import solicita_nota  # Importa a função solicita_nota
 
 # Dicionário com as funções e suas descrições
 FUNCOES = {
@@ -86,10 +90,26 @@ FUNCOES = {
     'ghosp_nota': {
         'func': ghosp_nota,
         'desc': 'Extrair notas de prontuários Ghosp'
-        },
-        'ghosp_cns': {
-            'func': ghosp_cns,
-            'desc': 'Extrai CNSs dos prontuários e cria lista_same_cns.csv'
+    },
+    'ghosp_cns': {
+        'func': ghosp_cns,
+        'desc': 'Extrai CNSs dos prontuários e cria lista_same_cns.csv'
+    },
+    'ghosp_especial': {
+        'func': ghosp_especial,
+        'desc': 'Extração de dados personalizados do GHOSP'
+    },
+    'solicita_inf_aih': {
+        'func': solicita_inf_aih,
+        'desc': 'Extrai informações da AIH'
+    },
+    'solicita_sisreg': {
+        'func': solicita_sisreg,
+        'desc': 'Executa Solicitações no Sistema SISREG'
+    },
+    'solicita_nota': {
+        'func': solicita_nota,
+        'desc': 'Insere numero da solicitação SISREG na nota de prontuário'
     }
 }
 
@@ -101,7 +121,7 @@ def mostrar_informacoes():
 ║                    Automatização de Sistemas de Saúde                         ║
 ║                               SISREG & G-HOSP                                 ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║ Versão: 8.5.0                                                                 ║
+║ Versão: 9.0.0                                                                 ║
 ║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║
 ║ Contato: michelrpaes@gmail.com                                                ║
 ║ Repositório: https://github.com/Mrpac6689/AutoReg                             ║
@@ -131,9 +151,11 @@ FUNÇÕES DISPONÍVEIS:
         ('-p2c', '--pdf2csv', 'pdf2csv'),
         ('-ghn', '--ghosp-nota', 'ghosp_nota'),
         ('-ghc', '--ghosp-cns', 'ghosp_cns'),
+        ('-especial', '--especial', 'ghosp_especial'),
         ('-interna', '--interna', None),
         ('-analisa', '--analisa', None),
-        ('-alta', '--alta', None)
+        ('-alta', '--alta', None),
+        ('-solicita', '--solicita', None)
     ]
     
     for short, long, func_name in flags:
@@ -145,6 +167,8 @@ FUNÇÕES DISPONÍVEIS:
             desc = 'Executa sequência de análise: -eis -eig -ci -ma'
         elif short == '-alta':
             desc = 'Executa sequência de alta: -ecsa -ea -ar -eid -td'
+        elif short == '-solicita':
+            desc = 'Executa rotina de Solicitação: -sia -ssr -snt'
         else:
             desc = ''
         print(f"    {short:<6} {long:<32} {desc}")
@@ -310,6 +334,14 @@ Exemplos de uso:
                        help='Extrair notas de prontuários Ghosp')
     parser.add_argument('-ghc', '--ghosp-cns', action='store_true',
                        help='Extrai CNSs dos prontuários e cria lista_same_cns.csv')
+    parser.add_argument('-especial', '--especial', action='store_true',
+                       help='Extração de dados personalizados do GHOSP')
+    parser.add_argument('-sia', '--solicita-inf-aih', action='store_true',
+                       help='Extrai informações da AIH')
+    parser.add_argument('-ssr', '--solicita-sisreg', action='store_true',
+                       help='Executa Solicitações no Sistema SISREG')
+    parser.add_argument('-snt', '--solicita-nota', action='store_true',
+                       help='Insere numero da solicitação SISREG na nota de prontuário')
     # Novas funções de workflow
     parser.add_argument('-interna', '--interna', action='store_true',
                        help='Executa sequência de internação: -eci -ip')
@@ -317,6 +349,8 @@ Exemplos de uso:
                        help='Executa sequência de análise: -eis -eig -ci -ma')
     parser.add_argument('-alta', '--alta', action='store_true',
                        help='Executa sequência de alta: -ecsa -ea -ar -eid -td')
+    parser.add_argument('-solicita', '--solicita', action='store_true',
+                       help='Executa rotina de Solicitação: -sia -ssr -snt')
     
     # Funções especiais
     parser.add_argument('-all', '--all', action='store_true',
@@ -349,7 +383,11 @@ Exemplos de uso:
         'devolvidos': 'devolvidos',
         'pdf2csv': 'pdf2csv',
         'ghosp_nota': 'ghosp_nota',
-        'ghosp_cns': 'ghosp_cns'
+        'ghosp_cns': 'ghosp_cns',
+        'ghosp_especial': 'ghosp_especial',
+        'solicita_inf_aih': 'solicita_inf_aih',
+        'solicita_sisreg': 'solicita_sisreg',
+        'solicita_nota': 'solicita_nota'
     }
     
     # Processa funções especiais primeiro
@@ -386,6 +424,16 @@ Exemplos de uso:
                 break
         return
 
+    if args.solicita:
+        print("🔄 Executando rotina de Solicitação (-sia -ssr -snt)...")
+        seq = ['solicita_inf_aih', 'solicita_sisreg', 'solicita_nota']
+        for i, func_name in enumerate(seq, 1):
+            print(f"\n[{i}/{len(seq)}] ", end="")
+            if not executar_funcao(func_name):
+                print(f"❌ Parando execução devido ao erro em {func_name}")
+                break
+        return
+
     if args.config:
         editar_config()
         return
@@ -400,8 +448,14 @@ Exemplos de uso:
         # pdf2csv recebe argumento de caminho
         if arg == 'pdf2csv' and getattr(args, 'pdf2csv'):
             funcoes_para_executar.append((func_name, getattr(args, 'pdf2csv')))
-        elif getattr(args, arg.replace('-', '_')):
-            funcoes_para_executar.append((func_name, None))
+        else:
+            # Corrige o nome do atributo para a função especial
+            if arg == 'ghosp_especial':
+                arg_name = 'especial'
+            else:
+                arg_name = arg.replace('-', '_')
+            if hasattr(args, arg_name) and getattr(args, arg_name):
+                funcoes_para_executar.append((func_name, None))
 
     if funcoes_para_executar:
         print(f"🔄 Executando {len(funcoes_para_executar)} função(ões) em sequência...")

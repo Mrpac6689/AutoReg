@@ -17,3 +17,7 @@ from .devolvidos import devolvidos
 from .escaneia_pdf import pdf2csv
 from .ghosp_nota import ghosp_nota
 from .ghosp_cns import ghosp_cns
+from .ghosp_especial import ghosp_especial
+from .solicita_inf_aih import solicita_inf_aih
+from .solicita_sisreg import solicita_sisreg
+from .solicita_nota import solicita_nota
