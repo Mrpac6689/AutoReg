@@ -21,3 +21,4 @@ from .ghosp_especial import ghosp_especial
 from .solicita_inf_aih import solicita_inf_aih
 from .solicita_sisreg import solicita_sisreg
 from .solicita_nota import solicita_nota
+from .consulta_solicitacao_sisreg import consulta_solicitacao_sisreg

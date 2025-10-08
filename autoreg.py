@@ -32,6 +32,7 @@ from autoreg import ghosp_especial  # Importa a função ghosp_especial
 from autoreg import solicita_inf_aih  # Importa a função solicita_inf_aih
 from autoreg import solicita_sisreg  # Importa a função solicita_sisreg
 from autoreg import solicita_nota  # Importa a função solicita_nota
+from autoreg import consulta_solicitacao_sisreg  # Importa a função consulta_solicitacao_sisreg
 
 # Dicionário com as funções e suas descrições
 FUNCOES = {
@@ -110,6 +111,10 @@ FUNCOES = {
     'solicita_nota': {
         'func': solicita_nota,
         'desc': 'Insere numero da solicitação SISREG na nota de prontuário'
+    },
+    'consulta_solicitacao_sisreg': {
+        'func': consulta_solicitacao_sisreg,
+        'desc': 'Consulta o estado da Solicitação no sistema SISREG'
     }
 }
 
@@ -121,7 +126,7 @@ def mostrar_informacoes():
 ║                    Automatização de Sistemas de Saúde                         ║
 ║                               SISREG & G-HOSP                                 ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║ Versão: 9.0.0                                                                 ║
+║ Versão: 9.5.0                                                                 ║
 ║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║
 ║ Contato: michelrpaes@gmail.com                                                ║
 ║ Repositório: https://github.com/Mrpac6689/AutoReg                             ║
@@ -342,6 +347,8 @@ Exemplos de uso:
                        help='Executa Solicitações no Sistema SISREG')
     parser.add_argument('-snt', '--solicita-nota', action='store_true',
                        help='Insere numero da solicitação SISREG na nota de prontuário')
+    parser.add_argument('-css', '--consulta-solicitacao-sisreg', action='store_true',
+                       help='Consulta o estado da Solicitação no sistema SISREG')
     # Novas funções de workflow
     parser.add_argument('-interna', '--interna', action='store_true',
                        help='Executa sequência de internação: -eci -ip')
@@ -387,7 +394,8 @@ Exemplos de uso:
         'ghosp_especial': 'ghosp_especial',
         'solicita_inf_aih': 'solicita_inf_aih',
         'solicita_sisreg': 'solicita_sisreg',
-        'solicita_nota': 'solicita_nota'
+        'solicita_nota': 'solicita_nota',
+        'consulta_solicitacao_sisreg': 'consulta_solicitacao_sisreg'
     }
     
     # Processa funções especiais primeiro

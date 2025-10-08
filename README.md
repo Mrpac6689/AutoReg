@@ -1,9 +1,18 @@
 # AutoReg
 Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 
-## 🌌 Versão 9.0.0 Universe - Outubro de 2025
+## 🌌 Versão 9.5.0 Universe - Outubro de 2025
 
 # Instruções de instalação em INSTALL.md
+
+### 🆕 Novas Funcionalidades v9.5.0
+
+- **Consulta de Solicitações**: Nova função `-css` para consultar o status atual de solicitações no SISREG
+- **Atualização Automática de CSVs**: Sistema atualiza automaticamente o status das solicitações no arquivo
+- **Processamento em Lote**: Capacidade de consultar múltiplas solicitações em sequência
+- **Feedback em Tempo Real**: Exibição do status de cada solicitação durante o processamento
+- **Tratamento de Status**: Identificação de solicitações PENDENTES, APROVADAS e outras situações
+- **Logs Detalhados**: Registro completo de todas as consultas realizadas
 
 ### 🆕 Novas Funcionalidades v9.0.0
 
@@ -29,6 +38,7 @@ Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 
 | Flag         | Função                        | Descrição |
 |--------------|-------------------------------|-----------|
+| `-css`       | consulta_solicitacao_sisreg   | Consulta status de solicitações no SISREG |
 | `-eci`       | extrai_codigos_internacao     | Extrai códigos de internação do SISREG |
 | `-ip`        | interna_pacientes             | Realiza internação de pacientes no SISREG |
 | `-eis`       | extrai_internados_sisreg      | Extrai lista de internados do SISREG |
@@ -54,6 +64,14 @@ Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 | `--all`      | [workflow completo]           | Executa todas as funções principais |
 
 ### 📜 Histórico de Versões
+
+## 🌌 v9.5.0 Universe - Outubro de 2025
+- Nova função `-css` para consulta de status de solicitações no SISREG
+- Sistema automático de atualização de status em CSVs
+- Processamento em lote de múltiplas solicitações
+- Feedback em tempo real durante as consultas
+- Logs detalhados de todas as operações
+- Tratamento inteligente de diferentes status
 
 ## 🌌 v9.0.0 Universe - Outubro de 2025
 
