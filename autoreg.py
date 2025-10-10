@@ -33,12 +33,22 @@ from autoreg import solicita_inf_aih  # Importa a função solicita_inf_aih
 from autoreg import solicita_sisreg  # Importa a função solicita_sisreg
 from autoreg import solicita_nota  # Importa a função solicita_nota
 from autoreg import consulta_solicitacao_sisreg  # Importa a função consulta_solicitacao_sisreg
+from autoreg import internados_ghosp_avancado  # Importa a função internados_ghosp_avancado
+from autoreg import internados_ghosp_nota  # Importa a função internados_ghosp_nota
 
 # Dicionário com as funções e suas descrições
 FUNCOES = {
     'extrai_codigos_internacao': {
         'func': extrai_codigos_internacao,
         'desc': 'Extrai códigos de internação do SISREG'
+    },
+    'internados_ghosp_avancado': {
+        'func': internados_ghosp_avancado,
+        'desc': 'Extrai pacientes internados no GHOSP com informações adicionais'
+    },
+    'internados_ghosp_nota': {
+        'func': internados_ghosp_nota,
+        'desc': 'Extrai o conteúdo das notas dos prontuários do GHOSP'
     },
     'interna_pacientes': {
         'func': interna_pacientes,
@@ -156,11 +166,18 @@ FUNÇÕES DISPONÍVEIS:
         ('-p2c', '--pdf2csv', 'pdf2csv'),
         ('-ghn', '--ghosp-nota', 'ghosp_nota'),
         ('-ghc', '--ghosp-cns', 'ghosp_cns'),
+        ('-iga', '--internados-ghosp-avancado', 'internados_ghosp_avancado'),
+        ('-ign', '--internados-ghosp-nota', 'internados_ghosp_nota'),
         ('-especial', '--especial', 'ghosp_especial'),
+        ('-sia', '--solicita-inf-aih', 'solicita_inf_aih'),
+        ('-ssr', '--solicita-sisreg', 'solicita_sisreg'),
+        ('-snt', '--solicita-nota', 'solicita_nota'),
+        ('-css', '--consulta-solicitacao-sisreg', 'consulta_solicitacao_sisreg'),
         ('-interna', '--interna', None),
         ('-analisa', '--analisa', None),
         ('-alta', '--alta', None),
-        ('-solicita', '--solicita', None)
+        ('-solicita', '--solicita', None),
+        ('-nota', '--nota', None)
     ]
     
     for short, long, func_name in flags:
@@ -174,6 +191,8 @@ FUNÇÕES DISPONÍVEIS:
             desc = 'Executa sequência de alta: -ecsa -ea -ar -eid -td'
         elif short == '-solicita':
             desc = 'Executa rotina de Solicitação: -sia -ssr -snt'
+        elif short == '-nota':
+            desc = 'Executa rotina de notas: -iga -ign'
         else:
             desc = ''
         print(f"    {short:<6} {long:<32} {desc}")
@@ -339,6 +358,10 @@ Exemplos de uso:
                        help='Extrair notas de prontuários Ghosp')
     parser.add_argument('-ghc', '--ghosp-cns', action='store_true',
                        help='Extrai CNSs dos prontuários e cria lista_same_cns.csv')
+    parser.add_argument('-iga', '--internados-ghosp-avancado', action='store_true',
+                       help='Extrai pacientes internados no GHOSP com informações adicionais')
+    parser.add_argument('-ign', '--internados-ghosp-nota', action='store_true',
+                       help='Extrai o conteúdo das notas dos prontuários do GHOSP')
     parser.add_argument('-especial', '--especial', action='store_true',
                        help='Extração de dados personalizados do GHOSP')
     parser.add_argument('-sia', '--solicita-inf-aih', action='store_true',
@@ -358,6 +381,8 @@ Exemplos de uso:
                        help='Executa sequência de alta: -ecsa -ea -ar -eid -td')
     parser.add_argument('-solicita', '--solicita', action='store_true',
                        help='Executa rotina de Solicitação: -sia -ssr -snt')
+    parser.add_argument('-nota', '--nota', action='store_true',
+                       help='Executa rotina de notas: -iga -ign')
     
     # Funções especiais
     parser.add_argument('-all', '--all', action='store_true',
@@ -392,6 +417,8 @@ Exemplos de uso:
         'ghosp_nota': 'ghosp_nota',
         'ghosp_cns': 'ghosp_cns',
         'ghosp_especial': 'ghosp_especial',
+        'internados_ghosp_avancado': 'internados_ghosp_avancado',
+        'internados_ghosp_nota': 'internados_ghosp_nota',
         'solicita_inf_aih': 'solicita_inf_aih',
         'solicita_sisreg': 'solicita_sisreg',
         'solicita_nota': 'solicita_nota',
@@ -435,6 +462,16 @@ Exemplos de uso:
     if args.solicita:
         print("🔄 Executando rotina de Solicitação (-sia -ssr -snt)...")
         seq = ['solicita_inf_aih', 'solicita_sisreg', 'solicita_nota']
+        for i, func_name in enumerate(seq, 1):
+            print(f"\n[{i}/{len(seq)}] ", end="")
+            if not executar_funcao(func_name):
+                print(f"❌ Parando execução devido ao erro em {func_name}")
+                break
+        return
+
+    if args.nota:
+        print("🔄 Executando rotina de notas (-iga -ign)...")
+        seq = ['internados_ghosp_avancado', 'internados_ghosp_nota']
         for i, func_name in enumerate(seq, 1):
             print(f"\n[{i}/{len(seq)}] ", end="")
             if not executar_funcao(func_name):
