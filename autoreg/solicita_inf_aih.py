@@ -77,6 +77,11 @@ def solicita_inf_aih():
                 )
                 prontuario_text = prontuario_element.text
                 prontuario = ''.join(filter(str.isdigit, prontuario_text))
+                # Remove ".0" no final se existir
+                if prontuario.endswith('.0'):
+                    prontuario = prontuario[:-2]
+                # Remove qualquer ponto restante
+                prontuario = prontuario.replace('.', '')
                 print(f"Prontuário extraído: {prontuario}")
 
                 # Obtém as informações dos sinais e sintomas
@@ -129,7 +134,7 @@ def solicita_inf_aih():
                 # Clica no elemento do paciente para extrair CNS
                 print("Clicando no elemento do paciente...")
                 paciente_element = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/h4'))
+                    EC.element_to_be_clickable((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/h4/a'))
                 )
                 paciente_element.click()
 
@@ -139,7 +144,34 @@ def solicita_inf_aih():
                 )
                 cns_text = cns_element.text
                 cns = ''.join(filter(str.isdigit, cns_text))
-                print(f"CNS extraído: {cns}")
+                # Remove ".0" no final se existir
+                if cns.endswith('.0'):
+                    cns = cns[:-2]
+                # Remove qualquer ponto restante
+                cns = cns.replace('.', '')
+                
+                # Se CNS estiver vazio, tenta obter o CPF
+                if not cns or cns.strip() == '':
+                    print("CNS vazio, tentando extrair CPF...")
+                    try:
+                        cpf_element = WebDriverWait(driver, 5).until(
+                            EC.presence_of_element_located((By.XPATH, '/html/body/div[6]/div[2]/small/fieldset[1]/div[4]'))
+                        )
+                        cpf_text = cpf_element.text
+                        cns = ''.join(filter(str.isdigit, cpf_text))
+                        # Remove ".0" no final se existir
+                        if cns.endswith('.0'):
+                            cns = cns[:-2]
+                        # Remove qualquer ponto restante
+                        cns = cns.replace('.', '')
+                        if cns:
+                            print(f"CPF extraído e usado como CNS: {cns}")
+                        else:
+                            print("CPF também está vazio")
+                    except Exception as e:
+                        print(f"Não foi possível extrair CPF: {e}")
+                else:
+                    print(f"CNS extraído: {cns}")
 
                 # Clica no botão de fechar/voltar
                 print("Fechando modal...")

@@ -126,8 +126,13 @@ def solicita_sisreg():
                 campo_cns = wait.until(
                     EC.presence_of_element_located((By.XPATH, "//*[@id='main_div']/form/center[1]/table/tbody/tr[2]/td[2]/input"))
                 )
+                # Trata o CNS removendo ".0" e pontos se existirem
+                cns = str(row['cns'])
+                if cns.endswith('.0'):
+                    cns = cns[:-2]
+                cns = cns.replace('.', '')
                 campo_cns.clear()
-                campo_cns.send_keys(str(row['cns']))
+                campo_cns.send_keys(cns)
                 
                 # Clica no botão de pesquisa
                 print("Pesquisando CNS...")
@@ -150,8 +155,15 @@ def solicita_sisreg():
                 
                 time.sleep(3)  # Aguarda processamento após o clique
 
-                # Lê o procedimento do CSV e garante que tenha 10 dígitos com zero à esquerda
-                procedimento = str(row['procedimento']).zfill(10)
+                # Lê o procedimento do CSV, remove pontos e ".0", depois garante 10 dígitos
+                procedimento = str(row['procedimento'])
+                # Remove ".0" no final se existir
+                if procedimento.endswith('.0'):
+                    procedimento = procedimento[:-2]
+                # Remove qualquer ponto restante
+                procedimento = procedimento.replace('.', '')
+                # Garante que tenha 10 dígitos com zero à esquerda
+                procedimento = procedimento.zfill(10)
                 print(f"Procedimento a ser inserido: {procedimento}")
 
                 # Localiza o campo de procedimento e preenche
@@ -339,7 +351,12 @@ def solicita_sisreg():
                 
                 # Preenche o terceiro textarea com data e prontuário
                 print("Preenchendo informações complementares...")
-                data_prontuario = f"{row['data']} - {row['prontuario']}"
+                # Trata o prontuário removendo ".0" e pontos se existirem
+                prontuario = str(row['prontuario'])
+                if prontuario.endswith('.0'):
+                    prontuario = prontuario[:-2]
+                prontuario = prontuario.replace('.', '')
+                data_prontuario = f"{row['data']} - {prontuario}"
                 texto_complementar = wait.until(
                     EC.presence_of_element_located((By.XPATH, "/html/body/center/form/table/tbody/tr[46]/td/textarea"))
                 )

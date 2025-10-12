@@ -1,9 +1,22 @@
 # AutoReg
 Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 
-## 🌌 Versão 9.5.0 Universe - Outubro de 2025
+## 🌌 Versão 9.5.6 Universe - Outubro de 2025
 
 # Instruções de instalação em INSTALL.md
+
+### 🆕 Novas Funcionalidades v9.5.6
+
+- **Função `-iga`**: Nova função para extrair pacientes internados no GHOSP com informações adicionais (número de internação, nome, data e setor)
+- **Função `-ign`**: Extração de notas dos prontuários do GHOSP com atualização de setor em tempo real
+- **Workflow `-nota`**: Sequência automatizada que executa `-iga` seguido de `-ign` para extração completa de dados e notas
+- **Mapeamento de Setores**: Sistema inteligente de mapeamento de nomes de setores para versões simplificadas
+- **Ordenação Automática**: Dados automaticamente ordenados por setor no CSV final
+- **Tratamento de Dados Numéricos**: Limpeza automática de pontos e ".0" em todos os campos numéricos (CNS, CPF, procedimento, prontuário)
+- **Fallback CNS/CPF**: Sistema inteligente que usa CPF quando CNS não está disponível
+- **Contador de Progresso**: Interface aprimorada com contadores [x/xx] para acompanhamento em tempo real
+- **Limpeza Automática de CSVs**: Manutenção apenas de registros que precisam revisão após processamento
+- **Resumo Estatístico**: Relatório automático de pacientes por setor após processamento
 
 ### 🆕 Novas Funcionalidades v9.5.0
 
@@ -53,7 +66,10 @@ Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 | `-dev`       | devolvidos                    | Processa solicitações devolvidas |
 | `-p2c`       | pdf2csv                       | Converte PDF de solicitações em CSV |
 | `-ghn`       | ghosp_nota                    | Extrair notas de prontuários Ghosp |
-| `-especial`   | [workflow agrupado]           | Extração de dados personalizados do GHOSP |
+| `-ghc`       | ghosp_cns                     | Extrai CNSs dos prontuários |
+| `-iga`       | internados_ghosp_avancado     | Extrai pacientes internados no GHOSP com informações adicionais |
+| `-ign`       | internados_ghosp_nota         | Extrai o conteúdo das notas dos prontuários do GHOSP |
+| `-especial`  | [workflow agrupado]           | Extração de dados personalizados do GHOSP |
 | `-sia`       | solicita_inf_aih             | Extrai informações da AIH |
 | `-ssr`       | solicita_sisreg              | Executa Solicitações no Sistema SISREG |
 | `-snt`       | solicita_nota                | Insere numero da solicitação SISREG na nota de prontuário |
@@ -61,9 +77,23 @@ Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 | `-analisa`   | [workflow agrupado]           | Executa rotina de análise/comparação |
 | `-alta`      | [workflow agrupado]           | Executa rotina de alta completa |
 | `-solicita`  | [workflow agrupado]           | Executa rotina de Solicitação: -sia -ssr -snt |
+| `-nota`      | [workflow agrupado]           | Executa rotina de notas: -iga -ign |
 | `--all`      | [workflow completo]           | Executa todas as funções principais |
 
 ### 📜 Histórico de Versões
+
+## 🌌 v9.5.6 Universe - Outubro de 2025
+- Nova função `-iga` para extração avançada de dados de internados do GHOSP
+- Nova função `-ign` para extração de notas de prontuários com atualização de setor
+- Novo workflow `-nota` para processamento completo de dados e notas
+- Sistema de mapeamento inteligente de setores hospitalares
+- Ordenação automática de dados por setor nos CSVs
+- Tratamento universal de dados numéricos (remoção de pontos e .0)
+- Fallback automático CNS/CPF para identificação de pacientes
+- Contadores de progresso em tempo real [x/xx]
+- Limpeza automática de CSVs mantendo apenas registros para revisão
+- Relatórios estatísticos de distribuição de pacientes por setor
+- Melhorias na robustez do tratamento de dados em todos os módulos
 
 ## 🌌 v9.5.0 Universe - Outubro de 2025
 - Nova função `-css` para consulta de status de solicitações no SISREG
@@ -277,6 +307,7 @@ autoreg -interna                # Executa rotina de internação completa
 autoreg -analisa                # Executa rotina de análise/comparação
 autoreg -alta                   # Executa rotina de alta completa
 autoreg -solicita              # Executa rotina de solicitação completa
+autoreg -nota                  # Executa rotina de extração de notas completa
 
 # Workflow completo (todas as funções principais)
 autoreg --all                   # Executa tudo exceto devolvidos
@@ -295,6 +326,9 @@ autoreg -alta
 
 # Rotina de análise/comparação
 autoreg -analisa
+
+# Rotina de extração de notas de prontuário
+autoreg -nota
 
 # Processamento completo automatizado
 autoreg --all && autoreg -dev

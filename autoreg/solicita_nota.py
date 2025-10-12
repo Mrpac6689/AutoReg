@@ -99,6 +99,11 @@ def solicita_nota():
             print(f"📄 Processando {len(df_valido)} registros válidos...")
             for idx, row in df_valido.iterrows():
                 codigo = str(row['prontuario'])  # usando coluna 'prontuario'
+                # Remove ".0" no final se existir
+                if codigo.endswith('.0'):
+                    codigo = codigo[:-2]
+                # Remove qualquer ponto restante
+                codigo = codigo.replace('.', '')
                 print(f"Buscando prontuário para código: {codigo}")
 
                 # Aguarda campo de código de internação
@@ -199,9 +204,18 @@ def solicita_nota():
                 # Retorna à página de prontuários para o próximo código
                 driver.get(f"{caminho_ghosp}:4002/prontuarios")
 
-            # Salva o CSV atualizado
-            df.to_csv(csv_path, index=False)
-            print(f"CSV atualizado com coluna 'dados' salvo em {csv_path}")
+            # Após processar todos os registros, mantém apenas as linhas com 'revisar' = 'sim'
+            print("\n🧹 Limpando registros processados com sucesso...")
+            df_revisar = df[df['revisar'].str.lower() == 'sim']
+            
+            if len(df_revisar) > 0:
+                df_revisar.to_csv(csv_path, index=False)
+                print(f"✅ CSV atualizado. {len(df_revisar)} linha(s) marcada(s) para revisão mantida(s).")
+            else:
+                # Se não há linhas para revisar, cria um CSV vazio com apenas os cabeçalhos
+                df_vazio = pd.DataFrame(columns=df.columns)
+                df_vazio.to_csv(csv_path, index=False)
+                print("✅ Todos os registros foram processados com sucesso! CSV limpo.")
 
         except Exception as e:
             print(f"Erro ao acessar o menu de prontuários ou buscar internação: {e}")
