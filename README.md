@@ -1,9 +1,30 @@
 # AutoReg
 Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 
-## 🌌 Versão 9.5.6 Universe - Outubro de 2025
+## 🌌 Versão 9.5.8 Universe - Outubro de 2025
 
 # Instruções de instalação em INSTALL.md
+
+### 🆕 Novas Funcionalidades v9.5.8
+
+- **Função `-tat`**: Nova função para tratamento de motivos de alta capturados
+  - Substitui "PERMANENCIA POR OUTROS MOTIVOS" por "ALTA MELHORADO"
+  - Preenche campos vazios na coluna "Motivo da Alta" com "ALTA MELHORADO"
+  - Processamento automático do arquivo `pacientes_de_alta.csv`
+- **Função `-clc`**: Nova função para limpeza inteligente de cache
+  - Limpa todos os arquivos da pasta ~/AutoReg
+  - Mantém apenas o arquivo `solicita_inf_aih.csv` protegido
+  - Relatório detalhado de arquivos removidos e mantidos
+- **Workflow `-alta` Aprimorado**: Sequência otimizada incluindo tratamento de dados
+  - Adicionado `-tat` no início para tratamento de motivos de alta
+  - Adicionado `-clc` no final para limpeza automática de cache
+  - Fluxo completo: -tat → -ecsa → -ea → -ar → -eid → -td → -clc
+- **Workflow `-all` Interativo**: Sistema de repetição automatizada
+  - Prompt interativo para definir número de ciclos de execução
+  - Execução sequencial: -interna → -analisa → -alta
+  - Contadores visuais de progresso por ciclo e função
+  - Resumo estatístico completo ao final da execução
+- **Melhorias de Performance**: Otimizações em todo o workflow de processamento
 
 ### 🆕 Novas Funcionalidades v9.5.6
 
@@ -58,11 +79,13 @@ Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 | `-eig`       | extrai_internados_ghosp       | Extrai lista de internados do G-HOSP |
 | `-ci`        | compara_internados            | Compara listas de internados entre sistemas |
 | `-ma`        | motivo_alta                   | Captura motivos de alta no G-HOSP |
+| `-tat`       | trata_altas                   | Trata Motivos de Alta capturados |
 | `-ecsa`      | extrai_codigos_sisreg_alta    | Extrai códigos SISREG para alta |
 | `-ea`        | executa_alta                  | Executa altas no SISREG |
 | `-ar`        | atualiza_restos               | Atualiza arquivo de pacientes restantes |
 | `-eid`       | extrai_internacoes_duplicadas | Identifica internações duplicadas |
 | `-td`        | trata_duplicados              | Processa pacientes com duplicações |
+| `-clc`       | limpa_cache                   | Limpa todos os arquivos da pasta ~/AutoReg, mantendo apenas solicita_inf_aih.csv |
 | `-dev`       | devolvidos                    | Processa solicitações devolvidas |
 | `-p2c`       | pdf2csv                       | Converte PDF de solicitações em CSV |
 | `-ghn`       | ghosp_nota                    | Extrair notas de prontuários Ghosp |
@@ -70,17 +93,27 @@ Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 | `-iga`       | internados_ghosp_avancado     | Extrai pacientes internados no GHOSP com informações adicionais |
 | `-ign`       | internados_ghosp_nota         | Extrai o conteúdo das notas dos prontuários do GHOSP |
 | `-especial`  | [workflow agrupado]           | Extração de dados personalizados do GHOSP |
-| `-sia`       | solicita_inf_aih             | Extrai informações da AIH |
-| `-ssr`       | solicita_sisreg              | Executa Solicitações no Sistema SISREG |
-| `-snt`       | solicita_nota                | Insere numero da solicitação SISREG na nota de prontuário |
-| `-interna`   | [workflow agrupado]           | Executa rotina de internação completa |
-| `-analisa`   | [workflow agrupado]           | Executa rotina de análise/comparação |
-| `-alta`      | [workflow agrupado]           | Executa rotina de alta completa |
+| `-sia`       | solicita_inf_aih              | Extrai informações da AIH |
+| `-ssr`       | solicita_sisreg               | Executa Solicitações no Sistema SISREG |
+| `-snt`       | solicita_nota                 | Insere numero da solicitação SISREG na nota de prontuário |
+| `-interna`   | [workflow agrupado]           | Executa rotina de internação completa: -eci -ip |
+| `-analisa`   | [workflow agrupado]           | Executa rotina de análise/comparação: -eis -eig -ci -ma |
+| `-alta`      | [workflow agrupado]           | Executa rotina de alta completa: -tat -ecsa -ea -ar -eid -td -clc |
 | `-solicita`  | [workflow agrupado]           | Executa rotina de Solicitação: -sia -ssr -snt |
 | `-nota`      | [workflow agrupado]           | Executa rotina de notas: -iga -ign |
-| `--all`      | [workflow completo]           | Executa todas as funções principais |
+| `--all`      | [workflow completo]           | Executa todas as funções principais com repetição interativa |
 
 ### 📜 Histórico de Versões
+
+## 🌌 v9.5.8 Universe - Outubro de 2025
+- Nova função `-tat` para tratamento automatizado de motivos de alta
+- Nova função `-clc` para limpeza inteligente de cache com proteção de arquivos
+- Workflow `-alta` aprimorado com tratamento de dados e limpeza automática
+- Workflow `-all` interativo com sistema de repetição personalizável
+- Contadores visuais de progresso por ciclo e função
+- Relatórios estatísticos detalhados de execução
+- Otimizações de performance em todo o sistema
+- Melhorias na experiência do usuário com prompts interativos
 
 ## 🌌 v9.5.6 Universe - Outubro de 2025
 - Nova função `-iga` para extração avançada de dados de internados do GHOSP
@@ -167,11 +200,13 @@ Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 | `-eig` | `extrai_internados_ghosp` | Extrai lista de internados do G-HOSP |
 | `-ci` | `compara_internados` | Compara listas de internados entre sistemas |
 | `-ma` | `motivo_alta` | Captura motivos de alta no G-HOSP |
+| `-tat` | `trata_altas` | Trata Motivos de Alta capturados |
 | `-ecsa` | `extrai_codigos_sisreg_alta` | Extrai códigos SISREG para alta |
 | `-ea` | `executa_alta` | Executa altas no SISREG |
 | `-ar` | `atualiza_restos` | Atualiza arquivo de pacientes restantes |
 | `-eid` | `extrai_internacoes_duplicadas` | Identifica internações duplicadas |
 | `-td` | `trata_duplicados` | Processa pacientes com duplicações |
+| `-clc` | `limpa_cache` | Limpa cache mantendo arquivos protegidos |
 | `-dev` | `devolvidos` | Processa solicitações devolvidas |
 
 ### 🛠️ **Melhorias Técnicas**
@@ -294,23 +329,25 @@ autoreg --directory
 autoreg -eci                    # Extrai códigos de internação
 autoreg -ip                     # Interna pacientes
 autoreg -ma                     # Captura motivos de alta
+autoreg -tat                    # Trata motivos de alta capturados
+autoreg -clc                    # Limpa cache da pasta ~/AutoReg
 autoreg -snt                    # Insere número da solicitação na nota
 
 # Múltiplas funções em sequência
 autoreg -eci -ip                # Extrai códigos e interna
 autoreg -eis -eig -ci           # Extrai listas e compara
-autoreg -ma -ecsa -ea           # Workflow de alta completo
+autoreg -ma -tat -ecsa -ea      # Workflow de alta completo
 autoreg -sia -ssr -snt          # Workflow de solicitação manual
 
 # Workflows agrupados
 autoreg -interna                # Executa rotina de internação completa
 autoreg -analisa                # Executa rotina de análise/comparação
-autoreg -alta                   # Executa rotina de alta completa
-autoreg -solicita              # Executa rotina de solicitação completa
-autoreg -nota                  # Executa rotina de extração de notas completa
+autoreg -alta                   # Executa rotina de alta completa (inclui -tat e -clc)
+autoreg -solicita               # Executa rotina de solicitação completa
+autoreg -nota                   # Executa rotina de extração de notas completa
 
-# Workflow completo (todas as funções principais)
-autoreg --all                   # Executa tudo exceto devolvidos
+# Workflow completo (todas as funções principais com repetição interativa)
+autoreg --all                   # Executa tudo com prompt de repetição
 
 # Função especializada
 autoreg -dev                    # Processa devolvidos (separadamente)
@@ -321,7 +358,7 @@ autoreg -dev                    # Processa devolvidos (separadamente)
 # Rotina matinal de internação
 autoreg -interna
 
-# Rotina de alta de pacientes
+# Rotina de alta de pacientes (com tratamento e limpeza)
 autoreg -alta
 
 # Rotina de análise/comparação
@@ -330,8 +367,12 @@ autoreg -analisa
 # Rotina de extração de notas de prontuário
 autoreg -nota
 
-# Processamento completo automatizado
-autoreg --all && autoreg -dev
+# Processamento completo automatizado com 3 repetições
+autoreg --all
+# Quando perguntado: 3
+
+# Limpeza manual de cache
+autoreg -clc
 ```
 
 ## 📖 Documentação Completa

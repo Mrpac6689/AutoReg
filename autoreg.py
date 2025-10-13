@@ -2,7 +2,7 @@
 """
 AutoReg - Coordenador de Workflow
 Automatização de Sistemas de Saúde - SISREG & G-HOSP
-Versão 9.5.7 - Outubro de 2025
+Versão 9.5.8 - Outubro de 2025
 Autor: Michel Ribeiro Paes (MrPaC6689)
 """
 
@@ -146,7 +146,7 @@ def mostrar_informacoes():
 ║                    Automatização de Sistemas de Saúde                         ║
 ║                               SISREG & G-HOSP                                 ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║ Versão: 9.5.7                                                                 ║
+║ Versão: 9.5.8                                                                 ║
 ║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║
 ║ Contato: michelrpaes@gmail.com                                                ║
 ║ Repositório: https://github.com/Mrpac6689/AutoReg                             ║
@@ -200,7 +200,7 @@ FUNÇÕES DISPONÍVEIS:
         elif short == '-analisa':
             desc = 'Executa sequência de análise: -eis -eig -ci -ma'
         elif short == '-alta':
-            desc = 'Executa sequência de alta: -ecsa -ea -ar -eid -td'
+            desc = 'Executa sequência de alta: -tat -ecsa -ea -ar -eid -td -clc'
         elif short == '-solicita':
             desc = 'Executa rotina de Solicitação: -sia -ssr -snt'
         elif short == '-nota':
@@ -211,7 +211,7 @@ FUNÇÕES DISPONÍVEIS:
     
     print(f"""
 FUNÇÕES ESPECIAIS:
-    -all   --all                         Executa todas as funções em sequência (exceto devolvidos)
+    -all   --all                         Executa workflow completo: -interna -analisa -alta
     -cfg   --config                      Edita arquivo de configuração
     -dir   --directory                   Abre pasta de arquivos do AutoReg
 
@@ -296,37 +296,97 @@ def executar_funcao(func_name):
         return False
 
 def executar_todas():
-    """Executa todas as funções em sequência, exceto devolvidos"""
-    funcoes_sequencia = [
-        'extrai_codigos_internacao',
-        'interna_pacientes', 
-        'extrai_internados_sisreg',
-        'extrai_internados_ghosp',
-        'compara_internados',
-        'motivo_alta',
-        'trata_altas',  # Incluído para tratar motivos de alta
-        'extrai_codigos_sisreg_alta',
-        'executa_alta',
-        'atualiza_restos',
-        'extrai_internacoes_duplicadas',
-        'trata_duplicados',
-        'limpa_cache'
-        # devolvidos não incluído conforme solicitado
-    ]
+    """Executa todas as funções em sequência: -interna -analisa -alta"""
     
-    print("🔄 Iniciando execução sequencial de todas as funções...")
-    print(f"📋 Total de funções: {len(funcoes_sequencia)}")
+    # Prompt para repetição
+    print("╔═══════════════════════════════════════════════════════════════════════════════╗")
+    print("║                    EXECUÇÃO COMPLETA DO WORKFLOW AUTOREG                      ║")
+    print("╚═══════════════════════════════════════════════════════════════════════════════╝")
+    print("\nEste workflow executará sequencialmente: INTERNA → ANALISA → ALTA")
+    print("Total de 13 funções por ciclo completo\n")
     
-    sucesso = 0
-    for i, func_name in enumerate(funcoes_sequencia, 1):
-        print(f"\n[{i}/{len(funcoes_sequencia)}] ", end="")
-        if executar_funcao(func_name):
-            sucesso += 1
-        else:
-            print(f"❌ Parando execução devido ao erro em {func_name}")
+    while True:
+        try:
+            repeticoes = input("🔄 Quantas vezes deseja executar o workflow completo? (padrão: 1): ").strip()
+            
+            # Se o usuário não digitar nada, assume 1
+            if repeticoes == "":
+                repeticoes = 1
+            else:
+                repeticoes = int(repeticoes)
+            
+            # Valida se é um número positivo
+            if repeticoes < 1:
+                print("❌ Por favor, digite um número maior ou igual a 1.")
+                continue
+            
             break
+        except ValueError:
+            print("❌ Por favor, digite um número válido.")
+        except KeyboardInterrupt:
+            print("\n❌ Operação cancelada pelo usuário.")
+            return
     
-    print(f"\n📊 Execução concluída: {sucesso}/{len(funcoes_sequencia)} funções executadas com sucesso")
+    print(f"\n{'='*80}")
+    print(f"📋 CONFIGURAÇÃO: Executar workflow {repeticoes} vez(es)")
+    print(f"{'='*80}\n")
+    
+    # Loop de repetição
+    for ciclo in range(1, repeticoes + 1):
+        print(f"\n{'#'*80}")
+        print(f"#{'CICLO ' + str(ciclo) + '/' + str(repeticoes):^78}#")
+        print(f"{'#'*80}\n")
+        
+        # Sequência 1: INTERNA
+        print("="*80)
+        print(f"CICLO {ciclo}/{repeticoes} - SEQUÊNCIA 1/3: INTERNAÇÃO (-eci -ip)")
+        print("="*80)
+        seq_interna = ['extrai_codigos_internacao', 'interna_pacientes']
+        for i, func_name in enumerate(seq_interna, 1):
+            print(f"\n[CICLO {ciclo} | INTERNA {i}/{len(seq_interna)}] ", end="")
+            if not executar_funcao(func_name):
+                print(f"❌ Parando execução devido ao erro em {func_name}")
+                return
+        
+        # Sequência 2: ANALISA
+        print("\n" + "="*80)
+        print(f"CICLO {ciclo}/{repeticoes} - SEQUÊNCIA 2/3: ANÁLISE (-eis -eig -ci -ma)")
+        print("="*80)
+        seq_analisa = ['extrai_internados_sisreg', 'extrai_internados_ghosp', 'compara_internados', 'motivo_alta']
+        for i, func_name in enumerate(seq_analisa, 1):
+            print(f"\n[CICLO {ciclo} | ANALISA {i}/{len(seq_analisa)}] ", end="")
+            if not executar_funcao(func_name):
+                print(f"❌ Parando execução devido ao erro em {func_name}")
+                return
+        
+        # Sequência 3: ALTA
+        print("\n" + "="*80)
+        print(f"CICLO {ciclo}/{repeticoes} - SEQUÊNCIA 3/3: ALTA (-tat -ecsa -ea -ar -eid -td -clc)")
+        print("="*80)
+        seq_alta = ['trata_altas', 'extrai_codigos_sisreg_alta', 'executa_alta', 'atualiza_restos', 'extrai_internacoes_duplicadas', 'trata_duplicados', 'limpa_cache']
+        for i, func_name in enumerate(seq_alta, 1):
+            print(f"\n[CICLO {ciclo} | ALTA {i}/{len(seq_alta)}] ", end="")
+            if not executar_funcao(func_name):
+                print(f"❌ Parando execução devido ao erro em {func_name}")
+                return
+        
+        print(f"\n{'='*80}")
+        print(f"✅ CICLO {ciclo}/{repeticoes} CONCLUÍDO COM SUCESSO!")
+        print(f"{'='*80}")
+        
+        # Se não for o último ciclo, mostra mensagem de continuação
+        if ciclo < repeticoes:
+            print(f"\n⏳ Iniciando próximo ciclo ({ciclo + 1}/{repeticoes})...\n")
+    
+    # Resumo final
+    print(f"\n{'#'*80}")
+    print(f"#{'WORKFLOW COMPLETO FINALIZADO':^78}#")
+    print(f"{'#'*80}")
+    total_funcoes = len(seq_interna) + len(seq_analisa) + len(seq_alta)
+    print(f"📊 Ciclos executados: {repeticoes}")
+    print(f"📊 Funções por ciclo: {total_funcoes}")
+    print(f"📊 Total de funções executadas: {total_funcoes * repeticoes}")
+    print(f"{'#'*80}\n")
 
 def main():
     """Função principal do coordenador de workflow"""
@@ -396,7 +456,7 @@ Exemplos de uso:
     parser.add_argument('-analisa', '--analisa', action='store_true',
                        help='Executa sequência de análise: -eis -eig -ci -ma')
     parser.add_argument('-alta', '--alta', action='store_true',
-                       help='Executa sequência de alta: -ecsa -ea -ar -eid -td')
+                       help='Executa sequência de alta: -tat -ecsa -ea -ar -eid -td -clc')
     parser.add_argument('-solicita', '--solicita', action='store_true',
                        help='Executa rotina de Solicitação: -sia -ssr -snt')
     parser.add_argument('-nota', '--nota', action='store_true',
@@ -404,7 +464,7 @@ Exemplos de uso:
     
     # Funções especiais
     parser.add_argument('-all', '--all', action='store_true',
-                       help='Executa todas as funções em sequência (exceto devolvidos)')
+                       help='Executa workflow completo: -interna -analisa -alta')
     parser.add_argument('-cfg', '--config', action='store_true',
                        help='Edita arquivo de configuração config.ini')
     parser.add_argument('-dir', '--directory', action='store_true',
@@ -470,8 +530,8 @@ Exemplos de uso:
         return
 
     if args.alta:
-        print("🔄 Executando sequência de alta (-ecsa -ea -ar -eid -td)...")
-        seq = ['extrai_codigos_sisreg_alta', 'executa_alta', 'atualiza_restos', 'extrai_internacoes_duplicadas', 'trata_duplicados']
+        print("🔄 Executando sequência de alta (-tat -ecsa -ea -ar -eid -td -clc)...")
+        seq = ['trata_altas', 'extrai_codigos_sisreg_alta', 'executa_alta', 'atualiza_restos', 'extrai_internacoes_duplicadas', 'trata_duplicados', 'limpa_cache']
         for i, func_name in enumerate(seq, 1):
             print(f"\n[{i}/{len(seq)}] ", end="")
             if not executar_funcao(func_name):
