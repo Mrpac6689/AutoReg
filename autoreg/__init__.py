@@ -24,3 +24,5 @@ from .solicita_nota import solicita_nota
 from .consulta_solicitacao_sisreg import consulta_solicitacao_sisreg
 from .internados_ghosp_avancado import internados_ghosp_avancado
 from .internados_ghosp_nota import internados_ghosp_nota
+from .trata_altas import trata_altas
+from .limpa_cache import limpa_cache

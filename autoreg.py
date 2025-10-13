@@ -2,7 +2,7 @@
 """
 AutoReg - Coordenador de Workflow
 Automatização de Sistemas de Saúde - SISREG & G-HOSP
-Versão 9.5.6 - Outubro de 2025
+Versão 9.5.7 - Outubro de 2025
 Autor: Michel Ribeiro Paes (MrPaC6689)
 """
 
@@ -24,6 +24,8 @@ from autoreg import executa_alta
 from autoreg import atualiza_restos
 from autoreg import extrai_internacoes_duplicadas
 from autoreg import trata_duplicados
+from autoreg import trata_altas
+from autoreg import limpa_cache
 from autoreg import devolvidos
 from autoreg import pdf2csv
 from autoreg import ghosp_nota  # Adicione este import
@@ -90,6 +92,14 @@ FUNCOES = {
         'func': trata_duplicados,
         'desc': 'Processa pacientes com duplicações'
     },
+    'trata_altas': {
+        'func': trata_altas,
+        'desc': 'Trata Motivos de Alta capturados'
+    },
+    'limpa_cache': {
+        'func': limpa_cache,
+        'desc': 'Limpa todos os arquivos da pasta ~/AutoReg, mantendo apenas solicita_inf_aih.csv'
+    },
     'devolvidos': {
         'func': devolvidos,
         'desc': 'Processa solicitações devolvidas'
@@ -136,7 +146,7 @@ def mostrar_informacoes():
 ║                    Automatização de Sistemas de Saúde                         ║
 ║                               SISREG & G-HOSP                                 ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║ Versão: 9.5.6                                                                 ║
+║ Versão: 9.5.7                                                                 ║
 ║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║
 ║ Contato: michelrpaes@gmail.com                                                ║
 ║ Repositório: https://github.com/Mrpac6689/AutoReg                             ║
@@ -162,6 +172,8 @@ FUNÇÕES DISPONÍVEIS:
         ('-ar', '--atualiza-restos', 'atualiza_restos'),
         ('-eid', '--extrai-internacoes-duplicadas', 'extrai_internacoes_duplicadas'),
         ('-td', '--trata-duplicados', 'trata_duplicados'),
+        ('-tat', '--trata-altas', 'trata_altas'),
+        ('-clc', '--limpa-cache', 'limpa_cache'),
         ('-dev', '--devolvidos', 'devolvidos'),
         ('-p2c', '--pdf2csv', 'pdf2csv'),
         ('-ghn', '--ghosp-nota', 'ghosp_nota'),
@@ -292,11 +304,13 @@ def executar_todas():
         'extrai_internados_ghosp',
         'compara_internados',
         'motivo_alta',
+        'trata_altas',  # Incluído para tratar motivos de alta
         'extrai_codigos_sisreg_alta',
         'executa_alta',
         'atualiza_restos',
         'extrai_internacoes_duplicadas',
-        'trata_duplicados'
+        'trata_duplicados',
+        'limpa_cache'
         # devolvidos não incluído conforme solicitado
     ]
     
@@ -351,6 +365,10 @@ Exemplos de uso:
                        help='Identifica internações duplicadas')
     parser.add_argument('-td', '--trata-duplicados', action='store_true',
                        help='Processa pacientes com duplicações')
+    parser.add_argument('-tat', '--trata-altas', action='store_true',
+                       help='Trata Motivos de Alta capturados')
+    parser.add_argument('-clc', '--limpa-cache', action='store_true',
+                       help='Limpa todos os arquivos da pasta ~/AutoReg, mantendo apenas solicita_inf_aih.csv')
     parser.add_argument('-dev', '--devolvidos', action='store_true',
                        help='Processa solicitações devolvidas')
     parser.add_argument('-p2c', '--pdf2csv', nargs='?', metavar='PDF', help='Converte PDF de solicitações em CSV')
@@ -412,6 +430,8 @@ Exemplos de uso:
         'atualiza_restos': 'atualiza_restos',
         'extrai_internacoes_duplicadas': 'extrai_internacoes_duplicadas',
         'trata_duplicados': 'trata_duplicados',
+        'trata_altas': 'trata_altas',
+        'limpa_cache': 'limpa_cache',
         'devolvidos': 'devolvidos',
         'pdf2csv': 'pdf2csv',
         'ghosp_nota': 'ghosp_nota',
