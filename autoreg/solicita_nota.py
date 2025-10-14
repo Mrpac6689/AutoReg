@@ -50,7 +50,7 @@ def solicita_nota():
         from selenium.webdriver.common.action_chains import ActionChains
 
         try:
-            print("Localizando menu principal...")
+            '''print("Localizando menu principal...")
             menu_principal = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, '//*[@id="menu-drop"]/ul[1]/li[1]/a'))
             )
@@ -68,7 +68,7 @@ def solicita_nota():
             #link_prontuarios = driver.find_element(By.CSS_SELECTOR, "#menu-drop > ul > li:first-child > ul > li.nobr > a[href='/prontuarios']")
             #link_prontuarios.click()
             #print("Acesso ao prontuário realizado!")
-            driver.get(f"{caminho_ghosp}:4002/prontuarios")
+            driver.get(f"{caminho_ghosp}:4002/prontuarios")'''
 
             import pandas as pd
             user_dir = os.path.expanduser('~/AutoReg')
@@ -104,20 +104,13 @@ def solicita_nota():
                     codigo = codigo[:-2]
                 # Remove qualquer ponto restante
                 codigo = codigo.replace('.', '')
-                print(f"Buscando prontuário para código: {codigo}")
+                print(f"Acessando prontuário: {codigo}")
 
-                # Aguarda campo de código de internação
-                campo_codigo = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, '//*[@id="prontuario"]'))
-                )
-                campo_codigo.clear()
-                campo_codigo.send_keys(codigo)
-
-                # Clica no botão de busca
-                botao_busca = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, '//*[@id="cabecalho"]/form/fieldset/div[10]/div/input'))
-                )
-                botao_busca.click()
+                # Acessa diretamente a URL do prontuário
+                driver.get(f"{caminho_ghosp}:4002/historicopacs/{codigo}")
+                
+                # Aguarda a página carregar
+                time.sleep(1)
 
                 # Verifica se o diálogo de justificativa de acesso aparece
                 try:
@@ -201,9 +194,6 @@ def solicita_nota():
                 except Exception as e:
                     print(f"Erro ao adicionar lembrete para código {codigo}: {e}")
 
-                # Retorna à página de prontuários para o próximo código
-                driver.get(f"{caminho_ghosp}:4002/prontuarios")
-
             # Após processar todos os registros, mantém apenas as linhas com 'revisar' = 'sim'
             print("\n🧹 Limpando registros processados com sucesso...")
             df_revisar = df[df['revisar'].str.lower() == 'sim']
@@ -216,6 +206,132 @@ def solicita_nota():
                 df_vazio = pd.DataFrame(columns=df.columns)
                 df_vazio.to_csv(csv_path, index=False)
                 print("✅ Todos os registros foram processados com sucesso! CSV limpo.")
+            
+            # Verificação adicional: processa linhas com CNS vazio
+            print("\n🔍 Verificando linhas com CNS vazio...")
+            
+            # Relê o CSV atualizado
+            df_revisar = pd.read_csv(csv_path)
+            
+            # Verifica se a coluna 'cns' existe
+            if 'cns' not in df_revisar.columns:
+                print("⚠️  Coluna 'cns' não encontrada no CSV. Pulando verificação de CNS.")
+            elif len(df_revisar) == 0:
+                print("ℹ️  Nenhum registro para verificar CNS.")
+            else:
+                # Filtra linhas onde CNS está vazio (NaN, None, string vazia ou só espaços)
+                mask_cns_vazio = df_revisar['cns'].isna() | (df_revisar['cns'].astype(str).str.strip() == '') | (df_revisar['cns'].astype(str) == 'nan')
+                df_cns_vazio = df_revisar[mask_cns_vazio]
+                
+                if len(df_cns_vazio) > 0:
+                    print(f"📝 Encontradas {len(df_cns_vazio)} linha(s) com CNS vazio. Inserindo lembretes...")
+                    
+                    indices_processados = []
+                    
+                    for idx, row in df_cns_vazio.iterrows():
+                        codigo = str(row['prontuario'])  # usando coluna 'prontuario'
+                        # Remove ".0" no final se existir
+                        if codigo.endswith('.0'):
+                            codigo = codigo[:-2]
+                        # Remove qualquer ponto restante
+                        codigo = codigo.replace('.', '')
+                        print(f"Acessando prontuário para lembrete CNS: {codigo}")
+
+                        try:
+                            # Acessa diretamente a URL do prontuário
+                            driver.get(f"{caminho_ghosp}:4002/historicopacs/{codigo}")
+                            
+                            # Aguarda a página carregar
+                            time.sleep(1)
+
+                            # Verifica se o diálogo de justificativa de acesso aparece
+                            try:
+                                dialog = WebDriverWait(driver, 1).until(
+                                    EC.presence_of_element_located((By.XPATH, '//div[@id="form_justificativa"]'))
+                                )
+                                print("Diálogo de justificativa encontrado!")
+
+                                # Seleciona 'Enfermagem' no dropdown
+                                dropdown = WebDriverWait(driver, 5).until(
+                                    EC.presence_of_element_located((By.XPATH, '//*[@id="acesso_prontuario_tabela_id"]'))
+                                )
+                                from selenium.webdriver.support.ui import Select
+                                select = Select(dropdown)
+                                select.select_by_visible_text("Enfermagem")
+                                print("Opção 'Enfermagem' selecionada.")
+
+                                # Preenche justificativa com 'NIR'
+                                justificativa = WebDriverWait(driver, 5).until(
+                                    EC.presence_of_element_located((By.XPATH, '//*[@id="acesso_prontuario_justificativa"]'))
+                                )
+                                justificativa.clear()
+                                justificativa.send_keys("NIR")
+                                print("Justificativa preenchida com 'NIR'.")
+
+                                # Clica em salvar
+                                salvar_btn = WebDriverWait(driver, 5).until(
+                                    EC.element_to_be_clickable((By.XPATH, '//*[@id="new_acesso_prontuario"]/div[3]/input'))
+                                )
+                                salvar_btn.click()
+                                print("Botão 'Salvar' clicado.")
+
+                                # Aguarda 1 segundo
+                                time.sleep(1)
+
+                                # Clica no botão de confirmação
+                                confirmar_btn = WebDriverWait(driver, 5).until(
+                                    EC.element_to_be_clickable((By.XPATH, '/html/body/div[8]/div[11]/div/button/span'))
+                                )
+                                confirmar_btn.click()
+                                print("Botão de confirmação clicado.")
+                            except Exception as e:
+                                print(f"Diálogo de justificativa não encontrado ou erro no preenchimento: {e}")
+
+                            # Aguarda um momento para garantir que a página carregou após o diálogo
+                            time.sleep(1)
+
+                            # Clica no botão para adicionar novo lembrete
+                            print("Clicando no botão de novo lembrete...")
+                            botao_novo_lembrete = WebDriverWait(driver, 10).until(
+                                EC.element_to_be_clickable((By.XPATH, '//*[@id="paciente"]/div[3]/div/h6/small/a'))
+                            )
+                            botao_novo_lembrete.click()
+
+                            # Aguarda o campo de lembrete aparecer
+                            campo_lembrete = WebDriverWait(driver, 10).until(
+                                EC.presence_of_element_located((By.XPATH, '//*[@id="prlembrete_lembrete"]'))
+                            )
+
+                            # Texto do lembrete para CNS faltante
+                            texto_lembrete_cns = "FALTA CNS/CPF, FAVOR PROVIDENCIAR PARA SOLICITAÇÃO DE AIH"
+                            print(f"Inserindo lembrete CNS: {texto_lembrete_cns}")
+                            campo_lembrete.clear()  # Limpa o campo antes de inserir
+                            campo_lembrete.send_keys(texto_lembrete_cns)
+
+                            # Clica no botão para salvar o lembrete
+                            botao_salvar = WebDriverWait(driver, 10).until(
+                                EC.element_to_be_clickable((By.XPATH, '//*[@id="janela_modal"]/form/div[3]/input[1]'))
+                            )
+                            botao_salvar.click()
+                            print("Lembrete CNS salvo com sucesso!")
+                            
+                            # Aguarda um momento para garantir que o lembrete foi salvo
+                            time.sleep(1)
+                            
+                            # Marca o índice para remoção
+                            indices_processados.append(idx)
+
+                        except Exception as e:
+                            print(f"Erro ao adicionar lembrete CNS para código {codigo}: {e}")
+                    
+                    # Remove as linhas processadas do CSV
+                    if indices_processados:
+                        print(f"\n🗑️  Removendo {len(indices_processados)} linha(s) com lembretes CNS inseridos...")
+                        df_revisar = df_revisar.drop(index=indices_processados)
+                        df_revisar.to_csv(csv_path, index=False)
+                        print(f"✅ CSV atualizado. {len(df_revisar)} linha(s) restante(s).")
+                else:
+                    print("✅ Nenhuma linha com CNS vazio encontrada.")
 
         except Exception as e:
             print(f"Erro ao acessar o menu de prontuários ou buscar internação: {e}")

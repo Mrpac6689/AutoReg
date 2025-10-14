@@ -50,23 +50,23 @@ def internados_ghosp_nota():
         from selenium.webdriver.common.action_chains import ActionChains
 
         try:
-            print("Localizando menu principal...")
-            menu_principal = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, '//*[@id="menu-drop"]/ul[1]/li[1]/a'))
-            )
-            ActionChains(driver).move_to_element(menu_principal).perform()
-            time.sleep(1)
+            #print("Localizando menu principal...")
+            #menu_principal = WebDriverWait(driver, 10).until(
+            #    EC.presence_of_element_located((By.XPATH, '//*[@id="menu-drop"]/ul[1]/li[1]/a'))
+            #)
+            #ActionChains(driver).move_to_element(menu_principal).perform()
+            #time.sleep(1)
 
             # Torna o submenu visível via JS
-            driver.execute_script(
-                "document.querySelector('#menu-drop > ul > li:first-child > ul').style.display = 'block';"
-            )
-            time.sleep(1)
+            #driver.execute_script(
+            #    "document.querySelector('#menu-drop > ul > li:first-child > ul').style.display = 'block';"
+            #)
+            #time.sleep(1)
 
             # Clica no link 'Prontuários'
-            print("Clicando no link Prontuários...")
+            #print("Clicando no link Prontuários...")
 
-            driver.get(f"{caminho_ghosp}:4002/prontuarios")
+            #driver.get(f"{caminho_ghosp}:4002/prontuarios")
 
             import pandas as pd
             user_dir = os.path.expanduser('~/AutoReg')
@@ -91,29 +91,16 @@ def internados_ghosp_nota():
             total_prontuarios = len(df)
             for idx, row in df.iterrows():
                 codigo = str(row['internacao'])  # usa a coluna 'internacao'
-                print(f"[{idx+1}/{total_prontuarios}] Buscando prontuário para código: {codigo}")
+                print(f"[{idx+1}/{total_prontuarios}] Acessando prontuário para código: {codigo}")
 
-                # Aguarda campo de código de internação
-                campo_codigo = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, '//*[@id="intern_id"]'))
-                )
-                campo_codigo.clear()
-                campo_codigo.send_keys(codigo)
-
-                # Clica no botão de busca
-                botao_busca = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, '//*[@id="cabecalho"]/form/fieldset/div[10]/div/input'))
-                )
-                botao_busca.click()
-
-                # Clica no link para ver detalhes do paciente
+                # Acessa diretamente a URL do histórico do paciente
                 try:
-                    link_paciente = WebDriverWait(driver, 10).until(
-                        EC.element_to_be_clickable((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/p/a'))
-                    )
-                    link_paciente.click()
+                    driver.get(f"{caminho_ghosp}:4002/pr/interns/{codigo}")
+                    
+                    # Aguarda a página carregar
+                    time.sleep(1)
 
-                    # Na nova página, obtém o setor do span
+                    # Obtém o setor do span
                     setor_span = WebDriverWait(driver, 10).until(
                         EC.presence_of_element_located((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/p[1]/span[2]'))
                     )
@@ -132,22 +119,18 @@ def internados_ghosp_nota():
                         )
                         lembretes_texto = lembretes_elem.get_attribute('innerText')
                         lembretes_texto = lembretes_texto.replace('\n', ' ').replace('\r', ' ')
-                        print(f"Conteúdo de lembretes para código {codigo} (sem quebras de linha):")
-                        print(lembretes_texto)
+                        print(f"Conteúdo de lembretes extraído")
                         df.at[idx, 'dados'] = lembretes_texto
                     except Exception as e:
-                        print(f"Não foi possível extrair lembretes para código {codigo}: {e}")
+                        print(f"Não foi possível extrair lembretes: {e}")
                         df.at[idx, 'dados'] = ''
 
                 except Exception as e:
-                    print(f"Erro ao obter setor para código {codigo}: {e}")
+                    print(f"Erro ao acessar prontuário {codigo}: {e}")
                     if 'setor' not in df.columns:
                         df['setor'] = ''
                     df.at[idx, 'setor'] = ''
                     df.at[idx, 'dados'] = ''
-
-                # Retorna à página de prontuários para o próximo código
-                driver.get(f"{caminho_ghosp}:4002/prontuarios")
 
             # Ordena o DataFrame pelo setor antes de salvar
             print("\nOrdenando dados por setor...")

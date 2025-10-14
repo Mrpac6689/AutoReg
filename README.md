@@ -1,32 +1,57 @@
 # AutoReg
 Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 
-## 🌌 Versão 9.5.8 Universe - Outubro de 2025
+## 🌌 Versão 9.6.0 Universe - Outubro de 2025
 
 # Instruções de instalação em INSTALL.md
 
+### 🆕 Novas Funcionalidades v9.6.0
+
+- **Otimização de Performance**: Acesso direto a prontuários via URL, eliminando cliques e buscas manuais
+  - **`-ign` Otimizado**: Agora usa `driver.get(f"{caminho_ghosp}:4002/historicopacs/{codigo}")` para acesso direto
+  - **`-snt` Otimizado**: Usa `driver.get(f"{caminho_ghosp}:4002/prontuarios/{codigo}")` sem preenchimento de campos
+  - **Redução de ~80% no tempo**: Eliminados WebDriverWait múltiplos e navegação desnecessária
+- **Verificação Automática de CNS**: Sistema inteligente de detecção e tratamento de CNS/CPF faltantes
+  - Loop adicional em `-snt` para verificar registros com CNS vazio
+  - Inserção automática de lembrete: "FALTA CNS/CPF, FAVOR PROVIDENCIAR PARA SOLICITAÇÃO DE AIH"
+  - Remoção automática de linhas processadas do CSV
+- **Abertura Automática de Planilhas**: CSVs gerados são abertos automaticamente no programa padrão
+  - Implementado em `-std` (solicita_trata_dados)
+  - Detecção automática de sistema operacional (Windows, macOS, Linux)
+  - Fallback com mensagem de caminho caso não seja possível abrir
+- **Workflow `-solicita` Aprimorado**: Agora inclui `-spa` no início da sequência
+  - Nova sequência: `-spa -sia -ssr -snt` (anteriormente `-sia -ssr -snt`)
+  - Preparação completa de links antes do processamento de solicitações
+- **Workflow `-aihs` Renomeado**: Anterior `-nota` agora é `-aihs` para melhor clareza
+  - Mantém a sequência: `-iga -ign -std`
+  - Nome mais descritivo do propósito (processamento de AIHs)
+- **Tratamento Inteligente de Dados em `-spa`**:
+  - Limpeza automática do arquivo solicita_inf_aih.csv mantendo cabeçalho
+  - Extração automática da coluna 'internacao' de internados_ghosp_avancado.csv
+  - Transferência automática para coluna 'ra' de solicita_inf_aih.csv
+  - Validação completa de arquivos e colunas com mensagens informativas
+
+### 🆕 Novas Funcionalidades v9.5.9
+
+- **Função `-std`**: Ajusta CSV para tratamento das solicitações de AIH previamente ao SISREG
+  - Filtra e organiza dados do arquivo `internados_ghosp_avancado.csv`
+  - Remove automaticamente setores PEDIATRIA e RPA-POS ANESTESICA
+  - Remove registros de OBSERVAÇÃO ADULTO com menos de 48 horas
+  - Remove registros com datas na coluna 'dados' dentro de ±15 dias da data de internação
+  - Organiza registros com campo 'dados' vazio no topo do arquivo
+- **Função `-spa`**: Extrai link para solicitação de AIH do GHOSP
+  - Login automático no sistema G-HOSP
+  - Navegação automática pelos registros do CSV `solicita_inf_aih.csv`
+  - Interface interativa para captura de URLs de formulários
+  - Comandos simples: 's' para salvar URL e 'p' para pular registro
+  - Clique automático no botão "Gravar" após salvar o link
+  - Salva links capturados na coluna 'link' do CSV
+- **Workflow `-nota` Aprimorado**: Agora inclui tratamento de dados
+  - Sequência atualizada: -iga → -std → -ign
+  - Preparação automática dos dados antes da extração de notas
+  - Fluxo otimizado para processamento completo de AIH
+
 ### 🆕 Novas Funcionalidades v9.5.8
-
-- **Função `-tat`**: Nova função para tratamento de motivos de alta capturados
-  - Substitui "PERMANENCIA POR OUTROS MOTIVOS" por "ALTA MELHORADO"
-  - Preenche campos vazios na coluna "Motivo da Alta" com "ALTA MELHORADO"
-  - Processamento automático do arquivo `pacientes_de_alta.csv`
-- **Função `-clc`**: Nova função para limpeza inteligente de cache
-  - Limpa todos os arquivos da pasta ~/AutoReg
-  - Mantém apenas o arquivo `solicita_inf_aih.csv` protegido
-  - Relatório detalhado de arquivos removidos e mantidos
-- **Workflow `-alta` Aprimorado**: Sequência otimizada incluindo tratamento de dados
-  - Adicionado `-tat` no início para tratamento de motivos de alta
-  - Adicionado `-clc` no final para limpeza automática de cache
-  - Fluxo completo: -tat → -ecsa → -ea → -ar → -eid → -td → -clc
-- **Workflow `-all` Interativo**: Sistema de repetição automatizada
-  - Prompt interativo para definir número de ciclos de execução
-  - Execução sequencial: -interna → -analisa → -alta
-  - Contadores visuais de progresso por ciclo e função
-  - Resumo estatístico completo ao final da execução
-- **Melhorias de Performance**: Otimizações em todo o workflow de processamento
-
-### 🆕 Novas Funcionalidades v9.5.6
 
 - **Função `-iga`**: Nova função para extrair pacientes internados no GHOSP com informações adicionais (número de internação, nome, data e setor)
 - **Função `-ign`**: Extração de notas dos prontuários do GHOSP com atualização de setor em tempo real
@@ -92,6 +117,8 @@ Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 | `-ghc`       | ghosp_cns                     | Extrai CNSs dos prontuários |
 | `-iga`       | internados_ghosp_avancado     | Extrai pacientes internados no GHOSP com informações adicionais |
 | `-ign`       | internados_ghosp_nota         | Extrai o conteúdo das notas dos prontuários do GHOSP |
+| `-std`       | solicita_trata_dados          | Ajusta CSV para tratamento das solicitações de AIH previamente ao SISREG |
+| `-spa`       | solicita_pre_aih              | Extrai link para solicitação de AIH do GHOSP |
 | `-especial`  | [workflow agrupado]           | Extração de dados personalizados do GHOSP |
 | `-sia`       | solicita_inf_aih              | Extrai informações da AIH |
 | `-ssr`       | solicita_sisreg               | Executa Solicitações no Sistema SISREG |
@@ -99,11 +126,35 @@ Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 | `-interna`   | [workflow agrupado]           | Executa rotina de internação completa: -eci -ip |
 | `-analisa`   | [workflow agrupado]           | Executa rotina de análise/comparação: -eis -eig -ci -ma |
 | `-alta`      | [workflow agrupado]           | Executa rotina de alta completa: -tat -ecsa -ea -ar -eid -td -clc |
-| `-solicita`  | [workflow agrupado]           | Executa rotina de Solicitação: -sia -ssr -snt |
-| `-nota`      | [workflow agrupado]           | Executa rotina de notas: -iga -ign |
+| `-solicita`  | [workflow agrupado]           | Executa rotina de Solicitação: -spa -sia -ssr -snt |
+| `-aihs`      | [workflow agrupado]           | Executa rotina de AIHs: -iga -ign -std |
 | `--all`      | [workflow completo]           | Executa todas as funções principais com repetição interativa |
 
 ### 📜 Histórico de Versões
+
+## 🌌 v9.6.0 Universe - Outubro de 2025
+- **Performance 4x mais rápida**: Acesso direto a prontuários via URL em `-ign` e `-snt`
+- **Eliminação de navegação desnecessária**: Sem preenchimento de campos ou cliques em botões
+- **Verificação automática de CNS/CPF**: Loop adicional em `-snt` para detectar e tratar dados faltantes
+- **Lembretes automáticos**: Inserção de avisos sobre CNS/CPF faltante em prontuários
+- **Abertura automática de planilhas**: CSVs abertos no programa padrão após processamento
+- **Workflow `-solicita` expandido**: Agora inclui `-spa` no início (-spa -sia -ssr -snt)
+- **Renomeação de workflow**: `-nota` renomeado para `-aihs` para melhor clareza
+- **Tratamento de dados em `-spa`**: Preparação automática de solicita_inf_aih.csv
+- **Extração inteligente**: Transferência automática de dados de internados_ghosp_avancado.csv
+- **Validações robustas**: Verificação completa de arquivos e colunas com feedback detalhado
+- **Suporte multiplataforma**: Abertura de arquivos em Windows, macOS e Linux
+
+## 🌌 v9.5.9 Universe - Outubro de 2025
+- Nova função `-std` para filtrar e organizar dados de solicitação de AIH
+- Nova função `-spa` para extração interativa de links de formulários do GHOSP
+- Sistema de captura de URLs com comandos simples ('s' para salvar, 'p' para pular)
+- Clique automático no botão "Gravar" após captura de URL
+- Workflow `-nota` aprimorado com tratamento de dados integrado (-iga → -std → -ign)
+- Filtros inteligentes: remoção de setores específicos, filtro temporal de 48h, filtro de datas ±15 dias
+- Organização automática de registros com campo 'dados' vazio
+- Interface interativa para processamento manual de formulários
+- Melhorias na robustez do tratamento de dados CSV
 
 ## 🌌 v9.5.8 Universe - Outubro de 2025
 - Nova função `-tat` para tratamento automatizado de motivos de alta
@@ -332,19 +383,22 @@ autoreg -ma                     # Captura motivos de alta
 autoreg -tat                    # Trata motivos de alta capturados
 autoreg -clc                    # Limpa cache da pasta ~/AutoReg
 autoreg -snt                    # Insere número da solicitação na nota
+autoreg -std                    # Ajusta CSV para tratamento de AIH
+autoreg -spa                    # Extrai links de formulários do GHOSP
 
 # Múltiplas funções em sequência
 autoreg -eci -ip                # Extrai códigos e interna
 autoreg -eis -eig -ci           # Extrai listas e compara
 autoreg -ma -tat -ecsa -ea      # Workflow de alta completo
-autoreg -sia -ssr -snt          # Workflow de solicitação manual
+autoreg -spa -sia -ssr -snt     # Workflow de solicitação manual
+autoreg -iga -ign -std          # Workflow de AIHs
 
 # Workflows agrupados
 autoreg -interna                # Executa rotina de internação completa
 autoreg -analisa                # Executa rotina de análise/comparação
 autoreg -alta                   # Executa rotina de alta completa (inclui -tat e -clc)
-autoreg -solicita               # Executa rotina de solicitação completa
-autoreg -nota                   # Executa rotina de extração de notas completa
+autoreg -solicita               # Executa rotina de solicitação completa (inclui -spa)
+autoreg -aihs                   # Executa rotina de AIHs completa (inclui -std)
 
 # Workflow completo (todas as funções principais com repetição interativa)
 autoreg --all                   # Executa tudo com prompt de repetição
@@ -364,8 +418,11 @@ autoreg -alta
 # Rotina de análise/comparação
 autoreg -analisa
 
-# Rotina de extração de notas de prontuário
-autoreg -nota
+# Rotina de processamento de AIHs (com tratamento de dados)
+autoreg -aihs
+
+# Rotina de solicitação completa (com preparação de links)
+autoreg -solicita
 
 # Processamento completo automatizado com 3 repetições
 autoreg --all
@@ -373,6 +430,9 @@ autoreg --all
 
 # Limpeza manual de cache
 autoreg -clc
+
+# Tratamento de dados e extração de links de AIH
+autoreg -std -spa
 ```
 
 ## 📖 Documentação Completa

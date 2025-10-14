@@ -2,7 +2,7 @@
 """
 AutoReg - Coordenador de Workflow
 Automatização de Sistemas de Saúde - SISREG & G-HOSP
-Versão 9.5.8 - Outubro de 2025
+Versão 9.6.0 - Outubro de 2025
 Autor: Michel Ribeiro Paes (MrPaC6689)
 """
 
@@ -34,9 +34,11 @@ from autoreg import ghosp_especial  # Importa a função ghosp_especial
 from autoreg import solicita_inf_aih  # Importa a função solicita_inf_aih
 from autoreg import solicita_sisreg  # Importa a função solicita_sisreg
 from autoreg import solicita_nota  # Importa a função solicita_nota
+from autoreg import solicita_pre_aih  # Importa a função solicita_pre_aih
 from autoreg import consulta_solicitacao_sisreg  # Importa a função consulta_solicitacao_sisreg
 from autoreg import internados_ghosp_avancado  # Importa a função internados_ghosp_avancado
 from autoreg import internados_ghosp_nota  # Importa a função internados_ghosp_nota
+from autoreg import solicita_trata_dados  # Importa a função solicita_trata_dados
 
 # Dicionário com as funções e suas descrições
 FUNCOES = {
@@ -124,6 +126,10 @@ FUNCOES = {
         'func': solicita_inf_aih,
         'desc': 'Extrai informações da AIH'
     },
+    'solicita_pre_aih': {
+        'func': solicita_pre_aih,
+        'desc': 'Extrai link para solicitação de aih do GHOSP'
+    },
     'solicita_sisreg': {
         'func': solicita_sisreg,
         'desc': 'Executa Solicitações no Sistema SISREG'
@@ -135,6 +141,10 @@ FUNCOES = {
     'consulta_solicitacao_sisreg': {
         'func': consulta_solicitacao_sisreg,
         'desc': 'Consulta o estado da Solicitação no sistema SISREG'
+    },
+    'solicita_trata_dados': {
+        'func': solicita_trata_dados,
+        'desc': 'Ajusta CSV para tratamento das solicitações de AIH previamente ao SISREG'
     }
 }
 
@@ -146,7 +156,7 @@ def mostrar_informacoes():
 ║                    Automatização de Sistemas de Saúde                         ║
 ║                               SISREG & G-HOSP                                 ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║ Versão: 9.5.8                                                                 ║
+║ Versão: 9.6.0                                                                 ║
 ║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║
 ║ Contato: michelrpaes@gmail.com                                                ║
 ║ Repositório: https://github.com/Mrpac6689/AutoReg                             ║
@@ -182,14 +192,16 @@ FUNÇÕES DISPONÍVEIS:
         ('-ign', '--internados-ghosp-nota', 'internados_ghosp_nota'),
         ('-especial', '--especial', 'ghosp_especial'),
         ('-sia', '--solicita-inf-aih', 'solicita_inf_aih'),
+        ('-spa', '--solicita-pre-aih', 'solicita_pre_aih'),
         ('-ssr', '--solicita-sisreg', 'solicita_sisreg'),
         ('-snt', '--solicita-nota', 'solicita_nota'),
+        ('-std', '--solicita-trata-dados', 'solicita_trata_dados'),
         ('-css', '--consulta-solicitacao-sisreg', 'consulta_solicitacao_sisreg'),
         ('-interna', '--interna', None),
         ('-analisa', '--analisa', None),
         ('-alta', '--alta', None),
         ('-solicita', '--solicita', None),
-        ('-nota', '--nota', None)
+        ('-aihs', '--aihs', None)
     ]
     
     for short, long, func_name in flags:
@@ -202,9 +214,9 @@ FUNÇÕES DISPONÍVEIS:
         elif short == '-alta':
             desc = 'Executa sequência de alta: -tat -ecsa -ea -ar -eid -td -clc'
         elif short == '-solicita':
-            desc = 'Executa rotina de Solicitação: -sia -ssr -snt'
-        elif short == '-nota':
-            desc = 'Executa rotina de notas: -iga -ign'
+            desc = 'Executa rotina de Solicitação: -spa -sia -ssr -snt'
+        elif short == '-aihs':
+            desc = 'Executa rotina de notas: -iga -ign -std'
         else:
             desc = ''
         print(f"    {short:<6} {long:<32} {desc}")
@@ -444,10 +456,14 @@ Exemplos de uso:
                        help='Extração de dados personalizados do GHOSP')
     parser.add_argument('-sia', '--solicita-inf-aih', action='store_true',
                        help='Extrai informações da AIH')
+    parser.add_argument('-spa', '--solicita-pre-aih', action='store_true',
+                       help='Extrai link para solicitação de aih do GHOSP')
     parser.add_argument('-ssr', '--solicita-sisreg', action='store_true',
                        help='Executa Solicitações no Sistema SISREG')
     parser.add_argument('-snt', '--solicita-nota', action='store_true',
                        help='Insere numero da solicitação SISREG na nota de prontuário')
+    parser.add_argument('-std', '--solicita-trata-dados', action='store_true',
+                       help='Ajusta CSV para tratamento das solicitações de AIH previamente ao SISREG')
     parser.add_argument('-css', '--consulta-solicitacao-sisreg', action='store_true',
                        help='Consulta o estado da Solicitação no sistema SISREG')
     # Novas funções de workflow
@@ -458,9 +474,9 @@ Exemplos de uso:
     parser.add_argument('-alta', '--alta', action='store_true',
                        help='Executa sequência de alta: -tat -ecsa -ea -ar -eid -td -clc')
     parser.add_argument('-solicita', '--solicita', action='store_true',
-                       help='Executa rotina de Solicitação: -sia -ssr -snt')
-    parser.add_argument('-nota', '--nota', action='store_true',
-                       help='Executa rotina de notas: -iga -ign')
+                       help='Executa rotina de Solicitação: -spa -sia -ssr -snt')
+    parser.add_argument('-aihs', '--aihs', action='store_true',
+                       help='Executa rotina de notas: -iga -ign -std')
     
     # Funções especiais
     parser.add_argument('-all', '--all', action='store_true',
@@ -500,8 +516,10 @@ Exemplos de uso:
         'internados_ghosp_avancado': 'internados_ghosp_avancado',
         'internados_ghosp_nota': 'internados_ghosp_nota',
         'solicita_inf_aih': 'solicita_inf_aih',
+        'solicita_pre_aih': 'solicita_pre_aih',
         'solicita_sisreg': 'solicita_sisreg',
         'solicita_nota': 'solicita_nota',
+        'solicita_trata_dados': 'solicita_trata_dados',
         'consulta_solicitacao_sisreg': 'consulta_solicitacao_sisreg'
     }
     
@@ -540,8 +558,8 @@ Exemplos de uso:
         return
 
     if args.solicita:
-        print("🔄 Executando rotina de Solicitação (-sia -ssr -snt)...")
-        seq = ['solicita_inf_aih', 'solicita_sisreg', 'solicita_nota']
+        print("🔄 Executando rotina de Solicitação (-spa -sia -ssr -snt)...")
+        seq = ['solicita_pre_aih', 'solicita_inf_aih', 'solicita_sisreg', 'solicita_nota']
         for i, func_name in enumerate(seq, 1):
             print(f"\n[{i}/{len(seq)}] ", end="")
             if not executar_funcao(func_name):
@@ -549,9 +567,9 @@ Exemplos de uso:
                 break
         return
 
-    if args.nota:
-        print("🔄 Executando rotina de notas (-iga -ign)...")
-        seq = ['internados_ghosp_avancado', 'internados_ghosp_nota']
+    if args.aihs:
+        print("🔄 Executando rotina de AIHS (-iga -ign -std)...")
+        seq = ['internados_ghosp_avancado', 'internados_ghosp_nota', 'solicita_trata_dados']
         for i, func_name in enumerate(seq, 1):
             print(f"\n[{i}/{len(seq)}] ", end="")
             if not executar_funcao(func_name):

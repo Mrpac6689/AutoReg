@@ -26,3 +26,5 @@ from .internados_ghosp_avancado import internados_ghosp_avancado
 from .internados_ghosp_nota import internados_ghosp_nota
 from .trata_altas import trata_altas
 from .limpa_cache import limpa_cache
+from .solicita_trata_dados import solicita_trata_dados
+from .solicita_pre_aih import solicita_pre_aih
