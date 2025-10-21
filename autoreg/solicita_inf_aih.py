@@ -90,6 +90,9 @@ def solicita_inf_aih():
                     EC.presence_of_element_located((By.XPATH, '//*[@id="campo_personalizado_laudo_aih_principais_sinais_e_sintomas_clinicos"]'))
                 )
                 informacoes = informacoes_element.text
+                # Trata o texto removendo quebras de linha e caracteres problemáticos
+                informacoes = ' '.join(informacoes.split())  # Remove quebras de linha e múltiplos espaços
+                informacoes = informacoes.replace(';', ',').replace('"', "'").replace('\n', ' ').replace('\r', ' ')
                 print(f"Informações clínicas extraídas: {informacoes}")
 
                 # Extrai o tipo de clínica
@@ -98,6 +101,8 @@ def solicita_inf_aih():
                     EC.presence_of_element_located((By.XPATH, '//*[@id="campo_personalizado_laudo_aih_clinica"]'))
                 )
                 tipo_clinica = tipo_clinica_element.get_attribute('value')
+                # Trata o texto removendo quebras de linha e caracteres problemáticos
+                tipo_clinica = ' '.join(tipo_clinica.split()).replace(';', ',').replace('"', "'").replace('\n', ' ').replace('\r', ' ')
                 print(f"Tipo de clínica extraído: {tipo_clinica}")
                 
                 # Obtém o procedimento solicitado
@@ -127,6 +132,8 @@ def solicita_inf_aih():
                 
                 data = data_match.group(1) if data_match else ""
                 medico = medico_match.group(1).strip() if medico_match else ""
+                # Trata o nome do médico removendo caracteres problemáticos
+                medico = ' '.join(medico.split()).replace(';', ',').replace('"', "'").replace('\n', ' ').replace('\r', ' ')
                 
                 print(f"Médico extraído: {medico}")
                 print(f"Data extraída: {data}")

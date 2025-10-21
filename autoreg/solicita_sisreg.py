@@ -326,11 +326,11 @@ def solicita_sisreg():
                 
                 time.sleep(2)  # Aguarda processamento
                 
-                # Preenche o primeiro textarea com as informações clínicas
+                # Preenche o primeiro textarea com as informações clínicas (ds_sintoma)
                 print("Preenchendo informações clínicas...")
                 informacoes = row['informacoes']
                 texto_info = wait.until(
-                    EC.presence_of_element_located((By.XPATH, "/html/body/center/form/table/tbody/tr[42]/td/textarea"))
+                    EC.presence_of_element_located((By.NAME, "ds_sintoma"))
                 )
                 texto_info.clear()
                 texto_info.send_keys(str(informacoes))
@@ -338,10 +338,10 @@ def solicita_sisreg():
                 
                 time.sleep(1)  # Pequena pausa entre campos
                 
-                # Preenche o segundo textarea com "ACIMA DESCRITO"
+                # Preenche o segundo textarea com "ACIMA DESCRITO" (ds_prova)
                 print("Preenchendo campo de justificativa...")
                 texto_justificativa = wait.until(
-                    EC.presence_of_element_located((By.XPATH, "/html/body/center/form/table/tbody/tr[44]/td/textarea"))
+                    EC.presence_of_element_located((By.NAME, "ds_prova"))
                 )
                 texto_justificativa.clear()
                 texto_justificativa.send_keys("ACIMA DESCRITO")
@@ -349,7 +349,7 @@ def solicita_sisreg():
                 
                 time.sleep(1)  # Pequena pausa entre campos
                 
-                # Preenche o terceiro textarea com data e prontuário
+                # Preenche o terceiro textarea com data e prontuário (ds_justificativa)
                 print("Preenchendo informações complementares...")
                 # Trata o prontuário removendo ".0" e pontos se existirem
                 prontuario = str(row['prontuario'])
@@ -358,7 +358,7 @@ def solicita_sisreg():
                 prontuario = prontuario.replace('.', '')
                 data_prontuario = f"{row['data']} - {prontuario}"
                 texto_complementar = wait.until(
-                    EC.presence_of_element_located((By.XPATH, "/html/body/center/form/table/tbody/tr[46]/td/textarea"))
+                    EC.presence_of_element_located((By.NAME, "ds_justificativa"))
                 )
                 texto_complementar.clear()
                 texto_complementar.send_keys(data_prontuario)
