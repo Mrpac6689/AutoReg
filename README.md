@@ -1,9 +1,46 @@
 # AutoReg
 Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 
-## 🌌 Versão 9.6.0 Universe - Outubro de 2025
+## 🌌 Versão 9.6.2 Universe - Outubro de 2025
 
 # Instruções de instalação em INSTALL.md
+
+### 🆕 Novas Funcionalidades v9.6.2
+
+- **Tratamento Robusto de Dados CSV/Selenium**: Implementação de sanitização completa de textos
+  - Remoção de quebras de linha (`\n`, `\r`) em todos os campos extraídos
+  - Substituição de caracteres problemáticos (`;` → `,`, `"` → `'`)
+  - Normalização de espaços múltiplos com `' '.join(text.split())`
+  - Aplicado em informações clínicas, tipo de clínica e nome do médico
+- **Seletores Dinâmicos para Formulários**: XPaths flexíveis que se adaptam a IDs variáveis
+  - Uso de `starts-with(@id, "edit_formeletronico_")` para formulários eletrônicos
+  - Uso de `starts-with(@id, "edit_hhlaudosaih_")` para laudos AIH
+  - Suporte a múltiplos padrões de URL (`/formeletronicos` e `/printernlaudos`)
+- **Detecção Inteligente de Campos por Nome**: Localização semântica ao invés de XPaths fixos
+  - TextAreas localizadas por `name` attributes (`ds_sintoma`, `ds_prova`, `ds_justificativa`)
+  - Extração de CNS/CPF via fieldset "Documentos" com classes `.dcampo` e `.vcampo`
+  - Independente de posição/estrutura HTML, mais resiliente a mudanças
+- **Gerenciamento Avançado de Modais**: Sistema robusto de fechamento com fallback
+  - Tentativa de fechar via botão X com classe `ui-dialog-titlebar-close`
+  - Fallback automático para tecla ESC se botão não encontrado
+  - Detecção de modais visíveis via classe `ui-dialog-content`
+- **Hover Automático para Elementos Ocultos**: ActionChains para revelar botões
+  - Movimento de mouse sobre linhas de tabela para revelar botões "Editar"
+  - Aguardo de 1 segundo para efeitos CSS completarem
+  - Aplicado em laudos AIH para acessar sempre o mais recente
+- **Acesso Dinâmico a Formulários Eletrônicos**: URLs com `intern_id` ao invés de prontuários
+  - Mudança de `historicopacs/{codigo}` para `pr/formeletronicos?intern_id={ra}`
+  - Uso consistente da coluna `ra` (registro de atendimento)
+  - Aplicado em `solicita_nota` para ambos os loops de processamento
+- **Pausas Entre Workflows**: Time.sleep(1) entre funções sequenciais de `-solicita`
+  - Evita sobrecarga no sistema
+  - Garante conclusão de processos antes de iniciar próxima função
+  - Aplicado entre `-spa`, `-sia`, `-ssr` e `-snt`
+- **Suporte a Múltiplos Tipos de Laudo AIH**: Extração adaptativa conforme estrutura
+  - Detecção automática do tipo de URL (formeletronicos vs printernlaudos)
+  - Extração de dados de campos diferentes conforme o tipo
+  - Clique no botão "Editar" com hover para laudos do tipo printernlaudos
+  - Fechamento de modal após extração para evitar interferências
 
 ### 🆕 Novas Funcionalidades v9.6.0
 
@@ -131,6 +168,19 @@ Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 | `--all`      | [workflow completo]           | Executa todas as funções principais com repetição interativa |
 
 ### 📜 Histórico de Versões
+
+## 🌌 v9.6.2 Universe - Outubro de 2025
+- **Sanitização completa de dados**: Remoção de quebras de linha e caracteres problemáticos em CSV/Selenium
+- **XPaths dinâmicos**: Seletores que se adaptam a IDs variáveis em formulários e laudos
+- **Localização semântica**: Campos identificados por nome ao invés de posição fixa
+- **Gerenciamento robusto de modais**: Sistema de fechamento com tentativa de botão X e fallback para ESC
+- **Hover automático**: Revelação de elementos ocultos via ActionChains
+- **URLs com intern_id**: Acesso a formulários eletrônicos via RA ao invés de prontuário
+- **Pausas entre workflows**: Time.sleep(1) entre funções de `-solicita` para estabilidade
+- **Suporte a múltiplos tipos de laudo**: Extração adaptativa para formeletronicos e printernlaudos
+- **Extração de CNS/CPF via fieldset**: Busca por "Documentos" com classes semânticas
+- **Tratamento de TextAreas por name**: Campos identificados por attributes ao invés de XPath
+- **Melhorias de robustez**: Código mais resiliente a mudanças na estrutura HTML
 
 ## 🌌 v9.6.0 Universe - Outubro de 2025
 - **Performance 4x mais rápida**: Acesso direto a prontuários via URL em `-ign` e `-snt`

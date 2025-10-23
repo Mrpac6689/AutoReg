@@ -159,6 +159,7 @@ def solicita_pre_aih():
             # Converte ra para inteiro para remover o .0
             ra = int(df.at[i, 'ra'])
             print(f"\nProcessando registro {i + 1}/{total_registros}: {ra}")
+            time.sleep(1)
             driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
             
             #desenvolvimento
@@ -181,14 +182,26 @@ def solicita_pre_aih():
                     df.to_csv(csv_path, index=False)
                     print(f"   ✅ Link salvo no CSV para o registro {ra}")
 
-                    # Clica no botão Gravar (com ID dinâmico)
+                    # Clica no botão Gravar (com ID dinâmico baseado no tipo de URL)
                     try:
-                        # Busca o botão usando XPath que aceita qualquer número no ID
-                        botao_gravar = WebDriverWait(driver, 5).until(
-                            EC.element_to_be_clickable((By.XPATH, '//form[starts-with(@id, "edit_formeletronico_")]/div[2]/input'))
-                        )
-                        botao_gravar.click()
-                        print(f"   ✅ Botão 'Gravar' clicado automaticamente")
+                        # Verifica o padrão da URL para determinar qual botão usar
+                        if '/formeletronicos' in url_atual:
+                            # Busca o botão usando XPath que aceita qualquer número no ID
+                            botao_gravar = WebDriverWait(driver, 5).until(
+                                EC.element_to_be_clickable((By.XPATH, '//form[starts-with(@id, "edit_formeletronico_")]/div[2]/input'))
+                            )
+                            botao_gravar.click()
+                            print(f"   ✅ Botão 'Gravar' (formeletronicos) clicado automaticamente")
+                        elif '/printernlaudos' in url_atual:
+                            # Busca o botão usando XPath dinâmico para printernlaudos
+                            botao_gravar = WebDriverWait(driver, 5).until(
+                                EC.element_to_be_clickable((By.XPATH, '//form[starts-with(@id, "edit_hhlaudosaih_")]/div/div/input'))
+                            )
+                            botao_gravar.click()
+                            print(f"   ✅ Botão 'Gravar' (printernlaudos) clicado automaticamente")
+                        else:
+                            print(f"   ⚠️  URL não corresponde aos padrões esperados - botão não foi clicado")
+                        
                         time.sleep(1)  # Aguarda um momento para processar
                     except Exception as e:
                         print(f"   ⚠️  Não foi possível clicar no botão 'Gravar': {e}")

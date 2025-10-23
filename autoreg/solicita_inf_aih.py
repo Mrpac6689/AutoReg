@@ -69,74 +69,189 @@ def solicita_inf_aih():
                 link = row['link']
                 print(f"\nProcessando link {index + 1}/{len(df)}: {link}")
                 driver.get(link)
+                time.sleep(1)  # Aguarda a página carregar
 
-                # Obtém o número do prontuário
-                print("Extraindo número do prontuário...")
-                prontuario_element = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/h4/a'))
-                )
-                prontuario_text = prontuario_element.text
-                prontuario = ''.join(filter(str.isdigit, prontuario_text))
-                # Remove ".0" no final se existir
-                if prontuario.endswith('.0'):
-                    prontuario = prontuario[:-2]
-                # Remove qualquer ponto restante
-                prontuario = prontuario.replace('.', '')
-                print(f"Prontuário extraído: {prontuario}")
+                # Verifica o tipo de URL para determinar a estratégia de extração
+                if '/formeletronicos' in link:
+                    print("Detectado padrão: formeletronicos")
+                    
+                    # Obtém o número do prontuário
+                    print("Extraindo número do prontuário...")
+                    prontuario_element = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/h4/a'))
+                    )
+                    prontuario_text = prontuario_element.text
+                    prontuario = ''.join(filter(str.isdigit, prontuario_text))
+                    # Remove ".0" no final se existir
+                    if prontuario.endswith('.0'):
+                        prontuario = prontuario[:-2]
+                    # Remove qualquer ponto restante
+                    prontuario = prontuario.replace('.', '')
+                    print(f"Prontuário extraído: {prontuario}")
 
-                # Obtém as informações dos sinais e sintomas
-                print("Extraindo informações clínicas...")
-                informacoes_element = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, '//*[@id="campo_personalizado_laudo_aih_principais_sinais_e_sintomas_clinicos"]'))
-                )
-                informacoes = informacoes_element.text
-                # Trata o texto removendo quebras de linha e caracteres problemáticos
-                informacoes = ' '.join(informacoes.split())  # Remove quebras de linha e múltiplos espaços
-                informacoes = informacoes.replace(';', ',').replace('"', "'").replace('\n', ' ').replace('\r', ' ')
-                print(f"Informações clínicas extraídas: {informacoes}")
+                    # Obtém as informações dos sinais e sintomas
+                    print("Extraindo informações clínicas...")
+                    informacoes_element = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH, '//*[@id="campo_personalizado_laudo_aih_principais_sinais_e_sintomas_clinicos"]'))
+                    )
+                    informacoes = informacoes_element.text
+                    # Trata o texto removendo quebras de linha e caracteres problemáticos
+                    informacoes = ' '.join(informacoes.split())  # Remove quebras de linha e múltiplos espaços
+                    informacoes = informacoes.replace(';', ',').replace('"', "'").replace('\n', ' ').replace('\r', ' ')
+                    print(f"Informações clínicas extraídas: {informacoes}")
 
-                # Extrai o tipo de clínica
-                print("Extraindo tipo de clínica...")
-                tipo_clinica_element = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, '//*[@id="campo_personalizado_laudo_aih_clinica"]'))
-                )
-                tipo_clinica = tipo_clinica_element.get_attribute('value')
-                # Trata o texto removendo quebras de linha e caracteres problemáticos
-                tipo_clinica = ' '.join(tipo_clinica.split()).replace(';', ',').replace('"', "'").replace('\n', ' ').replace('\r', ' ')
-                print(f"Tipo de clínica extraído: {tipo_clinica}")
-                
-                # Obtém o procedimento solicitado
-                print("Extraindo procedimento...")
-                procedimento_element = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.ID, "campo_personalizado_laudo_aih_procedimento_solicitado"))
-                )
-                procedimento_text = procedimento_element.get_attribute('value')
-                procedimento_match = re.search(r'\((\d+)\)', procedimento_text)
-                procedimento = procedimento_match.group(1) if procedimento_match else ''
-                print(f"Procedimento extraído: {procedimento}")
+                    # Extrai o tipo de clínica
+                    print("Extraindo tipo de clínica...")
+                    tipo_clinica_element = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH, '//*[@id="campo_personalizado_laudo_aih_clinica"]'))
+                    )
+                    tipo_clinica = tipo_clinica_element.get_attribute('value')
+                    # Trata o texto removendo quebras de linha e caracteres problemáticos
+                    tipo_clinica = ' '.join(tipo_clinica.split()).replace(';', ',').replace('"', "'").replace('\n', ' ').replace('\r', ' ')
+                    print(f"Tipo de clínica extraído: {tipo_clinica}")
+                    
+                    # Obtém o procedimento solicitado
+                    print("Extraindo procedimento...")
+                    procedimento_element = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.ID, "campo_personalizado_laudo_aih_procedimento_solicitado"))
+                    )
+                    procedimento_text = procedimento_element.get_attribute('value')
+                    procedimento_match = re.search(r'\((\d+)\)', procedimento_text)
+                    procedimento = procedimento_match.group(1) if procedimento_match else ''
+                    print(f"Procedimento extraído: {procedimento}")
 
-                # Obtém o nome do médico e data
-                print("Extraindo nome do médico e data...")
-                botao = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, '//*[starts-with(@id, "edit_formeletronico_")]/div[2]/input'))
-                )
-                botao.click()
+                    # Obtém o nome do médico e data
+                    print("Extraindo nome do médico e data...")
+                    botao = WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, '//*[starts-with(@id, "edit_formeletronico_")]/div[2]/input'))
+                    )
+                    botao.click()
 
-                info_element = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, '//*[@id="lista-forms"]/ul/li[1]/div/span'))
-                )
-                info_text = info_element.text
+                    info_element = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH, '//*[@id="lista-forms"]/ul/li[1]/div/span'))
+                    )
+                    info_text = info_element.text
 
-                data_match = re.search(r'Preenchido em: (\d{2}/\d{2}/\d{4})', info_text)
-                medico_match = re.search(r'por (.*?)\s*\(CRM', info_text)
-                
-                data = data_match.group(1) if data_match else ""
-                medico = medico_match.group(1).strip() if medico_match else ""
-                # Trata o nome do médico removendo caracteres problemáticos
-                medico = ' '.join(medico.split()).replace(';', ',').replace('"', "'").replace('\n', ' ').replace('\r', ' ')
-                
-                print(f"Médico extraído: {medico}")
-                print(f"Data extraída: {data}")
+                    data_match = re.search(r'Preenchido em: (\d{2}/\d{2}/\d{4})', info_text)
+                    medico_match = re.search(r'por (.*?)\s*\(CRM', info_text)
+                    
+                    data = data_match.group(1) if data_match else ""
+                    medico = medico_match.group(1).strip() if medico_match else ""
+                    # Trata o nome do médico removendo caracteres problemáticos
+                    medico = ' '.join(medico.split()).replace(';', ',').replace('"', "'").replace('\n', ' ').replace('\r', ' ')
+                    
+                    print(f"Médico extraído: {medico}")
+                    print(f"Data extraída: {data}")
+
+                elif '/printernlaudos' in link:
+                    print("Detectado padrão: printernlaudos")
+                    
+                    # Obtém o número do prontuário
+                    print("Extraindo número do prontuário...")
+                    prontuario_element = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/h4/a'))
+                    )
+                    prontuario_text = prontuario_element.text
+                    prontuario = ''.join(filter(str.isdigit, prontuario_text))
+                    # Remove ".0" no final se existir
+                    if prontuario.endswith('.0'):
+                        prontuario = prontuario[:-2]
+                    # Remove qualquer ponto restante
+                    prontuario = prontuario.replace('.', '')
+                    print(f"Prontuário extraído: {prontuario}")
+
+                    # Clica no botão Editar do laudo mais recente
+                    print("Clicando no botão Editar do laudo mais recente...")
+                    # Busca todas as linhas da tabela de laudos (exceto o cabeçalho)
+                    linhas_laudos = WebDriverWait(driver, 10).until(
+                        EC.presence_of_all_elements_located((By.XPATH, '//*[@id="lista_prlaudosmppes"]/tbody/tr[position() > 1]'))
+                    )
+                    
+                    if not linhas_laudos:
+                        print("⚠️ Nenhum laudo encontrado na tabela")
+                        continue
+                    
+                    # Pega a última linha (laudo mais recente)
+                    ultima_linha_index = len(linhas_laudos) + 1  # +1 porque a primeira linha (tr[1]) está vazia
+                    
+                    # Primeiro, move o mouse sobre a última linha para revelar o botão Editar
+                    from selenium.webdriver.common.action_chains import ActionChains
+                    ultima_linha = driver.find_element(By.XPATH, f'//*[@id="lista_prlaudosmppes"]/tbody/tr[{ultima_linha_index}]')
+                    ActionChains(driver).move_to_element(ultima_linha).perform()
+                    print(f"Mouse posicionado sobre a linha {ultima_linha_index}")
+                    time.sleep(1)  # Aguarda o botão aparecer
+                    
+                    # Clica no botão Editar da última linha
+                    botao_editar = WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, f'//*[@id="lista_prlaudosmppes"]/tbody/tr[{ultima_linha_index}]/td[4]/a[@title="Editar"]'))
+                    )
+                    botao_editar.click()
+                    print(f"Botão Editar clicado (linha {ultima_linha_index})")
+                    
+                    # Aguarda o modal de edição carregar completamente
+                    print("Aguardando modal de edição carregar...")
+                    WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH, '//*[@id="hhlaudosaih_sinais_e_sintomas"]'))
+                    )
+                    time.sleep(2)  # Aguarda estabilização do modal
+
+                    # Obtém as informações clínicas
+                    print("Extraindo informações clínicas...")
+                    informacoes_element = driver.find_element(By.XPATH, '//*[@id="hhlaudosaih_sinais_e_sintomas"]')
+                    informacoes = informacoes_element.get_attribute('value') or informacoes_element.text
+                    # Trata o texto removendo quebras de linha e caracteres problemáticos
+                    informacoes = ' '.join(informacoes.split())  # Remove quebras de linha e múltiplos espaços
+                    informacoes = informacoes.replace(';', ',').replace('"', "'").replace('\n', ' ').replace('\r', ' ')
+                    print(f"Informações clínicas extraídas: {informacoes}")
+
+                    # Extrai o tipo de clínica
+                    print("Extraindo tipo de clínica...")
+                    tipo_clinica_element = driver.find_element(By.XPATH, '//*[@id="clinicas_descricao"]')
+                    tipo_clinica = tipo_clinica_element.get_attribute('value') or tipo_clinica_element.text
+                    # Trata o texto removendo quebras de linha e caracteres problemáticos
+                    tipo_clinica = ' '.join(tipo_clinica.split()).replace(';', ',').replace('"', "'").replace('\n', ' ').replace('\r', ' ')
+                    print(f"Tipo de clínica extraído: {tipo_clinica}")
+
+                    # Obtém o procedimento solicitado
+                    print("Extraindo procedimento...")
+                    procedimento_element = driver.find_element(By.XPATH, '//*[@id="susproc_descricao"]')
+                    procedimento_text = procedimento_element.get_attribute('value') or procedimento_element.text
+                    procedimento_match = re.search(r'\((\d+)\)', procedimento_text)
+                    procedimento = procedimento_match.group(1) if procedimento_match else ''
+                    print(f"Procedimento extraído: {procedimento}")
+
+                    # Obtém o nome do médico
+                    print("Extraindo nome do médico...")
+                    medico_element = driver.find_element(By.XPATH, '//*[@id="medicos_nome"]')
+                    medico = medico_element.get_attribute('value') or medico_element.text
+                    # Trata o nome do médico removendo caracteres problemáticos
+                    medico = ' '.join(medico.split()).replace(';', ',').replace('"', "'").replace('\n', ' ').replace('\r', ' ')
+                    print(f"Médico extraído: {medico}")
+
+                    # Obtém a data
+                    print("Extraindo data...")
+                    data_element = driver.find_element(By.XPATH, '//*[@id="hhlaudosaih_data_solicitacao"]')
+                    data = data_element.get_attribute('value') or data_element.text
+                    print(f"Data extraída: {data}")
+                    
+                    # Fecha o modal antes de clicar no paciente
+                    print("Fechando modal de edição...")
+                    try:
+                        # Tenta fechar o modal (pode ter um botão X ou fechar)
+                        fechar_modal = WebDriverWait(driver, 5).until(
+                            EC.element_to_be_clickable((By.XPATH, '//a[@class="ui-dialog-titlebar-close ui-corner-all"]'))
+                        )
+                        fechar_modal.click()
+                        time.sleep(1)
+                    except:
+                        # Se não encontrar botão de fechar, pressiona ESC
+                        from selenium.webdriver.common.keys import Keys
+                        driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.ESCAPE)
+                        time.sleep(1)
+
+                else:
+                    print(f"⚠️ URL não corresponde aos padrões esperados: {link}")
+                    continue
 
                 # Clica no elemento do paciente para extrair CNS
                 print("Clicando no elemento do paciente...")
@@ -146,46 +261,57 @@ def solicita_inf_aih():
                 paciente_element.click()
 
                 print("Extraindo CNS do paciente...")
-                cns_element = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, '/html/body/div[6]/div[2]/small/fieldset[1]/div[2]'))
+                # Localiza o fieldset "Documentos"
+                fieldset_documentos = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, '//fieldset[legend[text()="Documentos"]]'))
                 )
-                cns_text = cns_element.text
-                cns = ''.join(filter(str.isdigit, cns_text))
-                # Remove ".0" no final se existir
-                if cns.endswith('.0'):
-                    cns = cns[:-2]
-                # Remove qualquer ponto restante
-                cns = cns.replace('.', '')
                 
-                # Se CNS estiver vazio, tenta obter o CPF
+                # Busca todos os divs com classe "dcampo" e "vcampo" dentro do fieldset
+                dcampos = fieldset_documentos.find_elements(By.CLASS_NAME, 'dcampo')
+                vcampos = fieldset_documentos.find_elements(By.CLASS_NAME, 'vcampo')
+                
+                cns = ""
+                cpf = ""
+                
+                # Percorre os campos procurando por CNS e CPF
+                for i, dcampo in enumerate(dcampos):
+                    if 'CNS:' in dcampo.text and i < len(vcampos):
+                        cns_text = vcampos[i].text.strip().replace('&nbsp;', '').replace('\xa0', '')
+                        cns = ''.join(filter(str.isdigit, cns_text))
+                        print(f"CNS encontrado: {cns}")
+                    elif 'CPF:' in dcampo.text and i < len(vcampos):
+                        cpf_text = vcampos[i].text.strip().replace('&nbsp;', '').replace('\xa0', '')
+                        cpf = ''.join(filter(str.isdigit, cpf_text))
+                        print(f"CPF encontrado: {cpf}")
+                
+                # Se CNS estiver vazio, usa o CPF
                 if not cns or cns.strip() == '':
-                    print("CNS vazio, tentando extrair CPF...")
-                    try:
-                        cpf_element = WebDriverWait(driver, 5).until(
-                            EC.presence_of_element_located((By.XPATH, '/html/body/div[6]/div[2]/small/fieldset[1]/div[4]'))
-                        )
-                        cpf_text = cpf_element.text
-                        cns = ''.join(filter(str.isdigit, cpf_text))
-                        # Remove ".0" no final se existir
-                        if cns.endswith('.0'):
-                            cns = cns[:-2]
-                        # Remove qualquer ponto restante
-                        cns = cns.replace('.', '')
-                        if cns:
-                            print(f"CPF extraído e usado como CNS: {cns}")
-                        else:
-                            print("CPF também está vazio")
-                    except Exception as e:
-                        print(f"Não foi possível extrair CPF: {e}")
+                    print("CNS vazio, usando CPF como CNS...")
+                    if cpf:
+                        cns = cpf
+                        print(f"CPF usado como CNS: {cns}")
+                    else:
+                        print("CPF também está vazio")
+                        cns = ""
                 else:
-                    print(f"CNS extraído: {cns}")
+                    print(f"CNS extraído com sucesso: {cns}")
 
-                # Clica no botão de fechar/voltar
-                print("Fechando modal...")
-                fechar_element = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, '/html/body/div[6]/div[1]/a'))
-                )
-                fechar_element.click()
+                # Clica no botão de fechar/voltar o modal do paciente
+                print("Fechando modal do paciente...")
+                try:
+                    # Tenta fechar o modal usando o botão X
+                    fechar_element = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.XPATH, '//a[@class="ui-dialog-titlebar-close ui-corner-all"]'))
+                    )
+                    fechar_element.click()
+                    print("Modal fechado com sucesso")
+                    time.sleep(1)
+                except:
+                    # Se não encontrar botão de fechar, pressiona ESC
+                    print("Botão de fechar não encontrado, usando ESC...")
+                    from selenium.webdriver.common.keys import Keys
+                    driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.ESCAPE)
+                    time.sleep(1)
 
                 # Atualiza o DataFrame com as informações extraídas
                 df.at[index, 'prontuario'] = prontuario
@@ -207,6 +333,8 @@ def solicita_inf_aih():
                     df.to_csv(csv_path, index=False)
                 continue
 
+            time.sleep(1)  # Pequena pausa entre iterações
+            
     except Exception as e:
         print(f"❌ Erro durante a execução: {str(e)}")
         return None

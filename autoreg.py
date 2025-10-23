@@ -2,7 +2,7 @@
 """
 AutoReg - Coordenador de Workflow
 Automatização de Sistemas de Saúde - SISREG & G-HOSP
-Versão 9.6.1 - Outubro de 2025
+Versão 9.6.2 - Outubro de 2025
 Autor: Michel Ribeiro Paes (MrPaC6689)
 """
 
@@ -11,6 +11,7 @@ import sys
 import os
 import configparser
 import subprocess
+import time
 from pathlib import Path
 
 from autoreg import extrai_codigos_internacao
@@ -156,7 +157,7 @@ def mostrar_informacoes():
 ║                    Automatização de Sistemas de Saúde                         ║
 ║                               SISREG & G-HOSP                                 ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║ Versão: 9.6.1                                                                 ║
+║ Versão: 9.6.2 - Outubro de 2025                                               ║
 ║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║
 ║ Contato: michelrpaes@gmail.com                                                ║
 ║ Repositório: https://github.com/Mrpac6689/AutoReg                             ║
@@ -565,6 +566,9 @@ Exemplos de uso:
             if not executar_funcao(func_name):
                 print(f"❌ Parando execução devido ao erro em {func_name}")
                 break
+            # Adiciona pausa de 1 segundo entre funções, exceto após a última
+            if i < len(seq):
+                time.sleep(1)
         return
 
     if args.aihs:

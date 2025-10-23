@@ -211,6 +211,8 @@ def solicita_sisreg():
                 # Mapeamento do tipo de clínica para a opção do dropdown
                 tipo_para_opcao = {
                     'CLÍNICA MÉDICA': 'ESPEC - CLINICO - CLINICA GERAL',
+                    'CLINICA MEDICA': 'ESPEC - CLINICO - CLINICA GERAL',
+                    'CLINICA PSIQUIATRICA': 'ESPEC - CLINICO - CLINICA GERAL',
                     'CLÍNICA CIRÚRGICA': 'ESPEC - CIRURGICO - CIRURGIA GERAL',
                     'CLÍNICA PEDIÁTRICA': 'PEDIATRICO - PEDIATRIA CLINICA'
                 }

@@ -50,25 +50,6 @@ def solicita_nota():
         from selenium.webdriver.common.action_chains import ActionChains
 
         try:
-            '''print("Localizando menu principal...")
-            menu_principal = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, '//*[@id="menu-drop"]/ul[1]/li[1]/a'))
-            )
-            ActionChains(driver).move_to_element(menu_principal).perform()
-            time.sleep(1)
-
-            # Torna o submenu visível via JS
-            driver.execute_script(
-                "document.querySelector('#menu-drop > ul > li:first-child > ul').style.display = 'block';"
-            )
-            time.sleep(1)
-
-            # Clica no link 'Prontuários'
-            print("Clicando no link Prontuários...")
-            #link_prontuarios = driver.find_element(By.CSS_SELECTOR, "#menu-drop > ul > li:first-child > ul > li.nobr > a[href='/prontuarios']")
-            #link_prontuarios.click()
-            #print("Acesso ao prontuário realizado!")
-            driver.get(f"{caminho_ghosp}:4002/prontuarios")'''
 
             import pandas as pd
             user_dir = os.path.expanduser('~/AutoReg')
@@ -98,24 +79,24 @@ def solicita_nota():
             df_valido = df[~df[colunas_necessarias].isna().any(axis=1)]
             print(f"📄 Processando {len(df_valido)} registros válidos...")
             for idx, row in df_valido.iterrows():
-                codigo = str(row['prontuario'])  # usando coluna 'prontuario'
+                ra = str(row['ra'])  # usando coluna 'ra'
                 # Remove ".0" no final se existir
-                if codigo.endswith('.0'):
-                    codigo = codigo[:-2]
+                if ra.endswith('.0'):
+                    ra = ra[:-2]
                 # Remove qualquer ponto restante
-                codigo = codigo.replace('.', '')
-                print(f"Acessando prontuário: {codigo}")
+                ra = ra.replace('.', '')
+                print(f"Acessando formulário eletrônico (RA: {ra})...")
 
-                # Acessa diretamente a URL do prontuário
-                driver.get(f"{caminho_ghosp}:4002/historicopacs/{codigo}")
+                # Acessa diretamente a URL do formulário eletrônico usando intern_id
+                driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
                 
                 # Aguarda a página carregar
                 time.sleep(1)
 
-                # Verifica se o diálogo de justificativa de acesso aparece
+                # Verifica se o diálogo de justificativa de acesso aparece (com conteúdo)
                 try:
                     dialog = WebDriverWait(driver, 1).until(
-                        EC.presence_of_element_located((By.XPATH, '//div[@id="form_justificativa"]'))
+                        EC.presence_of_element_located((By.XPATH, '//div[@id="form_justificativa" and contains(@class, "ui-dialog-content")]'))
                     )
                     print("Diálogo de justificativa encontrado!")
 
@@ -153,7 +134,7 @@ def solicita_nota():
                     confirmar_btn.click()
                     print("Botão de confirmação clicado.")
                 except Exception as e:
-                    print(f"Diálogo de justificativa não encontrado ou erro no preenchimento: {e}")
+                    print(f"Diálogo de justificativa não encontrado.")
 
 
                 # Aguarda um momento para garantir que a página carregou após o diálogo
@@ -192,7 +173,7 @@ def solicita_nota():
                     time.sleep(1)
 
                 except Exception as e:
-                    print(f"Erro ao adicionar lembrete para código {codigo}: {e}")
+                    print(f"Erro ao adicionar lembrete para RA {ra}: {e}")
 
             # Após processar todos os registros, mantém apenas as linhas com 'revisar' = 'sim'
             print("\n🧹 Limpando registros processados com sucesso...")
@@ -229,25 +210,25 @@ def solicita_nota():
                     indices_processados = []
                     
                     for idx, row in df_cns_vazio.iterrows():
-                        codigo = str(row['prontuario'])  # usando coluna 'prontuario'
+                        ra = str(row['ra'])  # usando coluna 'ra'
                         # Remove ".0" no final se existir
-                        if codigo.endswith('.0'):
-                            codigo = codigo[:-2]
+                        if ra.endswith('.0'):
+                            ra = ra[:-2]
                         # Remove qualquer ponto restante
-                        codigo = codigo.replace('.', '')
-                        print(f"Acessando prontuário para lembrete CNS: {codigo}")
+                        ra = ra.replace('.', '')
+                        print(f"Acessando formulário eletrônico para lembrete CNS (RA: {ra})...")
 
                         try:
-                            # Acessa diretamente a URL do prontuário
-                            driver.get(f"{caminho_ghosp}:4002/historicopacs/{codigo}")
+                            # Acessa diretamente a URL do formulário eletrônico usando intern_id
+                            driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
                             
                             # Aguarda a página carregar
                             time.sleep(1)
 
-                            # Verifica se o diálogo de justificativa de acesso aparece
+                            # Verifica se o diálogo de justificativa de acesso aparece (com conteúdo)
                             try:
                                 dialog = WebDriverWait(driver, 1).until(
-                                    EC.presence_of_element_located((By.XPATH, '//div[@id="form_justificativa"]'))
+                                    EC.presence_of_element_located((By.XPATH, '//div[@id="form_justificativa" and contains(@class, "ui-dialog-content")]'))
                                 )
                                 print("Diálogo de justificativa encontrado!")
 
@@ -322,7 +303,7 @@ def solicita_nota():
                             indices_processados.append(idx)
 
                         except Exception as e:
-                            print(f"Erro ao adicionar lembrete CNS para código {codigo}: {e}")
+                            print(f"Erro ao adicionar lembrete CNS para RA {ra}: {e}")
                     
                     # Remove as linhas processadas do CSV
                     if indices_processados:
