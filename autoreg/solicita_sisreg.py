@@ -214,6 +214,9 @@ def solicita_sisreg():
                     'CLINICA MEDICA': 'ESPEC - CLINICO - CLINICA GERAL',
                     'CLINICA PSIQUIATRICA': 'ESPEC - CLINICO - CLINICA GERAL',
                     'CLÍNICA CIRÚRGICA': 'ESPEC - CIRURGICO - CIRURGIA GERAL',
+                    'CLINICA CIRURGICA': 'ESPEC - CIRURGICO - CIRURGIA GERAL',
+                    'CIRURGIA GERAL': 'ESPEC - CIRURGICO - CIRURGIA GERAL',
+                    'CLINICA PEDIATRICA': 'PEDIATRICO - PEDIATRIA CLINICA',
                     'CLÍNICA PEDIÁTRICA': 'PEDIATRICO - PEDIATRIA CLINICA'
                 }
                 
@@ -399,6 +402,36 @@ def solicita_sisreg():
             except Exception as e:
                 print(f"Erro ao processar registro {index + 1}: {str(e)}")
                 logging.error(f"Erro ao processar registro {index + 1}: {str(e)}")
+                
+                # Tenta capturar o texto do alert se houver
+                erro_texto = str(e)
+                if "Alert Text" in erro_texto:
+                    try:
+                        # Extrai o texto do alert da mensagem de erro
+                        inicio = erro_texto.find("Alert Text : ") + len("Alert Text : ")
+                        fim = erro_texto.find("}", inicio)
+                        if fim == -1:
+                            fim = erro_texto.find("\n", inicio)
+                        alert_text = erro_texto[inicio:fim].strip()
+                        
+                        # Cria a coluna 'erro' se não existir
+                        if 'erro' not in df.columns:
+                            df['erro'] = ''
+                        
+                        # Cria a coluna 'revisar' se não existir
+                        if 'revisar' not in df.columns:
+                            df['revisar'] = ''
+                        
+                        # Atualiza o CSV com o erro e marca para revisão
+                        df.at[index, 'erro'] = alert_text
+                        df.at[index, 'revisar'] = 'sim'
+                        df.to_csv(csv_path, index=False)
+                        print(f"Erro registrado no CSV: {alert_text}")
+                        logging.info(f"Erro registrado no CSV para registro {index + 1}: {alert_text}")
+                    except Exception as ex:
+                        print(f"Erro ao tentar extrair texto do alert: {str(ex)}")
+                        logging.error(f"Erro ao tentar extrair texto do alert: {str(ex)}")
+                
                 navegador.switch_to.default_content()
                 continue
     except Exception as e:

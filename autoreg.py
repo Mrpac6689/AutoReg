@@ -157,7 +157,7 @@ def mostrar_informacoes():
 ║                    Automatização de Sistemas de Saúde                         ║
 ║                               SISREG & G-HOSP                                 ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║ Versão: 9.6.2 - Outubro de 2025                                               ║
+║ Versão: 9.6.2                                                                 ║
 ║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║
 ║ Contato: michelrpaes@gmail.com                                                ║
 ║ Repositório: https://github.com/Mrpac6689/AutoReg                             ║
