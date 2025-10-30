@@ -1,0 +1,13 @@
+services:
+  autoreg:
+    build: .
+    ports:
+      - "6901:6901"
+    shm_size: "512m"
+    environment:
+      - VNC_PW=senha_segura
+      - VNCOPTIONS=-disableBasicAuth
+    volumes:
+      - /home/michel/.autoreg:/home/kasm-user/.autoreg
+      - /home/michel/AutoReg:/home/kasm-user/AutoReg
+    restart: unless-stopped
