@@ -1,134 +1,100 @@
 # AutoReg
 Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 
-## 🌌 Versão 9.6.2 Universe - Outubro de 2025
+## 🌌 Versão 9.6.5 Universe - Outubro de 2025
 
-# Instruções de instalação em INSTALL.md
+### 🆕 Novas Funcionalidades v9.6.5
 
-### 🆕 Novas Funcionalidades v9.6.2
+- **Empacotamento com Docker + Integração Kasm VNC**: Imagem Docker pronta para uso em ambientes Kasm Workspaces (VNC/noVNC)
+  - Imagem baseada em Python slim com todas as dependências do AutoReg instaladas
+  - Entrypoint que inicia a aplicação e mantém um ambiente gráfico acessível via VNC/noVNC
+  - Orientações para registrar a imagem no Kasm e disponibilizar a interface pelo painel Kasm
+  - Exemplos de Dockerfile e docker-compose para teste local e para preparação do artefato a ser importado no Kasm
+  - Recomendações de volumes e variáveis de ambiente para persistência de dados e configuração de credenciais
+- Atualizações menores de compatibilidade e correções de dependências para execução em container
+- Documentação básica para criação da imagem e publicação em registry privado
 
-- **Tratamento Robusto de Dados CSV/Selenium**: Implementação de sanitização completa de textos
-  - Remoção de quebras de linha (`\n`, `\r`) em todos os campos extraídos
-  - Substituição de caracteres problemáticos (`;` → `,`, `"` → `'`)
-  - Normalização de espaços múltiplos com `' '.join(text.split())`
-  - Aplicado em informações clínicas, tipo de clínica e nome do médico
-- **Seletores Dinâmicos para Formulários**: XPaths flexíveis que se adaptam a IDs variáveis
-  - Uso de `starts-with(@id, "edit_formeletronico_")` para formulários eletrônicos
-  - Uso de `starts-with(@id, "edit_hhlaudosaih_")` para laudos AIH
-  - Suporte a múltiplos padrões de URL (`/formeletronicos` e `/printernlaudos`)
-- **Detecção Inteligente de Campos por Nome**: Localização semântica ao invés de XPaths fixos
-  - TextAreas localizadas por `name` attributes (`ds_sintoma`, `ds_prova`, `ds_justificativa`)
-  - Extração de CNS/CPF via fieldset "Documentos" com classes `.dcampo` e `.vcampo`
-  - Independente de posição/estrutura HTML, mais resiliente a mudanças
-- **Gerenciamento Avançado de Modais**: Sistema robusto de fechamento com fallback
-  - Tentativa de fechar via botão X com classe `ui-dialog-titlebar-close`
-  - Fallback automático para tecla ESC se botão não encontrado
-  - Detecção de modais visíveis via classe `ui-dialog-content`
-- **Hover Automático para Elementos Ocultos**: ActionChains para revelar botões
-  - Movimento de mouse sobre linhas de tabela para revelar botões "Editar"
-  - Aguardo de 1 segundo para efeitos CSS completarem
-  - Aplicado em laudos AIH para acessar sempre o mais recente
-- **Acesso Dinâmico a Formulários Eletrônicos**: URLs com `intern_id` ao invés de prontuários
-  - Mudança de `historicopacs/{codigo}` para `pr/formeletronicos?intern_id={ra}`
-  - Uso consistente da coluna `ra` (registro de atendimento)
-  - Aplicado em `solicita_nota` para ambos os loops de processamento
-- **Pausas Entre Workflows**: Time.sleep(1) entre funções sequenciais de `-solicita`
-  - Evita sobrecarga no sistema
-  - Garante conclusão de processos antes de iniciar próxima função
-  - Aplicado entre `-spa`, `-sia`, `-ssr` e `-snt`
-- **Suporte a Múltiplos Tipos de Laudo AIH**: Extração adaptativa conforme estrutura
-  - Detecção automática do tipo de URL (formeletronicos vs printernlaudos)
-  - Extração de dados de campos diferentes conforme o tipo
-  - Clique no botão "Editar" com hover para laudos do tipo printernlaudos
-  - Fechamento de modal após extração para evitar interferências
+### Empacotamento Docker + Kasm VNC (guia rápido)
 
-### 🆕 Novas Funcionalidades v9.6.0
+Objetivo: gerar uma imagem Docker que execute AutoReg em um ambiente com interface gráfica acessível via VNC/noVNC; essa imagem pode ser importada no Kasm Workspaces para uso centralizado.
 
-- **Otimização de Performance**: Acesso direto a prontuários via URL, eliminando cliques e buscas manuais
-  - **`-ign` Otimizado**: Agora usa `driver.get(f"{caminho_ghosp}:4002/historicopacs/{codigo}")` para acesso direto
-  - **`-snt` Otimizado**: Usa `driver.get(f"{caminho_ghosp}:4002/prontuarios/{codigo}")` sem preenchimento de campos
-  - **Redução de ~80% no tempo**: Eliminados WebDriverWait múltiplos e navegação desnecessária
-- **Verificação Automática de CNS**: Sistema inteligente de detecção e tratamento de CNS/CPF faltantes
-  - Loop adicional em `-snt` para verificar registros com CNS vazio
-  - Inserção automática de lembrete: "FALTA CNS/CPF, FAVOR PROVIDENCIAR PARA SOLICITAÇÃO DE AIH"
-  - Remoção automática de linhas processadas do CSV
-- **Abertura Automática de Planilhas**: CSVs gerados são abertos automaticamente no programa padrão
-  - Implementado em `-std` (solicita_trata_dados)
-  - Detecção automática de sistema operacional (Windows, macOS, Linux)
-  - Fallback com mensagem de caminho caso não seja possível abrir
-- **Workflow `-solicita` Aprimorado**: Agora inclui `-spa` no início da sequência
-  - Nova sequência: `-spa -sia -ssr -snt` (anteriormente `-sia -ssr -snt`)
-  - Preparação completa de links antes do processamento de solicitações
-- **Workflow `-aihs` Renomeado**: Anterior `-nota` agora é `-aihs` para melhor clareza
-  - Mantém a sequência: `-iga -ign -std`
-  - Nome mais descritivo do propósito (processamento de AIHs)
-- **Tratamento Inteligente de Dados em `-spa`**:
-  - Limpeza automática do arquivo solicita_inf_aih.csv mantendo cabeçalho
-  - Extração automática da coluna 'internacao' de internados_ghosp_avancado.csv
-  - Transferência automática para coluna 'ra' de solicita_inf_aih.csv
-  - Validação completa de arquivos e colunas com mensagens informativas
+Passos resumidos:
+1. Criar Dockerfile (exemplo abaixo).
+2. Construir a imagem localmente: docker build -t autoreg:9.6.5 .
+3. Testar localmente com docker-compose (exemplo incluído).
+4. Subir a imagem para registry (opcional) e registrar no Kasm.
+5. No Kasm, criar um Workspace que utilize a imagem e configurar portas/recursos.
 
-### 🆕 Novas Funcionalidades v9.5.9
+Exemplo mínimo de Dockerfile (ajustar conforme política de base do Kasm):
+```bash
+# Dockerfile mínimo de exemplo (teste local)
+FROM python:3.11-slim
 
-- **Função `-std`**: Ajusta CSV para tratamento das solicitações de AIH previamente ao SISREG
-  - Filtra e organiza dados do arquivo `internados_ghosp_avancado.csv`
-  - Remove automaticamente setores PEDIATRIA e RPA-POS ANESTESICA
-  - Remove registros de OBSERVAÇÃO ADULTO com menos de 48 horas
-  - Remove registros com datas na coluna 'dados' dentro de ±15 dias da data de internação
-  - Organiza registros com campo 'dados' vazio no topo do arquivo
-- **Função `-spa`**: Extrai link para solicitação de AIH do GHOSP
-  - Login automático no sistema G-HOSP
-  - Navegação automática pelos registros do CSV `solicita_inf_aih.csv`
-  - Interface interativa para captura de URLs de formulários
-  - Comandos simples: 's' para salvar URL e 'p' para pular registro
-  - Clique automático no botão "Gravar" após salvar o link
-  - Salva links capturados na coluna 'link' do CSV
-- **Workflow `-nota` Aprimorado**: Agora inclui tratamento de dados
-  - Sequência atualizada: -iga → -std → -ign
-  - Preparação automática dos dados antes da extração de notas
-  - Fluxo otimizado para processamento completo de AIH
+# Dependências para ambiente gráfico/VNC (exemplos; ajustar conforme distribuição)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    xfce4 xfce4-terminal tigervnc-standalone-server xvfb wget curl git supervisor \
+  && rm -rf /var/lib/apt/lists/*
 
-### 🆕 Novas Funcionalidades v9.5.8
+# Diretório da aplicação
+WORKDIR /opt/autoreg
 
-- **Função `-iga`**: Nova função para extrair pacientes internados no GHOSP com informações adicionais (número de internação, nome, data e setor)
-- **Função `-ign`**: Extração de notas dos prontuários do GHOSP com atualização de setor em tempo real
-- **Workflow `-nota`**: Sequência automatizada que executa `-iga` seguido de `-ign` para extração completa de dados e notas
-- **Mapeamento de Setores**: Sistema inteligente de mapeamento de nomes de setores para versões simplificadas
-- **Ordenação Automática**: Dados automaticamente ordenados por setor no CSV final
-- **Tratamento de Dados Numéricos**: Limpeza automática de pontos e ".0" em todos os campos numéricos (CNS, CPF, procedimento, prontuário)
-- **Fallback CNS/CPF**: Sistema inteligente que usa CPF quando CNS não está disponível
-- **Contador de Progresso**: Interface aprimorada com contadores [x/xx] para acompanhamento em tempo real
-- **Limpeza Automática de CSVs**: Manutenção apenas de registros que precisam revisão após processamento
-- **Resumo Estatístico**: Relatório automático de pacientes por setor após processamento
+# Copia código e instala dependências
+COPY . /opt/autoreg
+RUN python -m pip install --upgrade pip \
+  && if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-### 🆕 Novas Funcionalidades v9.5.0
+# Cria usuário não-root
+RUN useradd -m -s /bin/bash autoreg
+RUN chown -R autoreg:autoreg /opt/autoreg
+USER autoreg
 
-- **Consulta de Solicitações**: Nova função `-css` para consultar o status atual de solicitações no SISREG
-- **Atualização Automática de CSVs**: Sistema atualiza automaticamente o status das solicitações no arquivo
-- **Processamento em Lote**: Capacidade de consultar múltiplas solicitações em sequência
-- **Feedback em Tempo Real**: Exibição do status de cada solicitação durante o processamento
-- **Tratamento de Status**: Identificação de solicitações PENDENTES, APROVADAS e outras situações
-- **Logs Detalhados**: Registro completo de todas as consultas realizadas
+# Porta padrão VNC (se for usar diretamente) e porta da aplicação se necessário
+EXPOSE 5901 6901
 
-### 🆕 Novas Funcionalidades v9.0.0
+# Entrypoint: exemplo que inicia o VNC e a aplicação (ajustar conforme necessidade)
+CMD ["bash", "-lc", "vncserver :1 -geometry 1280x800 -depth 24 && tail -f /dev/null"]
+```
 
-- **Workflow de Solicitações**: Nova sequência `-solicita` que executa automaticamente as funções de solicitação `-sia -ssr -snt`
-- **Verificação de dados**: Sistema inteligente para detecção e tratamento de dados faltantes nos CSVs
-- **Rotina de solicitação**: Nova função `-snt` para inserção de números de solicitação SISREG nas notas de prontuário
-- **Tratamento de dados**: Limpeza automática de formatos numéricos (.0) nos códigos de solicitação
-- **Dados para revisão**: Marcação automática de registros com dados faltantes para revisão posterior
+Exemplo de docker-compose para teste local:
+```yaml
+version: '3.8'
+services:
+  autoreg:
+    build: .
+    image: autoreg:9.6.5
+    container_name: autoreg_kasm_test
+    volumes:
+      - ./data:/home/autoreg/data
+    environment:
+      - TZ=America/Sao_Paulo
+      - AUTOREG_CONFIG=/home/autoreg/data/config.ini
+    ports:
+      - "5901:5901"   # VNC
+      - "6901:6901"   # noVNC (se configurado)
+    restart: unless-stopped
+```
 
-- **Instalador Universal Refeito**: Scripts `install.sh` (Linux/macOS) e `install.bat` (Windows) totalmente reconstruídos para a versão 8.5.0.
-- **Instalação inteligente**: Detecta pasta do usuário, move dados para `~/.autoreg`, cria pasta `~/AutoReg`, gera log vazio, verifica Python3, cria venv se necessário, instala dependências, configura alias global no terminal padrão (bash/zsh).
-- **Workflows agrupados**: Novas flags `-interna`, `-analisa`, `-alta` para execução de rotinas agrupadas (internação, análise, alta) diretamente pelo CLI.
-- **Ajuda CLI aprimorada**: Todas as flags e agrupamentos agora aparecem corretamente no `--help`.
-- **Logs e arquivos**: Criação automática de `autoreg.log` e organização dos arquivos de trabalho.
+Observações para uso com Kasm:
+- Kasm Workspaces espera imagens preparadas com um serviço de sessão (ex.: supervisord iniciando ambiente de desktop + noVNC). Recomenda-se criar um Dockerfile baseado nas imagens oficiais do Kasm ou adaptar o Dockerfile acima para iniciar supervisor e noVNC.
+- Após construir e testar a imagem, faça push para o registry que o Kasm pode acessar (ex.: registry.local/empresa/autoreg:9.6.5).
+- No painel do Kasm, crie um novo Workspace Image apontando para a imagem, configure a sessão e permissões (GPU, memória, tempo de sessão).
+- Mapear volumes para persistência: ~/.autoreg ou /home/autoreg/data para manter logs, CSVs e venv.
+- Variáveis de ambiente sensíveis (credenciais) devem ser gerenciadas pelo Kasm Secrets ou mounted files, não em ENV públicos.
 
-- **pdf2csv**: Conversão automática de PDF para CSV, extraindo nome, código e data, com limpeza de dados.
-- **ghosp_nota**: Automação completa para extração de notas de prontuários do G-HOSP, processando múltiplos códigos do CSV e salvando resultados na coluna 'dados'.
-- **Loop automatizado**: Busca sequencial de prontuários e extração de lembretes para todos os códigos presentes em lista_same.csv.
-- **Atualização dinâmica do CSV**: Criação automática da coluna 'dados' e salvamento dos resultados extraídos.
+Segurança e recomendações:
+- Não exponha VNC diretamente à internet; use o noVNC via Kasm ou túnel seguro.
+- Rode containers com usuários não-root e limite recursos (CPU/memória).
+- Use registry privado e imagens assinadas quando possível.
+- Verifique políticas de compliance do hospital antes de disponibilizar workspaces que contenham credenciais.
 
+### Comandos úteis
+- Construir imagem:
+  - docker build -t autoreg:9.6.5 .
+- Testar com docker-compose:
+  - docker-compose up --build
+- Enviar para registry:
+  - docker tag autoreg:9.6.5 registry.exemplo.com/autoreg:9.6.5
+  - docker push registry.exemplo.com/autoreg:9.6.5
 
 ### 📋 Funções Disponíveis e Workflows Agrupados
 
@@ -168,6 +134,16 @@ Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 | `--all`      | [workflow completo]           | Executa todas as funções principais com repetição interativa |
 
 ### 📜 Histórico de Versões
+
+## 🌌 v9.6.5 Universe - Outubro de 2025
+- **Empacotamento com Docker + Integração Kasm VNC**: Imagem Docker pronta para uso em ambientes Kasm Workspaces (VNC/noVNC)
+- Imagem baseada em Python slim com todas as dependências do AutoReg instaladas
+- Entrypoint que inicia a aplicação e mantém um ambiente gráfico acessível via VNC/noVNC
+- Orientações para registrar a imagem no Kasm e disponibilizar a interface pelo painel Kasm
+- Exemplos de Dockerfile e docker-compose para teste local e para preparação do artefato a ser importado no Kasm
+- Recomendações de volumes e variáveis de ambiente para persistência de dados e configuração de credenciais
+- Atualizações menores de compatibilidade e correções de dependências para execução em container
+- Documentação básica para criação da imagem e publicação em registry privado
 
 ## 🌌 v9.6.2 Universe - Outubro de 2025
 - **Sanitização completa de dados**: Remoção de quebras de linha e caracteres problemáticos em CSV/Selenium

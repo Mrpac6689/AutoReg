@@ -5,8 +5,11 @@ USER root
 # Instala dependências do sistema
 RUN apt-get update && apt-get install -y \
     wget unzip gnupg curl software-properties-common \
-    python3 python3-pip python3-venv python3-dev git google-chrome \
+    python3 python3-pip python3-venv python3-dev git nano \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    dpkg -i google-chrome-stable_current_amd64.deb
 
 # Instala dependências Python
 COPY requirements.txt /tmp/requirements.txt
@@ -20,7 +23,7 @@ RUN mkdir -p /home/kasm-user/.autoreg /home/kasm-user/AutoReg \
 
 # Clona AutoReg
 USER 1000
-RUN git clone --branch universe https://github.com/Mrpac6689/AutoReg.git /home/kasm-user/.autoreg
+RUN git clone https://github.com/Mrpac6689/AutoReg.git /home/kasm-user/.autoreg
 
 # Cria virtualenv e instala dependências dentro dela
 RUN python3 -m venv /home/kasm-user/.autoreg/venv \

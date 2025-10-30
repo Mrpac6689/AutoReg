@@ -7,7 +7,9 @@ services:
     environment:
       - VNC_PW=senha_segura
       - VNCOPTIONS=-disableBasicAuth
+      - PUID=1000
+      - PGID=1000
     volumes:
-      - /home/michel/.autoreg:/home/kasm-user/.autoreg
+      - /home/michel/code/AutoReg:/home/kasm-user/.autoreg
       - /home/michel/AutoReg:/home/kasm-user/AutoReg
     restart: unless-stopped
