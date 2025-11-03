@@ -8,8 +8,18 @@ RUN apt-get update && apt-get install -y \
     python3 python3-pip python3-venv python3-dev git nano \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
-    dpkg -i google-chrome-stable_current_amd64.deb
+# Instala Google Chrome (versão 138.0.7204.94)
+RUN wget https://storage.googleapis.com/chrome-for-testing-public/142.0.7444.59/linux64/chrome-linux64.zip \
+    && unzip chrome-linux64.zip \
+    && mv chrome-linux64 /opt/chrome \
+    && ln -sf /opt/chrome/chrome /usr/bin/google-chrome
+
+
+# Instala ChromeDriver compatível (mesma versão)
+RUN wget https://storage.googleapis.com/chrome-for-testing-public/142.0.7444.59/linux64/chromedriver-linux64.zip \
+    && unzip chromedriver-linux64.zip \
+    && mv chromedriver-linux64/chromedriver /usr/local/bin/chromedriver \
+    && chmod +x /usr/local/bin/chromedriver
 
 # Instala dependências Python
 COPY requirements.txt /tmp/requirements.txt

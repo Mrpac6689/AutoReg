@@ -152,10 +152,12 @@ def solicita_pre_aih():
         driver.quit()
         return None
 
-    # Itera sobre os registos de atendimento do CSV usando índices
-    total_registros = len(df)
-    for i in range(total_registros):
+    # Itera sobre os registos de atendimento do CSV usando while
+    # para lidar corretamente com remoções de linhas
+    i = 0
+    while i < len(df):
         try:
+            total_registros = len(df)  # Atualiza o total a cada iteração
             # Converte ra para inteiro para remover o .0
             ra = int(df.at[i, 'ra'])
             print(f"\nProcessando registro {i + 1}/{total_registros}: {ra}")
@@ -205,6 +207,9 @@ def solicita_pre_aih():
                         time.sleep(1)  # Aguarda um momento para processar
                     except Exception as e:
                         print(f"   ⚠️  Não foi possível clicar no botão 'Gravar': {e}")
+                    
+                    # Avança para o próximo registro apenas se salvou
+                    i += 1
                 
                 elif comando == 'p':
                     # Pular (remover linha)
@@ -212,17 +217,20 @@ def solicita_pre_aih():
                     df = df.drop(index=i).reset_index(drop=True)
                     df.to_csv(csv_path, index=False)
                     print(f"   ✅ Linha removida do CSV")
+                    # Não incrementa i pois a próxima linha agora está no índice atual
                 
                 else:
                     print(f"   ⚠️  Comando inválido '{comando}' - pulando registro sem alterar CSV")
+                    i += 1
                 
             except KeyboardInterrupt:
                 print("\n   ⚠️  Operação cancelada pelo usuário (Ctrl+C)")
                 raise
             except Exception as e:
                 print(f"   ⚠️ Erro ao processar comando: {e}")
+                i += 1
 
         
         except Exception as e:
             print(f"❌ Erro ao processar o registro: {e}")
-            continue
+            i += 1

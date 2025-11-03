@@ -62,7 +62,7 @@ fi
 echo
 
 # ---------- 2) inserir alias no rc do shell ----------
-ALIAS_LINE='alias autoreg="sudo docker exec -it kasm-autoreg-1 bash"'
+ALIAS_LINE='alias autoreg="sudo docker exec -it autoreg bash"'
 echoinfo "2) Inserindo alias no $SHELL_RC (se ainda não existir)..."
 
 if [[ ! -f "$SHELL_RC" ]]; then

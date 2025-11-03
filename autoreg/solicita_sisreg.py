@@ -382,19 +382,46 @@ def solicita_sisreg():
                 
                 time.sleep(3)  # Aguarda processamento final e carregamento da página de confirmação
                 
-                # Captura o número da solicitação
+                # Tenta capturar o número da solicitação
                 print("Capturando número da solicitação...")
-                numero_solicitacao = wait.until(
-                    EC.presence_of_element_located((By.XPATH, "/html/body/center/p[1]/b"))
-                ).text
-                print(f"Número da solicitação capturado: {numero_solicitacao}")
-                logging.info(f"Número da solicitação capturado: {numero_solicitacao}")
-                
-                # Atualiza o CSV com o número da solicitação
-                df.at[index, 'solsisreg'] = numero_solicitacao
-                df.to_csv(csv_path, index=False)
-                print(f"CSV atualizado com o número da solicitação: {numero_solicitacao}")
-                logging.info(f"CSV atualizado com o número da solicitação: {numero_solicitacao}")
+                try:
+                    numero_solicitacao = wait.until(
+                        EC.presence_of_element_located((By.XPATH, "/html/body/center/p[1]/b"))
+                    ).text
+                    print(f"Número da solicitação capturado: {numero_solicitacao}")
+                    logging.info(f"Número da solicitação capturado: {numero_solicitacao}")
+                    
+                    # Atualiza o CSV com o número da solicitação
+                    df.at[index, 'solsisreg'] = numero_solicitacao
+                    df.to_csv(csv_path, index=False)
+                    print(f"CSV atualizado com o número da solicitação: {numero_solicitacao}")
+                    logging.info(f"CSV atualizado com o número da solicitação: {numero_solicitacao}")
+                    
+                except TimeoutException:
+                    # Se não encontrou o número, verifica se há mensagem de solicitação pendente
+                    print("Número da solicitação não encontrado, verificando mensagem de erro...")
+                    try:
+                        mensagem_pendente = navegador.find_element(
+                            By.XPATH, 
+                            "//td[contains(text(), 'O paciente já possui uma solicitação pendente para o procedimento.')]"
+                        )
+                        if mensagem_pendente:
+                            erro_msg = "O paciente já possui uma solicitação pendente para o procedimento."
+                            print(f"⚠️  {erro_msg}")
+                            logging.warning(f"Registro {index + 1}: {erro_msg}")
+                            
+                            # Cria a coluna 'erro' se não existir
+                            if 'erro' not in df.columns:
+                                df['erro'] = ''
+                            
+                            # Atualiza o CSV com a mensagem de erro
+                            df.at[index, 'erro'] = erro_msg
+                            df.to_csv(csv_path, index=False)
+                            print(f"Erro registrado no CSV: {erro_msg}")
+                            logging.info(f"Erro registrado no CSV para registro {index + 1}: {erro_msg}")
+                    except NoSuchElementException:
+                        print("❌ Número da solicitação não encontrado e nenhuma mensagem de erro conhecida detectada")
+                        logging.error(f"Registro {index + 1}: Número da solicitação não encontrado")
                 
                 navegador.switch_to.default_content()
                 print(f"Registro {index + 1} processado com sucesso!")

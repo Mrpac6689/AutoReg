@@ -1,6 +1,8 @@
 services:
   autoreg:
+    image: autoreg:latest
     build: .
+    container_name: autoreg
     ports:
       - "6901:6901"
     shm_size: "512m"
