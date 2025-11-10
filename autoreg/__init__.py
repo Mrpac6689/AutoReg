@@ -18,6 +18,7 @@ from .escaneia_pdf import pdf2csv
 from .ghosp_nota import ghosp_nota
 from .ghosp_cns import ghosp_cns
 from .ghosp_especial import ghosp_especial
+from .ghosp_especial_parallel import ghosp_especial_parallel
 from .solicita_inf_aih import solicita_inf_aih
 from .solicita_sisreg import solicita_sisreg
 from .solicita_nota import solicita_nota
@@ -28,3 +29,5 @@ from .trata_altas import trata_altas
 from .limpa_cache import limpa_cache
 from .solicita_trata_dados import solicita_trata_dados
 from .solicita_pre_aih import solicita_pre_aih
+from .producao_ambulatorial import producao_ambulatorial
+from .producao_ambulatorial_dados import producao_ambulatorial_dados

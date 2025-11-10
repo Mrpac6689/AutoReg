@@ -156,6 +156,11 @@ def solicita_nota():
                     # Trata o número da solicitação para remover o '.0' caso exista
                     solsisreg = str(row['solsisreg']).rstrip('.0')
                     
+                    # Verifica se solsisreg tem 9 dígitos, se não tiver adiciona 0 ao final
+                    if len(solsisreg) != 9:
+                        solsisreg = solsisreg + '0'
+                        print(f"⚠️  Número da solicitação ajustado para 9 dígitos: {solsisreg}")
+                    
                     # Monta o texto do lembrete com as informações das colunas
                     texto_lembrete = f"{row['data']} - {solsisreg} - {row['tipo']}"
                     print(f"Inserindo lembrete: {texto_lembrete}")

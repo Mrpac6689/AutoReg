@@ -4,8 +4,8 @@ def limpa_cache():
     user_dir = os.path.expanduser('~/AutoReg')
     os.makedirs(user_dir, exist_ok=True)
     
-    # Arquivo que deve ser mantido
-    arquivo_protegido = 'solicita_inf_aih.csv'
+    # Arquivos que devem ser mantidos
+    arquivos_protegidos = ['solicita_inf_aih.csv', 'internados_ghosp_avancado.csv']
     
     # Verifica se o diretório existe
     if not os.path.exists(user_dir):
@@ -24,8 +24,8 @@ def limpa_cache():
             if os.path.isdir(arquivo_path):
                 continue
             
-            # Mantém apenas o arquivo protegido
-            if arquivo == arquivo_protegido:
+            # Mantém apenas os arquivos protegidos
+            if arquivo in arquivos_protegidos:
                 arquivos_mantidos += 1
                 print(f"✓ Mantido: {arquivo}")
             else:

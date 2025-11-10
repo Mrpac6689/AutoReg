@@ -212,8 +212,8 @@ def solicita_sisreg():
                 tipo_para_opcao = {
                     'CLÍNICA MÉDICA': 'ESPEC - CLINICO - CLINICA GERAL',
                     'CLINICA MEDICA': 'ESPEC - CLINICO - CLINICA GERAL',
-                    'CLINICA PSIQUIATRICA': 'ESPEC - CLINICO - CLINICA GERAL',
-                    'CLÍNICA PSIQUIÁTRICA': 'ESPEC - CLINICO - CLINICA GERAL',
+                    'CLINICA PSIQUIATRICA': 'ESPEC - CLINICO - SAUDE MENTAL',
+                    'CLÍNICA PSIQUIÁTRICA': 'ESPEC - CLINICO - SAUDE MENTAL',
                     'CLÍNICA CIRÚRGICA': 'ESPEC - CIRURGICO - CIRURGIA GERAL',
                     'CLINICA CIRURGICA': 'ESPEC - CIRURGICO - CIRURGIA GERAL',
                     'CIRURGIA GERAL': 'ESPEC - CIRURGICO - CIRURGIA GERAL',

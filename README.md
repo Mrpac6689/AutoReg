@@ -1,7 +1,39 @@
 # AutoReg
 Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 
-## 🌌 Versão 9.6.5 Universe - Outubro de 2025
+## 🌌 Versão 9.6.6 Universe - Novembro de 2025
+
+### 🆕 Novas Funcionalidades v9.6.6
+
+- **Extração de Produção Ambulatorial SISREG**:
+  - **`producao_ambulatorial` (`-pra`)**: Extrai códigos de solicitação de produção ambulatorial com navegação multi-página automática
+    - Login automático no SISREG
+    - Interface para configuração manual de filtros
+    - Extração inteligente de tabelas (identifica segunda tabela com dados)
+    - Navegação automática entre páginas
+    - Sistema de checkpoint: salva progresso a cada 10 páginas
+    - Retomada automática em caso de interrupção
+    - Suporte a grandes volumes (200+ páginas)
+    - Saída: `~/AutoReg/producao_ambulatorial.csv`
+  
+  - **`producao_ambulatorial_dados` (`-pad`)**: Extrai dados detalhados de cada solicitação
+    - Acesso direto via URL para cada código
+    - Extração de 5 campos essenciais:
+      - Data da solicitação
+      - Unidade solicitante
+      - Unidade autorizadora
+      - Unidade executante
+      - Procedimento solicitado
+    - Processamento em lote de todos os códigos do CSV anterior
+    - Feedback detalhado por solicitação
+    - Saída: `~/AutoReg/producao_ambulatorial_dados.csv`
+
+- **Melhorias de Robustez**:
+  - Sistema de checkpoint com arquivo `producao_ambulatorial_checkpoint.txt`
+  - Salvamento incremental para evitar perda de dados
+  - Tratamento de interrupção por Ctrl+C com salvamento automático
+  - Detecção de página atual e total de páginas
+  - Retomada inteligente de onde parou
 
 ### 🆕 Novas Funcionalidades v9.6.5
 
@@ -126,6 +158,8 @@ Segurança e recomendações:
 | `-sia`       | solicita_inf_aih              | Extrai informações da AIH |
 | `-ssr`       | solicita_sisreg               | Executa Solicitações no Sistema SISREG |
 | `-snt`       | solicita_nota                 | Insere numero da solicitação SISREG na nota de prontuário |
+| `-pra`       | producao_ambulatorial         | Extrai códigos de solicitação de produção ambulatorial do SISREG (com checkpoint) |
+| `-pad`       | producao_ambulatorial_dados   | Extrai dados detalhados de cada solicitação de produção ambulatorial |
 | `-interna`   | [workflow agrupado]           | Executa rotina de internação completa: -eci -ip |
 | `-analisa`   | [workflow agrupado]           | Executa rotina de análise/comparação: -eis -eig -ci -ma |
 | `-alta`      | [workflow agrupado]           | Executa rotina de alta completa: -tat -ecsa -ea -ar -eid -td -clc |
@@ -134,6 +168,19 @@ Segurança e recomendações:
 | `--all`      | [workflow completo]           | Executa todas as funções principais com repetição interativa |
 
 ### 📜 Histórico de Versões
+
+## 🌌 v9.6.6 Universe - Novembro de 2025
+- **Sistema de Extração de Produção Ambulatorial SISREG**:
+  - Nova função `-pra` para extração de códigos com sistema de checkpoint
+  - Nova função `-pad` para extração de dados detalhados das solicitações
+  - Salvamento incremental a cada 10 páginas para segurança
+  - Retomada automática em caso de interrupção
+  - Suporte a grandes volumes (200+ páginas, 2000+ registros)
+  - Extração de 5 campos essenciais: data, solicitante, autorizador, executante, procedimento
+  - Detecção inteligente de tabelas (ignora filtros, processa apenas dados)
+  - Navegação multi-página automática com feedback de progresso
+  - Tratamento robusto de erros com salvamento de checkpoint
+  - CSVs gerados: `producao_ambulatorial.csv` e `producao_ambulatorial_dados.csv`
 
 ## 🌌 v9.6.5 Universe - Outubro de 2025
 - **Empacotamento com Docker + Integração Kasm VNC**: Imagem Docker pronta para uso em ambientes Kasm Workspaces (VNC/noVNC)
@@ -337,6 +384,13 @@ O **AutoReg v8.0.0 Universe** é um sistema completo de automação para process
 - **Códigos para alta**: Extração de códigos SISREG específicos (`-ecsa`)
 - **Solicitações devolvidas**: Processamento de devoluções (`-dev`)
 
+## 🏥 **Módulo de Produção Ambulatorial** (NOVO v9.6.6)
+- **Extração de códigos**: Coleta automática de códigos de solicitação com checkpoint (`-pra`)
+- **Extração de dados**: Captura detalhada de informações de cada solicitação (`-pad`)
+- **Processamento em lote**: Suporte para milhares de registros
+- **Sistema de checkpoint**: Retomada automática em caso de interrupção
+- **Salvamento incremental**: Gravação a cada 10 páginas processadas
+
 ## 🔄 **Workflows Inteligentes**
 - **Execução individual**: Funções específicas conforme necessidade
 - **Execução sequencial**: Múltiplas funções em ordem (`autoreg -eci -ip -eis`)
@@ -431,6 +485,10 @@ autoreg --all                   # Executa tudo com prompt de repetição
 
 # Função especializada
 autoreg -dev                    # Processa devolvidos (separadamente)
+
+# Extração de produção ambulatorial (NOVO v9.6.6)
+autoreg -pra                    # Extrai códigos de solicitação (com checkpoint)
+autoreg -pad                    # Extrai dados detalhados das solicitações
 ```
 
 ### 💡 **Exemplos Práticos**
@@ -443,6 +501,16 @@ autoreg -alta
 
 # Rotina de análise/comparação
 autoreg -analisa
+
+# Extração completa de produção ambulatorial (NOVO v9.6.6)
+# 1. Primeiro extrai os códigos (pode demorar se houver muitas páginas)
+autoreg -pra
+# 2. Depois extrai os dados detalhados de cada código
+autoreg -pad
+
+# Se a extração for interrompida (-pra), basta executar novamente
+# O sistema retoma automaticamente de onde parou!
+autoreg -pra  # Retoma da última página processada
 
 # Rotina de processamento de AIHs (com tratamento de dados)
 autoreg -aihs

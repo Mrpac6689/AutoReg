@@ -32,6 +32,7 @@ from autoreg import pdf2csv
 from autoreg import ghosp_nota  # Adicione este import
 from autoreg import ghosp_cns  # Importa a função ghosp_cns
 from autoreg import ghosp_especial  # Importa a função ghosp_especial
+from autoreg import ghosp_especial_parallel  # Importa a versão paralela
 from autoreg import solicita_inf_aih  # Importa a função solicita_inf_aih
 from autoreg import solicita_sisreg  # Importa a função solicita_sisreg
 from autoreg import solicita_nota  # Importa a função solicita_nota
@@ -40,6 +41,8 @@ from autoreg import consulta_solicitacao_sisreg  # Importa a função consulta_s
 from autoreg import internados_ghosp_avancado  # Importa a função internados_ghosp_avancado
 from autoreg import internados_ghosp_nota  # Importa a função internados_ghosp_nota
 from autoreg import solicita_trata_dados  # Importa a função solicita_trata_dados
+from autoreg import producao_ambulatorial  # Importa a função producao_ambulatorial
+from autoreg import producao_ambulatorial_dados  # Importa a função producao_ambulatorial_dados
 
 # Dicionário com as funções e suas descrições
 FUNCOES = {
@@ -123,6 +126,10 @@ FUNCOES = {
         'func': ghosp_especial,
         'desc': 'Extração de dados personalizados do GHOSP'
     },
+    'ghosp_especial_parallel': {
+        'func': ghosp_especial_parallel,
+        'desc': 'Extração paralela de dados personalizados do GHOSP (mais rápida)'
+    },
     'solicita_inf_aih': {
         'func': solicita_inf_aih,
         'desc': 'Extrai informações da AIH'
@@ -146,6 +153,14 @@ FUNCOES = {
     'solicita_trata_dados': {
         'func': solicita_trata_dados,
         'desc': 'Ajusta CSV para tratamento das solicitações de AIH previamente ao SISREG'
+    },
+    'producao_ambulatorial': {
+        'func': producao_ambulatorial,
+        'desc': 'Extrai dados de produção ambulatorial do SISREG'
+    },
+    'producao_ambulatorial_dados': {
+        'func': producao_ambulatorial_dados,
+        'desc': 'Extrai códigos de solicitação de produção ambulatorial do SISREG'
     }
 }
 
@@ -192,12 +207,15 @@ FUNÇÕES DISPONÍVEIS:
         ('-iga', '--internados-ghosp-avancado', 'internados_ghosp_avancado'),
         ('-ign', '--internados-ghosp-nota', 'internados_ghosp_nota'),
         ('-especial', '--especial', 'ghosp_especial'),
+        ('-especial-parallel', '--especial-parallel', 'ghosp_especial_parallel'),
         ('-sia', '--solicita-inf-aih', 'solicita_inf_aih'),
         ('-spa', '--solicita-pre-aih', 'solicita_pre_aih'),
         ('-ssr', '--solicita-sisreg', 'solicita_sisreg'),
         ('-snt', '--solicita-nota', 'solicita_nota'),
         ('-std', '--solicita-trata-dados', 'solicita_trata_dados'),
         ('-css', '--consulta-solicitacao-sisreg', 'consulta_solicitacao_sisreg'),
+        ('-pra', '--producao-ambulatorial', 'producao_ambulatorial'),
+        ('-pad', '--producao-ambulatorial-dados', 'producao_ambulatorial_dados'),
         ('-interna', '--interna', None),
         ('-analisa', '--analisa', None),
         ('-alta', '--alta', None),
@@ -455,6 +473,8 @@ Exemplos de uso:
                        help='Extrai o conteúdo das notas dos prontuários do GHOSP')
     parser.add_argument('-especial', '--especial', action='store_true',
                        help='Extração de dados personalizados do GHOSP')
+    parser.add_argument('-especial-parallel', '--especial-parallel', action='store_true',
+                       help='Extração paralela de dados personalizados do GHOSP (mais rápida)')
     parser.add_argument('-sia', '--solicita-inf-aih', action='store_true',
                        help='Extrai informações da AIH')
     parser.add_argument('-spa', '--solicita-pre-aih', action='store_true',
@@ -467,6 +487,10 @@ Exemplos de uso:
                        help='Ajusta CSV para tratamento das solicitações de AIH previamente ao SISREG')
     parser.add_argument('-css', '--consulta-solicitacao-sisreg', action='store_true',
                        help='Consulta o estado da Solicitação no sistema SISREG')
+    parser.add_argument('-pra', '--producao-ambulatorial', action='store_true',
+                       help='Extrai dados de produção ambulatorial do SISREG')
+    parser.add_argument('-pad', '--producao-ambulatorial-dados', action='store_true',
+                       help='Extrai códigos de solicitação de produção ambulatorial do SISREG')
     # Novas funções de workflow
     parser.add_argument('-interna', '--interna', action='store_true',
                        help='Executa sequência de internação: -eci -ip')
@@ -514,6 +538,7 @@ Exemplos de uso:
         'ghosp_nota': 'ghosp_nota',
         'ghosp_cns': 'ghosp_cns',
         'ghosp_especial': 'ghosp_especial',
+        'ghosp_especial_parallel': 'ghosp_especial_parallel',
         'internados_ghosp_avancado': 'internados_ghosp_avancado',
         'internados_ghosp_nota': 'internados_ghosp_nota',
         'solicita_inf_aih': 'solicita_inf_aih',
@@ -521,7 +546,9 @@ Exemplos de uso:
         'solicita_sisreg': 'solicita_sisreg',
         'solicita_nota': 'solicita_nota',
         'solicita_trata_dados': 'solicita_trata_dados',
-        'consulta_solicitacao_sisreg': 'consulta_solicitacao_sisreg'
+        'consulta_solicitacao_sisreg': 'consulta_solicitacao_sisreg',
+        'producao_ambulatorial': 'producao_ambulatorial',
+        'producao_ambulatorial_dados': 'producao_ambulatorial_dados'
     }
     
     # Processa funções especiais primeiro
@@ -599,6 +626,8 @@ Exemplos de uso:
             # Corrige o nome do atributo para a função especial
             if arg == 'ghosp_especial':
                 arg_name = 'especial'
+            elif arg == 'ghosp_especial_parallel':
+                arg_name = 'especial_parallel'
             else:
                 arg_name = arg.replace('-', '_')
             if hasattr(args, arg_name) and getattr(args, arg_name):
