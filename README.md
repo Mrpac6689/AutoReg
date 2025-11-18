@@ -1,7 +1,35 @@
 # AutoReg
 Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 
-## 🌌 Versão 9.6.6 Universe - Novembro de 2025
+## 🌌 Versão 9.6.7 Universe - Novembro de 2025
+
+### 🆕 Novas Funcionalidades v9.6.7
+
+- **Extração de Produção Ambulatorial GMUs**:
+  - **`producao_ambulatorial_gmus` (`-pag`)**: Extrai dados detalhados de produção ambulatorial para GMUs (Gestão de Múltiplas Unidades)
+    - Login automático no G-HOSP
+    - Interface para seleção de mês e ano
+    - Identificação automática de dias úteis (exclui sábados e domingos)
+    - Navegação direta por URL para cada dia
+    - Extração de dados completos por paciente:
+      - Data do atendimento
+      - Período (Manhã/Tarde)
+      - Posição na agenda
+      - Nome do paciente
+      - Nome do agendador (via tooltip hover)
+    - Salvamento incremental após cada dia processado
+    - Sistema de pausa/retomada interativo (P/C + ENTER)
+    - Thread daemon para não bloquear o Selenium durante pausa
+    - Navegador permanece responsivo durante pausas
+    - Saída: `~/AutoReg/producao_ambulatorial_gmus.csv`
+
+- **Sistema de Pausa/Retomada para Processos Longos**:
+  - Implementado em `producao_ambulatorial_dados`
+  - Comandos simples: `P` + ENTER para pausar, `C` + ENTER para continuar
+  - Thread separada que não bloqueia o driver do Selenium
+  - Navegador permanece totalmente funcional durante pausa
+  - Thread-safe com locks para evitar race conditions
+  - Permite interação manual com o navegador se necessário
 
 ### 🆕 Novas Funcionalidades v9.6.6
 
@@ -148,6 +176,7 @@ Segurança e recomendações:
 | `-clc`       | limpa_cache                   | Limpa todos os arquivos da pasta ~/AutoReg, mantendo apenas solicita_inf_aih.csv |
 | `-dev`       | devolvidos                    | Processa solicitações devolvidas |
 | `-p2c`       | pdf2csv                       | Converte PDF de solicitações em CSV |
+| `-pag`       | producao_ambulatorial_gmus    | Extrai produção ambulatorial GMUs do G-HOSP |
 | `-ghn`       | ghosp_nota                    | Extrair notas de prontuários Ghosp |
 | `-ghc`       | ghosp_cns                     | Extrai CNSs dos prontuários |
 | `-iga`       | internados_ghosp_avancado     | Extrai pacientes internados no GHOSP com informações adicionais |

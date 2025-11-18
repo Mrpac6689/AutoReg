@@ -2,7 +2,7 @@
 """
 AutoReg - Coordenador de Workflow
 Automatização de Sistemas de Saúde - SISREG & G-HOSP
-Versão 9.6.2 - Outubro de 2025
+Versão 9.6.7 - Universe - Novembro de 2025
 Autor: Michel Ribeiro Paes (MrPaC6689)
 """
 
@@ -43,6 +43,7 @@ from autoreg import internados_ghosp_nota  # Importa a função internados_ghosp
 from autoreg import solicita_trata_dados  # Importa a função solicita_trata_dados
 from autoreg import producao_ambulatorial  # Importa a função producao_ambulatorial
 from autoreg import producao_ambulatorial_dados  # Importa a função producao_ambulatorial_dados
+from autoreg import producao_ambulatorial_gmus  # Importa a função producao_ambulatorial_gmus
 
 # Dicionário com as funções e suas descrições
 FUNCOES = {
@@ -161,6 +162,10 @@ FUNCOES = {
     'producao_ambulatorial_dados': {
         'func': producao_ambulatorial_dados,
         'desc': 'Extrai códigos de solicitação de produção ambulatorial do SISREG'
+    },
+    'producao_ambulatorial_gmus': {
+        'func': producao_ambulatorial_gmus,
+        'desc': 'Extrai dados de produção ambulatorial GMUs do SISREG'
     }
 }
 
@@ -172,7 +177,7 @@ def mostrar_informacoes():
 ║                    Automatização de Sistemas de Saúde                         ║
 ║                               SISREG & G-HOSP                                 ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║ Versão: 9.6.2                                                                 ║
+║ Versão: 9.6.7 - Universe                                                      ║
 ║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║
 ║ Contato: michelrpaes@gmail.com                                                ║
 ║ Repositório: https://github.com/Mrpac6689/AutoReg                             ║
@@ -216,6 +221,7 @@ FUNÇÕES DISPONÍVEIS:
         ('-css', '--consulta-solicitacao-sisreg', 'consulta_solicitacao_sisreg'),
         ('-pra', '--producao-ambulatorial', 'producao_ambulatorial'),
         ('-pad', '--producao-ambulatorial-dados', 'producao_ambulatorial_dados'),
+        ('-pag', '--producao-ambulatorial-gmus', 'producao_ambulatorial_gmus'),
         ('-interna', '--interna', None),
         ('-analisa', '--analisa', None),
         ('-alta', '--alta', None),
@@ -491,6 +497,8 @@ Exemplos de uso:
                        help='Extrai dados de produção ambulatorial do SISREG')
     parser.add_argument('-pad', '--producao-ambulatorial-dados', action='store_true',
                        help='Extrai códigos de solicitação de produção ambulatorial do SISREG')
+    parser.add_argument('-pag', '--producao-ambulatorial-gmus', action='store_true',
+                       help='Extrai dados de produção ambulatorial GMUs do SISREG')
     # Novas funções de workflow
     parser.add_argument('-interna', '--interna', action='store_true',
                        help='Executa sequência de internação: -eci -ip')
@@ -548,7 +556,8 @@ Exemplos de uso:
         'solicita_trata_dados': 'solicita_trata_dados',
         'consulta_solicitacao_sisreg': 'consulta_solicitacao_sisreg',
         'producao_ambulatorial': 'producao_ambulatorial',
-        'producao_ambulatorial_dados': 'producao_ambulatorial_dados'
+        'producao_ambulatorial_dados': 'producao_ambulatorial_dados',
+        'producao_ambulatorial_gmus': 'producao_ambulatorial_gmus'
     }
     
     # Processa funções especiais primeiro

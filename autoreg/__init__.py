@@ -31,3 +31,4 @@ from .solicita_trata_dados import solicita_trata_dados
 from .solicita_pre_aih import solicita_pre_aih
 from .producao_ambulatorial import producao_ambulatorial
 from .producao_ambulatorial_dados import producao_ambulatorial_dados
+from .producao_ambulatorial_gmus import producao_ambulatorial_gmus

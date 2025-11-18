@@ -2,7 +2,10 @@ import os
 import time
 import pandas as pd
 import sys
+import signal
 import configparser
+import threading
+import select
 from selenium import webdriver
 from selenium.webdriver.support.ui import Select
 from autoreg.chrome_options import get_chrome_options
@@ -12,9 +15,53 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
+# Variável global para controlar pausa
+paused = False
+pause_lock = threading.Lock()
+
+def keyboard_listener():
+    """Thread que escuta comandos do teclado sem bloquear a execução"""
+    global paused
+    print("💡 Pressione 'P' + ENTER para PAUSAR | 'C' + ENTER para CONTINUAR\n")
+    
+    while True:
+        try:
+            # Ler input de forma não-bloqueante
+            comando = input().strip().upper()
+            
+            if comando == 'P':
+                if not paused:
+                    with pause_lock:
+                        paused = True
+                    print("\n⏸️  EXECUÇÃO PAUSADA")
+                    print("💡 Digite 'C' + ENTER para retomar\n")
+                else:
+                    print("⚠️  Já está pausado\n")
+                    
+            elif comando == 'C':
+                if paused:
+                    with pause_lock:
+                        paused = False
+                    print("\n▶️  RETOMANDO EXECUÇÃO...\n")
+                else:
+                    print("⚠️  Não está pausado\n")
+                    
+        except EOFError:
+            break
+        except Exception:
+            pass
+
+def setup_pause_handler():
+    """Inicia a thread de escuta do teclado"""
+    listener_thread = threading.Thread(target=keyboard_listener, daemon=True)
+    listener_thread.start()
+
 def producao_ambulatorial_dados():
     
     print("\n---===> EXTRAÇÃO DE DADOS DE PRODUÇÃO AMBULATORIAL - SISREG <===---")
+    
+    # Configurar handler de pausa
+    setup_pause_handler()
     
     # Definir diretório e caminho do CSV
     user_dir = os.path.expanduser('~/AutoReg')
@@ -106,6 +153,10 @@ def producao_ambulatorial_dados():
         dados_extraidos = []
         
         for idx, row in df.iterrows():
+            # Verificar se está pausado
+            while paused:
+                time.sleep(0.5)
+            
             codigo = str(row['solicitacao']).strip()
             
             print(f"\n[{idx + 1}/{total_solicitacoes}] 🔍 Processando solicitação: {codigo}")
