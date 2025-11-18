@@ -277,7 +277,7 @@ def producao_ambulatorial():
                         pagina_atual += 1
                         
                         # Aguardar a nova página carregar
-                        time.sleep(2)
+                        time.sleep(3)
                     else:
                         print(f"  ✓ Última página alcançada")
                         break
