@@ -1,0 +1,416 @@
+import os
+import csv
+import time
+import random
+import difflib
+import pandas as pd
+import configparser
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support.ui import Select
+from autoreg.chrome_options import get_chrome_options
+from datetime import datetime
+
+def exames_ambulatorio_solicita():
+    print("Solicitação de exames ambulatoriais")
+    
+    navegador = None
+    
+    chrome_options = get_chrome_options()
+    navegador = webdriver.Chrome(options=chrome_options)
+    wait = WebDriverWait(navegador, 20)
+    print("Acessando a página de Internação...\n")
+
+    navegador.get("https://sisregiii.saude.gov.br")
+    
+    # Realiza o login
+    print("Localizando campo de usuário...")
+    usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
+    print("Campo de usuário localizado.")
+
+    print("Localizando campo de senha...")
+    senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
+    print("Campo de senha localizado.")
+
+    print("Lendo credenciais do SISREG...")
+    
+    config = configparser.ConfigParser()
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(base_dir, '..', 'config.ini')
+    config.read(config_path)
+    usuario_sisreg = config['SISREG-REG']['usuarioreg']
+    senha_sisreg = config['SISREG-REG']['senhareg']
+    print("Credenciais lidas.")
+    
+
+    print("Preenchendo usuário...")
+    usuario_field.send_keys(usuario_sisreg)
+    print("Usuário preenchido.")
+    
+    print("Preenchendo senha...")
+    senha_field.send_keys(senha_sisreg)
+    print("Senha preenchida.")
+    
+    print("Aguardando antes de clicar no botão de login...")
+    time.sleep(5)
+
+    print("Localizando botão de login...")
+    login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
+    print("Botão de login localizado.")
+
+    print("Clicando no botão de login...")
+    login_button.click()
+    print("Botão de login clicado.")
+    
+    time.sleep(5)
+    print("Login realizado com sucesso!")
+
+
+    # Configuração dos diretórios e arquivos
+    user_dir = os.path.expanduser('~/AutoReg')
+    os.makedirs(user_dir, exist_ok=True)
+    csv_exames = os.path.join(user_dir, 'exames_solicitar.csv')
+    
+    # verificar se o csv existe
+    print("\n📋 Etapa 1: Extraindo informações dos exames a solicitar...")
+    try:
+        # Verifica se o arquivo existe para pegar o cabeçalho
+        if os.path.exists(csv_exames):
+            df = pd.read_csv(csv_exames)
+            colunas = df.columns.tolist()
+            print(f"   ✅ Arquivo encontrado com colunas: {', '.join(colunas)}")
+            if 'ra' not in colunas:
+                print(f"   ❌ Coluna 'ra' não encontrada no arquivo. Colunas disponíveis: {', '.join(colunas)}")
+                return None
+        else:
+            print(f"   ❌ Arquivo não encontrado: {csv_exames}, crie o arquivo com o cabeçalho: 'ra' e insira a lista de prontuarios a pesquisar")
+            return None
+
+    except Exception as e:
+        print(f"❌ Erro ao extrair informações dos exames a solicitar: {e}")
+        return None
+
+    # Garante que as colunas necessárias existem no DataFrame
+    if 'procedimento' not in df.columns:
+        df['procedimento'] = ''
+    if 'chave' not in df.columns:
+        df['chave'] = ''
+    if 'solicitacao' not in df.columns:
+        df['solicitacao'] = ''
+    
+    # Itera sobre os links do CSV
+    for index, row in df.iterrows():
+        try:
+            # Verifica se a linha já foi processada (tem conteúdo em solicitacao e chave)
+            chave = row.get('chave', '').strip() if pd.notna(row.get('chave')) else ''
+            solicitacao = row.get('solicitacao', '').strip() if pd.notna(row.get('solicitacao')) else ''
+            
+            if chave and solicitacao:
+                print(f"\n[{index + 1}/{len(df)}] ⏭️  Linha já processada (chave: {chave}, solicitação: {solicitacao}). Pulando...")
+                continue
+            
+            cns = row['cns']
+            procedimento = row.get('procedimento', '').strip() if pd.notna(row.get('procedimento')) else ''
+            cns_float = float(cns)
+            # Remove o .0 se for um número inteiro
+            cns = int(cns_float) if cns_float.is_integer() else cns_float
+            print(f"\n[{index + 1}/{len(df)}] Processando Solicitação para o CNS: {cns}")
+            navegador.get(f"https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar")
+            
+            # Aguarda a página carregar e localiza o campo CNS
+            print("   Aguardando campo CNS carregar...")
+            cns_field = wait.until(EC.presence_of_element_located((By.NAME, "nu_cns")))
+            print(f"   Campo CNS localizado. Inserindo CNS: {cns}")
+            
+            # Limpa o campo e insere o CNS
+            cns_field.clear()
+            cns_field.send_keys(str(cns))
+            print("   CNS inserido com sucesso.")
+            
+            # Localiza e clica no botão pesquisar
+            print("   Localizando botão pesquisar...")
+            pesquisar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btn_pesquisar")))
+            print("   Botão pesquisar localizado. Clicando...")
+            pesquisar_button.click()
+            print("   Botão pesquisar clicado com sucesso.")
+            
+            time.sleep(2)  # Aguarda a pesquisa ser processada
+            
+            # Localiza e clica no botão continuar
+            print("   Localizando botão continuar...")
+            continuar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btn_continuar")))
+            print("   Botão continuar localizado. Clicando...")
+            continuar_button.click()
+            print("   Botão continuar clicado com sucesso.")
+            
+            time.sleep(2)  # Aguarda a próxima tela carregar
+            
+            # Seleciona o procedimento no dropdown "pa"
+            print("   Localizando dropdown de procedimento (pa)...")
+            pa_dropdown = wait.until(EC.presence_of_element_located((By.NAME, "pa")))
+            pa_select = Select(pa_dropdown)
+            print("   Selecionando 'XXXXXXXXXX - GRUPO - TOMOGRAFIA COMPUTADORIZADA - INTERNADOS'...")
+            
+            # Tenta selecionar pelo value primeiro
+            try:
+                pa_select.select_by_value("0045000")
+                print("   Procedimento selecionado com sucesso (por value).")
+            except Exception as e:
+                print(f"   ⚠️  Não foi possível selecionar por value, tentando por texto...")
+                # Fallback: tenta selecionar pelo texto
+                try:
+                    pa_select.select_by_visible_text("XXXXXXXXXX - GRUPO - TOMOGRAFIA COMPUTADORIZADA - INTERNADOS")
+                    print("   Procedimento selecionado com sucesso (por texto).")
+                except Exception as e2:
+                    print(f"   ❌ Erro ao selecionar procedimento: {e2}")
+                    # Tenta buscar por texto parcial
+                    try:
+                        for option in pa_select.options:
+                            if "TOMOGRAFIA COMPUTADORIZADA - INTERNADOS" in option.text:
+                                pa_select.select_by_visible_text(option.text)
+                                print(f"   Procedimento selecionado com sucesso (por texto parcial): {option.text}")
+                                break
+                        else:
+                            raise Exception("Nenhuma opção de tomografia encontrada no dropdown")
+                    except Exception as e3:
+                        print(f"   ❌ Erro ao selecionar procedimento por texto parcial: {e3}")
+                        raise
+            
+            # Preenche o campo CID10
+            print("   Localizando campo CID10...")
+            cid10_field = wait.until(EC.presence_of_element_located((By.NAME, "cid10")))
+            print("   Campo CID10 localizado. Inserindo 'R68'...")
+            cid10_field.clear()
+            cid10_field.send_keys("R68")
+            print("   CID10 inserido com sucesso.")
+            
+            # Seleção aleatória no dropdown de profissional
+            print("   Localizando dropdown de profissional (cpfprofsol)...")
+            cpfprofsol_dropdown = wait.until(EC.presence_of_element_located((By.NAME, "cpfprofsol")))
+            cpfprofsol_select = Select(cpfprofsol_dropdown)
+            
+            # Obtém todas as opções disponíveis (exceto a primeira que geralmente é vazia)
+            opcoes = [opt for opt in cpfprofsol_select.options if opt.get_attribute("value")]
+            if opcoes:
+                opcao_aleatoria = random.choice(opcoes)
+                valor_aleatorio = opcao_aleatoria.get_attribute("value")
+                texto_aleatorio = opcao_aleatoria.text
+                print(f"   Selecionando profissional aleatório: {texto_aleatorio} (value: {valor_aleatorio})...")
+                cpfprofsol_select.select_by_value(valor_aleatorio)
+                print("   Profissional selecionado com sucesso.")
+            else:
+                print("   ⚠️  Nenhuma opção disponível no dropdown de profissional.")
+            
+            # Seleciona a unidade de execução
+            print("   Localizando dropdown de unidade de execução (upsexec)...")
+            upsexec_dropdown = wait.until(EC.presence_of_element_located((By.NAME, "upsexec")))
+            upsexec_select = Select(upsexec_dropdown)
+            print("   Selecionando unidade com value '6861849'...")
+            upsexec_select.select_by_value("6861849")
+            print("   Unidade de execução selecionada com sucesso.")
+            
+            # Clica no botão OK
+            print("   Localizando botão OK...")
+            ok_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@value='OK']")))
+            print("   Botão OK localizado. Clicando...")
+            ok_button.click()
+            print("   Botão OK clicado com sucesso.")
+            
+            time.sleep(2)  # Aguarda a próxima tela carregar
+
+            # Compara os procedimentos do CSV com as opções disponíveis na tabela
+            if procedimento:
+                # Separa os procedimentos pelo delimitador "|"
+                procedimentos_lista = [p.strip() for p in procedimento.split('|') if p.strip()]
+                print(f"   Encontrados {len(procedimentos_lista)} procedimento(s) para processar")
+                
+                # Aguarda a tabela carregar
+                wait.until(EC.presence_of_element_located((By.CLASS_NAME, "table_listagem")))
+                
+                # Encontra todos os checkboxes na tabela
+                checkboxes = navegador.find_elements(By.XPATH, "//table[@class='table_listagem']//input[@type='checkbox']")
+                
+                checkboxes_marcados = []
+                
+                # Para cada procedimento do CSV
+                for proc_idx, proc_csv in enumerate(procedimentos_lista, 1):
+                    print(f"   [{proc_idx}/{len(procedimentos_lista)}] Buscando procedimento mais similar a: {proc_csv}")
+                    
+                    melhor_similaridade = 0
+                    checkbox_selecionado = None
+                    texto_selecionado = ""
+                    
+                    # Compara cada opção da tabela com o procedimento atual
+                    for checkbox in checkboxes:
+                        # Pula checkboxes já marcados
+                        if checkbox in checkboxes_marcados:
+                            continue
+                            
+                        # Obtém o texto da opção (texto do elemento pai td)
+                        try:
+                            td = checkbox.find_element(By.XPATH, "./..")
+                            texto_opcao = td.text.strip()
+                            
+                            # Calcula a similaridade usando SequenceMatcher
+                            similaridade = difflib.SequenceMatcher(None, proc_csv.upper(), texto_opcao.upper()).ratio()
+                            
+                            # Verifica se contém palavras-chave importantes
+                            palavras_procedimento = set(proc_csv.upper().split())
+                            palavras_opcao = set(texto_opcao.upper().split())
+                            palavras_comuns = palavras_procedimento.intersection(palavras_opcao)
+                            
+                            # Aumenta a similaridade se houver palavras-chave em comum
+                            if palavras_comuns:
+                                bonus = len(palavras_comuns) / max(len(palavras_procedimento), len(palavras_opcao))
+                                similaridade += bonus * 0.3
+                            
+                            if similaridade > melhor_similaridade:
+                                melhor_similaridade = similaridade
+                                checkbox_selecionado = checkbox
+                                texto_selecionado = texto_opcao
+                        except Exception as e:
+                            continue
+                    
+                    # Marca o checkbox mais similar
+                    if checkbox_selecionado and melhor_similaridade > 0.3:  # Threshold mínimo de 30%
+                        print(f"      ✅ Procedimento encontrado: {texto_selecionado} (similaridade: {melhor_similaridade:.2%})")
+                        if not checkbox_selecionado.is_selected():
+                            checkbox_selecionado.click()
+                        checkboxes_marcados.append(checkbox_selecionado)
+                        print(f"      ✅ Checkbox marcado com sucesso.")
+                    else:
+                        print(f"      ⚠️  Nenhum procedimento similar encontrado para '{proc_csv}' (melhor similaridade: {melhor_similaridade:.2%})")
+                
+                print(f"   ✅ Total de {len(checkboxes_marcados)} checkbox(es) marcado(s) de {len(procedimentos_lista)} procedimento(s)")
+            else:
+                print("   ⚠️  Procedimento não informado no CSV, pulando seleção.")
+            
+            # Clica no botão Confirmar
+            print("   Localizando botão Confirmar...")
+            confirmar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btnConfirmar")))
+            print("   Botão Confirmar localizado. Clicando...")
+            confirmar_button.click()
+            print("   Botão Confirmar clicado com sucesso.")
+            
+            time.sleep(2)  # Aguarda a próxima tela carregar
+        
+            # Localiza e clica no link que expande a tabela de vagas
+            print("   Localizando link para expandir tabela de vagas...")
+            try:
+                # Procura pelo elemento com onclick contendo controleVagas('divUnidade0')
+                vagas_link = wait.until(EC.element_to_be_clickable((
+                    By.XPATH, 
+                    "//td[@onclick=\"controleVagas('divUnidade0');\"]"
+                )))
+                print("   Link encontrado. Clicando para expandir tabela...")
+                vagas_link.click()
+                print("   Link clicado com sucesso.")
+                time.sleep(1)  # Aguarda a tabela expandir
+            except TimeoutException:
+                print("   ⚠️  Link de expansão não encontrado, tentando localizar tabela diretamente...")
+            
+            # Aguarda a tabela de vagas aparecer
+            print("   Aguardando tabela de vagas carregar...")
+            wait.until(EC.presence_of_element_located((By.CLASS_NAME, "table_listagem")))
+            
+            # Seleciona o primeiro radio button disponível
+            print("   Localizando primeiro radio button disponível...")
+            try:
+                # Encontra o primeiro radio button com name="vagas" que está visível
+                primeiro_radio = wait.until(EC.presence_of_element_located((
+                    By.XPATH,
+                    "//input[@type='radio' and @name='vagas']"
+                )))
+                
+                # Verifica se está visível e clicável
+                if primeiro_radio.is_displayed():
+                    print("   Primeiro radio button encontrado. Selecionando...")
+                    primeiro_radio.click()
+                    print("   Radio button selecionado com sucesso.")
+                else:
+                    # Tenta usar JavaScript para clicar se não estiver visível
+                    navegador.execute_script("arguments[0].click();", primeiro_radio)
+                    print("   Radio button selecionado via JavaScript.")
+            except TimeoutException:
+                print("   ⚠️  Nenhum radio button disponível encontrado.")
+            
+            time.sleep(1)  # Aguarda a seleção ser processada
+            
+            
+            #aqui
+            # Clica no botão Próxima Etapa
+            print("   Localizando botão Próxima Etapa...")
+            proxima_etapa_button = wait.until(EC.element_to_be_clickable((By.NAME, "btnProximaEtapa")))
+            print("   Botão Próxima Etapa localizado. Clicando...")
+            proxima_etapa_button.click()
+            print("   Botão Próxima Etapa clicado com sucesso.")
+            
+            time.sleep(2)  # Aguarda a próxima tela carregar
+
+            # Extrai a chave da solicitação
+            print("   Extraindo chave da solicitação...")
+            chave_valor = ''
+            try:
+                chave_element = wait.until(EC.presence_of_element_located((
+                    By.XPATH,
+                    '//*[@id="fichaCompleta"]/table[1]/tbody/tr[2]/td/b'
+                )))
+                chave_valor = chave_element.text.strip()
+                print(f"   ✅ Chave extraída: {chave_valor}")
+                df.at[index, 'chave'] = chave_valor
+            except TimeoutException:
+                print("   ⚠️  Campo de chave não encontrado.")
+                df.at[index, 'chave'] = ''
+            except Exception as e:
+                print(f"   ❌ Erro ao extrair chave: {e}")
+                df.at[index, 'chave'] = ''
+            
+            # Extrai o número da solicitação
+            print("   Extraindo número da solicitação...")
+            solicitacao_valor = ''
+            try:
+                solicitacao_element = wait.until(EC.presence_of_element_located((
+                    By.XPATH,
+                    '/html/body/div[2]/form/div[1]/div/table[5]/tbody/tr[3]/td[1]/font/b'
+                )))
+                solicitacao_valor = solicitacao_element.text.strip()
+                print(f"   ✅ Solicitação extraída: {solicitacao_valor}")
+                df.at[index, 'solicitacao'] = solicitacao_valor
+            except TimeoutException:
+                print("   ⚠️  Campo de solicitação não encontrado.")
+                df.at[index, 'solicitacao'] = ''
+            except Exception as e:
+                print(f"   ❌ Erro ao extrair solicitação: {e}")
+                df.at[index, 'solicitacao'] = ''
+            
+            # Salva o CSV após extrair os dados
+            try:
+                df.to_csv(csv_exames, index=False)
+                print(f"   💾 CSV atualizado com chave e solicitação")
+            except Exception as e:
+                print(f"   ⚠️  Erro ao salvar CSV: {e}")
+
+        
+        except Exception as e:
+            print(f"❌ Erro ao processar solicitação para o CNS: {e}")
+            continue
+    
+    # Salva o CSV final após processar todos os registros
+    print("\n💾 Salvando CSV final...")
+    try:
+        df.to_csv(csv_exames, index=False)
+        print(f"✅ CSV salvo com sucesso em: {csv_exames}")
+        print(f"📊 Total de registros processados: {len(df)}")
+    except Exception as e:
+        print(f"❌ Erro ao salvar CSV final: {e}")
+    
+    # Fecha o navegador
+    if navegador:
+        navegador.quit()
+        print("✅ Navegador fechado")
+    
+    return

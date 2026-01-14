@@ -1,0 +1,6 @@
+Código,Paciente,Data Internação,Procedimento,Status
+001,João Silva,2025-11-15,Cirurgia Cardíaca,Ativo
+002,Maria Santos,2025-11-16,Ortopedia,Ativo
+003,Pedro Oliveira,2025-11-17,Neurologia,Aguardando
+004,Ana Costa,2025-11-17,Gastroenterologia,Ativo
+005,Carlos Souza,2025-11-18,Cardiologia,Aguardando

@@ -2,7 +2,7 @@
 import os
 from selenium.webdriver.chrome.options import Options    
 
-def get_chrome_options():
+def get_chrome_options(remote_debugging_port=None):
     user_dir = os.path.expanduser('~/AutoReg')
     os.makedirs(user_dir, exist_ok=True)
     chrome_options = Options()
@@ -10,6 +10,11 @@ def get_chrome_options():
     chrome_options.add_argument("--disable-extensions")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    
+    # Habilita DevTools Protocol para sincronização com GUI
+    if remote_debugging_port:
+        chrome_options.add_argument(f"--remote-debugging-port={remote_debugging_port}")
+    
     # chrome_options.add_argument("--headless=new")  # Não use headless para download!
     chrome_options.add_experimental_option("prefs", {
         "download.default_directory": user_dir,

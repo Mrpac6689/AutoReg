@@ -83,7 +83,7 @@ def motivo_alta():
             EC.element_to_be_clickable((By.XPATH, '//*[@id="cabecalho"]/form/fieldset/div[10]/div/input'))
         )
         botao_busca.click()
-
+        #aqui
         motivoalta = None
         try:
             motivo_elem = WebDriverWait(driver, 5).until(

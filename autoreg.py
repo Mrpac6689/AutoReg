@@ -44,6 +44,9 @@ from autoreg import solicita_trata_dados  # Importa a função solicita_trata_da
 from autoreg import producao_ambulatorial  # Importa a função producao_ambulatorial
 from autoreg import producao_ambulatorial_dados  # Importa a função producao_ambulatorial_dados
 from autoreg import producao_ambulatorial_gmus  # Importa a função producao_ambulatorial_gmus
+from autoreg import exames_ambulatorio_extrai  # Importa a função exames_ambulatorio_extrai
+from autoreg import exames_ambulatorio_solicita  # Importa a função exames_ambulatorio_solicita
+from autoreg import exames_ambulatorio_relatorio  # Importa a função exames_ambulatorio_relatorio
 
 # Dicionário com as funções e suas descrições
 FUNCOES = {
@@ -166,6 +169,18 @@ FUNCOES = {
     'producao_ambulatorial_gmus': {
         'func': producao_ambulatorial_gmus,
         'desc': 'Extrai dados de produção ambulatorial GMUs do SISREG'
+    },
+    'exames_ambulatorio_extrai': {
+        'func': exames_ambulatorio_extrai,
+        'desc': 'Extrai dados de exames a solicitar do G-Hosp'
+    },
+    'exames_ambulatorio_solicita': {
+        'func': exames_ambulatorio_solicita,
+        'desc': 'Executa solicitações de exames no SISREG'
+    },
+    'exames_ambulatorio_relatorio': {
+        'func': exames_ambulatorio_relatorio,
+        'desc': 'Extrai relatórios de exames solicitados no SISREG'
     }
 }
 
@@ -222,6 +237,9 @@ FUNÇÕES DISPONÍVEIS:
         ('-pra', '--producao-ambulatorial', 'producao_ambulatorial'),
         ('-pad', '--producao-ambulatorial-dados', 'producao_ambulatorial_dados'),
         ('-pag', '--producao-ambulatorial-gmus', 'producao_ambulatorial_gmus'),
+        ('-eae', '--exames-ambulatorio-extrai', 'exames_ambulatorio_extrai'),
+        ('-eas', '--exames-ambulatorio-solicita', 'exames_ambulatorio_solicita'),
+        ('-ear', '--exames-ambulatorio-relatorio', 'exames_ambulatorio_relatorio'),
         ('-interna', '--interna', None),
         ('-analisa', '--analisa', None),
         ('-alta', '--alta', None),
@@ -499,6 +517,12 @@ Exemplos de uso:
                        help='Extrai códigos de solicitação de produção ambulatorial do SISREG')
     parser.add_argument('-pag', '--producao-ambulatorial-gmus', action='store_true',
                        help='Extrai dados de produção ambulatorial GMUs do SISREG')
+    parser.add_argument('-eae', '--exames-ambulatorio-extrai', action='store_true',
+                       help='Extrai dados de exames a solicitar do G-Hosp')
+    parser.add_argument('-eas', '--exames-ambulatorio-solicita', action='store_true',
+                       help='Executa solicitações de exames no SISREG')
+    parser.add_argument('-ear', '--exames-ambulatorio-relatorio', action='store_true',
+                       help='Extrai relatórios de exames solicitados no SISREG')
     # Novas funções de workflow
     parser.add_argument('-interna', '--interna', action='store_true',
                        help='Executa sequência de internação: -eci -ip')
@@ -557,7 +581,10 @@ Exemplos de uso:
         'consulta_solicitacao_sisreg': 'consulta_solicitacao_sisreg',
         'producao_ambulatorial': 'producao_ambulatorial',
         'producao_ambulatorial_dados': 'producao_ambulatorial_dados',
-        'producao_ambulatorial_gmus': 'producao_ambulatorial_gmus'
+        'producao_ambulatorial_gmus': 'producao_ambulatorial_gmus',
+        'exames_ambulatorio_extrai': 'exames_ambulatorio_extrai',
+        'exames_ambulatorio_solicita': 'exames_ambulatorio_solicita',
+        'exames_ambulatorio_relatorio': 'exames_ambulatorio_relatorio'
     }
     
     # Processa funções especiais primeiro
