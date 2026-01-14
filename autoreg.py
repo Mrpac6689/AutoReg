@@ -2,7 +2,7 @@
 """
 AutoReg - Coordenador de Workflow
 Automatização de Sistemas de Saúde - SISREG & G-HOSP
-Versão 9.6.7 - Universe - Novembro de 2025
+Versão 9.7.0 - Universe - Janeiro de 2026
 Autor: Michel Ribeiro Paes (MrPaC6689)
 """
 
@@ -192,7 +192,7 @@ def mostrar_informacoes():
 ║                    Automatização de Sistemas de Saúde                         ║
 ║                               SISREG & G-HOSP                                 ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║ Versão: 9.6.7 - Universe                                                      ║
+║ Versão: 9.7.0 - Universe                                                      ║
 ║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║
 ║ Contato: michelrpaes@gmail.com                                                ║
 ║ Repositório: https://github.com/Mrpac6689/AutoReg                             ║

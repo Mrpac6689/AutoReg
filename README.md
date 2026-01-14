@@ -1,7 +1,45 @@
 # AutoReg
 Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 
-## 🌌 Versão 9.6.7 Universe - Novembro de 2025
+## 🌌 Versão 9.7.0 Universe - Janeiro de 2026
+
+### 🆕 Novas Funcionalidades v9.7.0
+
+- **Sistema Completo de Gestão de Exames Ambulatoriais**:
+  - **`exames_ambulatorio_extrai` (`-eae`)**: Extrai dados de exames a solicitar do G-Hosp
+    - Login automático no G-HOSP
+    - Extração de procedimentos de tomografia por atendimento (RA)
+    - Suporte a múltiplos procedimentos por atendimento (separados por `|`)
+    - Extração de CNS/CPF do modal de dados do paciente
+    - Filtragem inteligente por número de atendimento
+    - Saída: `~/AutoReg/exames_solicitar.csv` com colunas: `ra`, `procedimento`, `cns`
+  
+  - **`exames_ambulatorio_solicita` (`-eas`)**: Executa solicitações de exames no SISREG
+    - Login automático no SISREG
+    - Processamento baseado em CSV com CNS e procedimentos
+    - Seleção automática de procedimentos por similaridade (múltiplos procedimentos suportados)
+    - Seleção aleatória de profissional solicitante
+    - Seleção automática de unidade de execução
+    - Seleção de primeira vaga disponível
+    - Extração automática de chave e número de solicitação
+    - Proteção contra duplicidades (pula registros já processados)
+    - Saída: `~/AutoReg/exames_solicitar.csv` atualizado com `chave` e `solicitacao`
+  
+  - **`exames_ambulatorio_relatorio` (`-ear`)**: Extrai relatórios de exames solicitados no SISREG
+    - Login automático no SISREG
+    - Geração de PDFs individuais por solicitação
+    - Numeração sequencial automática (001, 002, 003...)
+    - Junção automática de todos os PDFs em um único arquivo
+    - Remoção automática de PDFs individuais após junção
+    - Processa apenas registros com chave e solicitação preenchidos
+    - Saída: `~/AutoReg/solicitacoes_exames_imprimir.pdf` (PDF unificado)
+
+- **Melhorias de Robustez**:
+  - Sistema de similaridade de strings para matching de procedimentos
+  - Tratamento inteligente de valores numéricos (remoção de `.0`)
+  - Validação de campos obrigatórios antes do processamento
+  - Salvamento incremental de CSV durante processamento
+  - Tratamento de erros com continuidade do processamento
 
 ### 🆕 Novas Funcionalidades v9.6.7
 
@@ -189,6 +227,9 @@ Segurança e recomendações:
 | `-snt`       | solicita_nota                 | Insere numero da solicitação SISREG na nota de prontuário |
 | `-pra`       | producao_ambulatorial         | Extrai códigos de solicitação de produção ambulatorial do SISREG (com checkpoint) |
 | `-pad`       | producao_ambulatorial_dados   | Extrai dados detalhados de cada solicitação de produção ambulatorial |
+| `-eae`       | exames_ambulatorio_extrai    | Extrai dados de exames a solicitar do G-Hosp |
+| `-eas`       | exames_ambulatorio_solicita   | Executa solicitações de exames no SISREG |
+| `-ear`       | exames_ambulatorio_relatorio | Extrai relatórios de exames solicitados no SISREG |
 | `-interna`   | [workflow agrupado]           | Executa rotina de internação completa: -eci -ip |
 | `-analisa`   | [workflow agrupado]           | Executa rotina de análise/comparação: -eis -eig -ci -ma |
 | `-alta`      | [workflow agrupado]           | Executa rotina de alta completa: -tat -ecsa -ea -ar -eid -td -clc |
@@ -197,6 +238,27 @@ Segurança e recomendações:
 | `--all`      | [workflow completo]           | Executa todas as funções principais com repetição interativa |
 
 ### 📜 Histórico de Versões
+
+## 🌌 v9.7.0 Universe - Janeiro de 2026
+- **Sistema Completo de Gestão de Exames Ambulatoriais**:
+  - Nova função `-eae` para extração de dados de exames do G-HOSP
+    - Extração de procedimentos de tomografia por atendimento
+    - Suporte a múltiplos procedimentos (separados por `|`)
+    - Extração de CNS/CPF do modal de dados do paciente
+    - Filtragem por número de atendimento (RA)
+  - Nova função `-eas` para execução de solicitações no SISREG
+    - Seleção automática de procedimentos por similaridade
+    - Seleção aleatória de profissional
+    - Seleção automática de unidade e vaga
+    - Extração de chave e número de solicitação
+    - Proteção contra duplicidades
+  - Nova função `-ear` para extração de relatórios
+    - Geração de PDFs individuais por solicitação
+    - Junção automática em PDF unificado
+    - Numeração sequencial (001, 002, 003...)
+    - Remoção automática de PDFs individuais
+  - Melhorias de robustez e tratamento de erros
+  - Suporte a múltiplos procedimentos por registro
 
 ## 🌌 v9.6.6 Universe - Novembro de 2025
 - **Sistema de Extração de Produção Ambulatorial SISREG**:
@@ -536,6 +598,14 @@ autoreg -analisa
 autoreg -pra
 # 2. Depois extrai os dados detalhados de cada código
 autoreg -pad
+
+# Sistema completo de exames ambulatoriais (NOVO v9.7.0)
+# 1. Extrai dados de exames do G-HOSP (procedimentos e CNS)
+autoreg -eae
+# 2. Executa solicitações no SISREG baseado no CSV gerado
+autoreg -eas
+# 3. Gera relatórios PDF das solicitações realizadas
+autoreg -ear
 
 # Se a extração for interrompida (-pra), basta executar novamente
 # O sistema retoma automaticamente de onde parou!
