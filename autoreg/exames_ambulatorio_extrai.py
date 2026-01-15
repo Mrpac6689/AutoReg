@@ -148,7 +148,115 @@ def exames_ambulatorio_extrai():
                         df.at[index, 'procedimento'] = procedimento_texto
                     else:
                         print(f"   ⚠️  Nenhuma linha com 'TOMOGRAFIA' encontrada para o RA {ra}")
-                        df.at[index, 'procedimento'] = ''
+                        # Tenta clicar no botão "Tomografia" para carregar mais exames
+                        try:
+                            print(f"   🔄 Tentando clicar no botão 'Tomografia' para carregar mais exames...")
+                            botao_tomografia = WebDriverWait(driver, 5).until(
+                                EC.element_to_be_clickable((By.XPATH, '//a[@class="botao btn-2nd mais_exames" and contains(text(), "Tomografia")]'))
+                            )
+                            botao_tomografia.click()
+                            print(f"   ✅ Botão 'Tomografia' clicado. Aguardando 2 segundos...")
+                            time.sleep(2)
+                            
+                            # Aguarda o div_mais_exames aparecer e carregar o conteúdo
+                            print(f"   🔄 Aguardando conteúdo carregar no div_mais_exames...")
+                            try:
+                                WebDriverWait(driver, 5).until(
+                                    EC.presence_of_element_located((By.ID, "div_mais_exames"))
+                                )
+                            except:
+                                pass  # Continua mesmo se não encontrar o div
+                            
+                            # Busca novamente pelos procedimentos após clicar no botão
+                            print(f"   🔄 Buscando novamente procedimentos de tomografia...")
+                            procedimentos_lista = []
+                            
+                            # Busca dentro do div_mais_exames (a estrutura é diferente: tbody está fora da table)
+                            # Tenta buscar por tbody dentro do div_mais_exames ou diretamente por tr que contenham o RA
+                            try:
+                                # Primeiro tenta buscar dentro do div_mais_exames
+                                div_mais_exames = driver.find_element(By.ID, "div_mais_exames")
+                                # Busca todas as linhas tr dentro do div_mais_exames
+                                todas_linhas = div_mais_exames.find_elements(By.XPATH, './/tbody//tr | .//tr[contains(@id, "solicitacao")]')
+                            except:
+                                # Fallback: busca em toda a página por linhas que possam conter os procedimentos
+                                todas_linhas = driver.find_elements(By.XPATH, '//div[@id="div_mais_exames"]//tbody//tr | //div[@id="div_mais_exames"]//tr[contains(@id, "solicitacao")]')
+                            
+                            # Encontra o índice da linha do atendimento novamente
+                            atendimento_index = -1
+                            for idx, linha in enumerate(todas_linhas):
+                                try:
+                                    texto = linha.text
+                                    if f"Atendimento: {ra}" in texto and "De:" in texto:
+                                        atendimento_index = idx
+                                        break
+                                except:
+                                    continue
+                            
+                            if atendimento_index >= 0:
+                                print(f"   ✅ Seção do atendimento {ra} encontrada no div_mais_exames")
+                                # Procura por tomografias nas linhas seguintes
+                                for idx in range(atendimento_index + 1, len(todas_linhas)):
+                                    try:
+                                        linha = todas_linhas[idx]
+                                        # Verifica se é uma nova linha de atendimento (fim da seção atual)
+                                        texto_linha = linha.text
+                                        if "Atendimento:" in texto_linha and f"Atendimento: {ra}" not in texto_linha:
+                                            print(f"   ✅ Fim da seção do atendimento {ra}")
+                                            break
+                                        
+                                        # Verifica se a linha contém TOMOGRAFIA na coluna Procedimento (4ª coluna)
+                                        try:
+                                            procedimento_cell = linha.find_element(By.XPATH, './td[4]')
+                                            texto_procedimento = procedimento_cell.text.strip()
+                                            
+                                            if texto_procedimento and "TOMOGRAFIA" in texto_procedimento.upper():
+                                                # Remove espaços extras e quebras de linha, mantendo apenas um espaço
+                                                texto_limpo = ' '.join(texto_procedimento.split())
+                                                if texto_limpo and texto_limpo not in procedimentos_lista:
+                                                    procedimentos_lista.append(texto_limpo)
+                                                    print(f"   ✅ Procedimento encontrado: {texto_limpo}")
+                                        except:
+                                            continue
+                                    except:
+                                        continue
+                            else:
+                                # Se não encontrou pela linha de atendimento, tenta buscar diretamente por linhas com id="solicitacao"
+                                print(f"   🔄 Tentando buscar diretamente por linhas de solicitação...")
+                                try:
+                                    linhas_solicitacao = driver.find_elements(By.XPATH, f'//div[@id="div_mais_exames"]//tr[contains(@id, "solicitacao")]')
+                                    for linha in linhas_solicitacao:
+                                        try:
+                                            # Verifica se a linha contém TOMOGRAFIA na coluna Procedimento (4ª coluna)
+                                            procedimento_cell = linha.find_element(By.XPATH, './td[4]')
+                                            texto_procedimento = procedimento_cell.text.strip()
+                                            
+                                            if texto_procedimento and "TOMOGRAFIA" in texto_procedimento.upper():
+                                                # Remove espaços extras e quebras de linha, mantendo apenas um espaço
+                                                texto_limpo = ' '.join(texto_procedimento.split())
+                                                if texto_limpo and texto_limpo not in procedimentos_lista:
+                                                    procedimentos_lista.append(texto_limpo)
+                                                    print(f"   ✅ Procedimento encontrado: {texto_limpo}")
+                                        except:
+                                            continue
+                                except:
+                                    pass
+                            
+                            # Verifica se encontrou procedimentos após clicar no botão
+                            if procedimentos_lista:
+                                procedimento_texto = ' | '.join(procedimentos_lista)
+                                print(f"   ✅ Total de {len(procedimentos_lista)} procedimento(s) de tomografia encontrado(s) após clicar no botão")
+                                df.at[index, 'procedimento'] = procedimento_texto
+                            else:
+                                print(f"   ⚠️  Nenhuma linha com 'TOMOGRAFIA' encontrada mesmo após clicar no botão")
+                                df.at[index, 'procedimento'] = ''
+                                
+                        except (TimeoutException, NoSuchElementException):
+                            print(f"   ⚠️  Botão 'Tomografia' não encontrado ou não clicável")
+                            df.at[index, 'procedimento'] = ''
+                        except Exception as e:
+                            print(f"   ⚠️  Erro ao tentar clicar no botão 'Tomografia': {e}")
+                            df.at[index, 'procedimento'] = ''
                         
                 except Exception as e:
                     print(f"   ❌ Erro ao localizar procedimentos: {e}")
