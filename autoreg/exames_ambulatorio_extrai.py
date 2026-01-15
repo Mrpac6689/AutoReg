@@ -11,6 +11,41 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
+def comparar_hora(hora_csv, data_hora_tabela):
+    """
+    Compara a hora do CSV com a data/hora da tabela.
+    Retorna True se as horas coincidirem.
+    
+    Args:
+        hora_csv: Hora do CSV (formato pode variar: "18:46", "18:46:00", etc.)
+        data_hora_tabela: Data/hora da tabela no formato "DD/MM/YYYY HH:MM" (ex: "11/01/2026 18:46")
+    
+    Returns:
+        bool: True se as horas coincidirem, False caso contrário
+    """
+    if not hora_csv or not data_hora_tabela:
+        return True  # Se não houver hora no CSV, não filtra por hora
+    
+    try:
+        # Extrai a hora da data/hora da tabela (formato: "DD/MM/YYYY HH:MM")
+        partes_tabela = data_hora_tabela.strip().split()
+        if len(partes_tabela) >= 2:
+            hora_tabela = partes_tabela[1]  # "HH:MM"
+            # Normaliza a hora do CSV (remove segundos se houver)
+            hora_csv_normalizada = hora_csv.strip()
+            if ':' in hora_csv_normalizada:
+                # Pega apenas HH:MM
+                partes_hora_csv = hora_csv_normalizada.split(':')
+                hora_csv_normalizada = f"{partes_hora_csv[0]}:{partes_hora_csv[1]}"
+            
+            # Compara apenas HH:MM
+            return hora_csv_normalizada == hora_tabela
+    except Exception as e:
+        print(f"   ⚠️  Erro ao comparar horas: {e}")
+        return True  # Em caso de erro, não filtra (retorna True para não excluir)
+    
+    return True  # Se não conseguir comparar, não filtra
+
 def exames_ambulatorio_extrai():
     print("\n---===> EXTRAÇÃO DE EXAMES A SOLICITAR <===---")
 
@@ -75,6 +110,8 @@ def exames_ambulatorio_extrai():
             df['procedimento'] = ''
         if 'cns' not in df.columns:
             df['cns'] = ''
+        if 'hora' not in df.columns:
+            print("   ⚠️  Coluna 'hora' não encontrada no CSV. A filtragem por hora não será aplicada.")
         
         # Itera sobre os links do CSV
         for index, row in df.iterrows():
@@ -83,7 +120,18 @@ def exames_ambulatorio_extrai():
                 ra_float = float(ra)
                 # Remove o .0 se for um número inteiro
                 ra = int(ra_float) if ra_float.is_integer() else ra_float
-                print(f"\n[{index + 1}/{len(df)}] Processando Registro de Atendimento {ra}")
+                
+                # Lê a hora do CSV (se existir)
+                hora_csv = None
+                if 'hora' in df.columns:
+                    hora_val = row.get('hora', '')
+                    if pd.notna(hora_val) and hora_val != '':
+                        hora_csv = str(hora_val).strip()
+                        print(f"\n[{index + 1}/{len(df)}] Processando Registro de Atendimento {ra} - Hora: {hora_csv}")
+                    else:
+                        print(f"\n[{index + 1}/{len(df)}] Processando Registro de Atendimento {ra} - Hora não informada")
+                else:
+                    print(f"\n[{index + 1}/{len(df)}] Processando Registro de Atendimento {ra}")
                 time.sleep(1)
                 driver.get(f"{caminho_ghosp}:4002/nm/solcabs/new?intern_id={ra}&local=prsolexames")
                 
@@ -125,15 +173,27 @@ def exames_ambulatorio_extrai():
                                 
                                 # Verifica se a linha contém TOMOGRAFIA na coluna Procedimento (4ª coluna)
                                 try:
-                                    procedimento_cell = linha.find_element(By.XPATH, './td[4]')
-                                    texto_procedimento = procedimento_cell.text.strip()
+                                    # Primeiro verifica a data/hora (3ª coluna) se houver hora no CSV
+                                    hora_coincide = True
+                                    if hora_csv:
+                                        try:
+                                            data_hora_cell = linha.find_element(By.XPATH, './td[3]')
+                                            data_hora_tabela = data_hora_cell.text.strip()
+                                            hora_coincide = comparar_hora(hora_csv, data_hora_tabela)
+                                        except:
+                                            hora_coincide = True  # Se não conseguir ler a hora, não filtra
                                     
-                                    if texto_procedimento and "TOMOGRAFIA" in texto_procedimento.upper():
-                                        # Remove espaços extras e quebras de linha, mantendo apenas um espaço
-                                        texto_limpo = ' '.join(texto_procedimento.split())
-                                        if texto_limpo and texto_limpo not in procedimentos_lista:
-                                            procedimentos_lista.append(texto_limpo)
-                                            print(f"   ✅ Procedimento encontrado: {texto_limpo}")
+                                    # Se a hora coincidir (ou não houver hora no CSV), verifica o procedimento
+                                    if hora_coincide:
+                                        procedimento_cell = linha.find_element(By.XPATH, './td[4]')
+                                        texto_procedimento = procedimento_cell.text.strip()
+                                        
+                                        if texto_procedimento and "TOMOGRAFIA" in texto_procedimento.upper():
+                                            # Remove espaços extras e quebras de linha, mantendo apenas um espaço
+                                            texto_limpo = ' '.join(texto_procedimento.split())
+                                            if texto_limpo and texto_limpo not in procedimentos_lista:
+                                                procedimentos_lista.append(texto_limpo)
+                                                print(f"   ✅ Procedimento encontrado: {texto_limpo}")
                                 except:
                                     continue
                             except:
@@ -207,15 +267,27 @@ def exames_ambulatorio_extrai():
                                         
                                         # Verifica se a linha contém TOMOGRAFIA na coluna Procedimento (4ª coluna)
                                         try:
-                                            procedimento_cell = linha.find_element(By.XPATH, './td[4]')
-                                            texto_procedimento = procedimento_cell.text.strip()
+                                            # Primeiro verifica a data/hora (3ª coluna) se houver hora no CSV
+                                            hora_coincide = True
+                                            if hora_csv:
+                                                try:
+                                                    data_hora_cell = linha.find_element(By.XPATH, './td[3]')
+                                                    data_hora_tabela = data_hora_cell.text.strip()
+                                                    hora_coincide = comparar_hora(hora_csv, data_hora_tabela)
+                                                except:
+                                                    hora_coincide = True  # Se não conseguir ler a hora, não filtra
                                             
-                                            if texto_procedimento and "TOMOGRAFIA" in texto_procedimento.upper():
-                                                # Remove espaços extras e quebras de linha, mantendo apenas um espaço
-                                                texto_limpo = ' '.join(texto_procedimento.split())
-                                                if texto_limpo and texto_limpo not in procedimentos_lista:
-                                                    procedimentos_lista.append(texto_limpo)
-                                                    print(f"   ✅ Procedimento encontrado: {texto_limpo}")
+                                            # Se a hora coincidir (ou não houver hora no CSV), verifica o procedimento
+                                            if hora_coincide:
+                                                procedimento_cell = linha.find_element(By.XPATH, './td[4]')
+                                                texto_procedimento = procedimento_cell.text.strip()
+                                                
+                                                if texto_procedimento and "TOMOGRAFIA" in texto_procedimento.upper():
+                                                    # Remove espaços extras e quebras de linha, mantendo apenas um espaço
+                                                    texto_limpo = ' '.join(texto_procedimento.split())
+                                                    if texto_limpo and texto_limpo not in procedimentos_lista:
+                                                        procedimentos_lista.append(texto_limpo)
+                                                        print(f"   ✅ Procedimento encontrado: {texto_limpo}")
                                         except:
                                             continue
                                     except:
@@ -227,16 +299,28 @@ def exames_ambulatorio_extrai():
                                     linhas_solicitacao = driver.find_elements(By.XPATH, f'//div[@id="div_mais_exames"]//tr[contains(@id, "solicitacao")]')
                                     for linha in linhas_solicitacao:
                                         try:
-                                            # Verifica se a linha contém TOMOGRAFIA na coluna Procedimento (4ª coluna)
-                                            procedimento_cell = linha.find_element(By.XPATH, './td[4]')
-                                            texto_procedimento = procedimento_cell.text.strip()
+                                            # Primeiro verifica a data/hora (3ª coluna) se houver hora no CSV
+                                            hora_coincide = True
+                                            if hora_csv:
+                                                try:
+                                                    data_hora_cell = linha.find_element(By.XPATH, './td[3]')
+                                                    data_hora_tabela = data_hora_cell.text.strip()
+                                                    hora_coincide = comparar_hora(hora_csv, data_hora_tabela)
+                                                except:
+                                                    hora_coincide = True  # Se não conseguir ler a hora, não filtra
                                             
-                                            if texto_procedimento and "TOMOGRAFIA" in texto_procedimento.upper():
-                                                # Remove espaços extras e quebras de linha, mantendo apenas um espaço
-                                                texto_limpo = ' '.join(texto_procedimento.split())
-                                                if texto_limpo and texto_limpo not in procedimentos_lista:
-                                                    procedimentos_lista.append(texto_limpo)
-                                                    print(f"   ✅ Procedimento encontrado: {texto_limpo}")
+                                            # Se a hora coincidir (ou não houver hora no CSV), verifica o procedimento
+                                            if hora_coincide:
+                                                # Verifica se a linha contém TOMOGRAFIA na coluna Procedimento (4ª coluna)
+                                                procedimento_cell = linha.find_element(By.XPATH, './td[4]')
+                                                texto_procedimento = procedimento_cell.text.strip()
+                                                
+                                                if texto_procedimento and "TOMOGRAFIA" in texto_procedimento.upper():
+                                                    # Remove espaços extras e quebras de linha, mantendo apenas um espaço
+                                                    texto_limpo = ' '.join(texto_procedimento.split())
+                                                    if texto_limpo and texto_limpo not in procedimentos_lista:
+                                                        procedimentos_lista.append(texto_limpo)
+                                                        print(f"   ✅ Procedimento encontrado: {texto_limpo}")
                                         except:
                                             continue
                                 except:
