@@ -132,6 +132,16 @@ def exames_ambulatorio_extrai():
                         print(f"\n[{index + 1}/{len(df)}] Processando Registro de Atendimento {ra} - Hora não informada")
                 else:
                     print(f"\n[{index + 1}/{len(df)}] Processando Registro de Atendimento {ra}")
+                
+                # Verifica se já existe CNS no CSV
+                cns_valor = ''
+                cns_existente = row.get('cns', '')
+                if pd.notna(cns_existente) and str(cns_existente).strip() != '':
+                    # Remove caracteres não numéricos do CNS existente
+                    cns_valor = re.sub(r'\D', '', str(cns_existente))
+                    print(f"   ✅ CNS já informado no CSV: {cns_valor}")
+                else:
+                    print(f"   ℹ️  CNS não informado no CSV. Será extraído do modal.")
                 time.sleep(1)
                 driver.get(f"{caminho_ghosp}:4002/nm/solcabs/new?intern_id={ra}&local=prsolexames")
                 
@@ -346,69 +356,71 @@ def exames_ambulatorio_extrai():
                     print(f"   ❌ Erro ao localizar procedimentos: {e}")
                     df.at[index, 'procedimento'] = ''
                 
-                # Clica no link para abrir o modal com dados do paciente
-                print("   Abrindo modal de dados do paciente...")
-                cns_valor = ''
-                try:
-                    # Clica no link para abrir o modal
-                    paciente_link = WebDriverWait(driver, 10).until(
-                        EC.element_to_be_clickable((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/h4'))
-                    )
-                    paciente_link.click()
-                    time.sleep(1)  # Aguarda o modal abrir
-                    
-                    # Aguarda o modal aparecer
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CLASS_NAME, "ui-dialog-content"))
-                    )
-                    
-                    # Tenta encontrar o campo CNS
-                    print("   Buscando campo CNS...")
+                # Extrai CNS do modal apenas se não foi informado no CSV
+                if not cns_valor:
+                    print("   Abrindo modal de dados do paciente para extrair CNS...")
                     try:
-                        # Encontra o div com texto "CNS:" e pega o próximo div com class "vcampo"
-                        cns_cell = driver.find_element(
-                            By.XPATH,
-                            '//div[@class="span-4 direita dcampo" and contains(text(), "CNS:")]/following-sibling::div[@class="vcampo"]'
+                        # Clica no link para abrir o modal
+                        paciente_link = WebDriverWait(driver, 10).until(
+                            EC.element_to_be_clickable((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/h4'))
                         )
-                        cns_texto = cns_cell.text.strip()
+                        paciente_link.click()
+                        time.sleep(1)  # Aguarda o modal abrir
                         
-                        if cns_texto and cns_texto != '':
-                            # Extrai apenas os números
-                            cns_valor = re.sub(r'\D', '', cns_texto)
-                            print(f"   ✅ CNS encontrado: {cns_valor}")
-                        else:
-                            # Se CNS estiver vazio, busca CPF
-                            print("   CNS vazio, buscando CPF...")
-                            cpf_cell = driver.find_element(
+                        # Aguarda o modal aparecer
+                        WebDriverWait(driver, 10).until(
+                            EC.presence_of_element_located((By.CLASS_NAME, "ui-dialog-content"))
+                        )
+                        
+                        # Tenta encontrar o campo CNS
+                        print("   Buscando campo CNS...")
+                        try:
+                            # Encontra o div com texto "CNS:" e pega o próximo div com class "vcampo"
+                            cns_cell = driver.find_element(
                                 By.XPATH,
-                                '//div[@class="span-4 direita dcampo" and contains(text(), "CPF:")]/following-sibling::div[@class="vcampo"]'
+                                '//div[@class="span-4 direita dcampo" and contains(text(), "CNS:")]/following-sibling::div[@class="vcampo"]'
                             )
-                            cpf_texto = cpf_cell.text.strip()
+                            cns_texto = cns_cell.text.strip()
                             
-                            if cpf_texto and cpf_texto != '':
+                            if cns_texto and cns_texto != '':
                                 # Extrai apenas os números
-                                cns_valor = re.sub(r'\D', '', cpf_texto)
-                                print(f"   ✅ CPF encontrado e usado como CNS: {cns_valor}")
+                                cns_valor = re.sub(r'\D', '', cns_texto)
+                                print(f"   ✅ CNS encontrado: {cns_valor}")
                             else:
-                                print("   ⚠️  CNS e CPF vazios")
-                    except NoSuchElementException:
-                        print("   ⚠️  Campos CNS/CPF não encontrados no modal")
-                    
-                    # Fecha o modal (pode ser um botão X ou clicando fora)
-                    try:
-                        # Tenta encontrar e clicar no botão de fechar do modal
-                        close_button = driver.find_element(By.CLASS_NAME, "ui-dialog-titlebar-close")
-                        close_button.click()
-                        time.sleep(0.5)
-                    except:
-                        # Se não encontrar o botão, tenta pressionar ESC
-                        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-                        time.sleep(0.5)
-                    
-                except TimeoutException:
-                    print("   ⚠️  Modal não encontrado ou não abriu")
-                except Exception as e:
-                    print(f"   ❌ Erro ao extrair CNS/CPF: {e}")
+                                # Se CNS estiver vazio, busca CPF
+                                print("   CNS vazio, buscando CPF...")
+                                cpf_cell = driver.find_element(
+                                    By.XPATH,
+                                    '//div[@class="span-4 direita dcampo" and contains(text(), "CPF:")]/following-sibling::div[@class="vcampo"]'
+                                )
+                                cpf_texto = cpf_cell.text.strip()
+                                
+                                if cpf_texto and cpf_texto != '':
+                                    # Extrai apenas os números
+                                    cns_valor = re.sub(r'\D', '', cpf_texto)
+                                    print(f"   ✅ CPF encontrado e usado como CNS: {cns_valor}")
+                                else:
+                                    print("   ⚠️  CNS e CPF vazios")
+                        except NoSuchElementException:
+                            print("   ⚠️  Campos CNS/CPF não encontrados no modal")
+                        
+                        # Fecha o modal (pode ser um botão X ou clicando fora)
+                        try:
+                            # Tenta encontrar e clicar no botão de fechar do modal
+                            close_button = driver.find_element(By.CLASS_NAME, "ui-dialog-titlebar-close")
+                            close_button.click()
+                            time.sleep(0.5)
+                        except:
+                            # Se não encontrar o botão, tenta pressionar ESC
+                            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
+                            time.sleep(0.5)
+                        
+                    except TimeoutException:
+                        print("   ⚠️  Modal não encontrado ou não abriu")
+                    except Exception as e:
+                        print(f"   ❌ Erro ao extrair CNS/CPF: {e}")
+                else:
+                    print(f"   ⏭️  Pulando extração de CNS do modal (já informado no CSV)")
                 
                 # Atualiza o DataFrame com o CNS
                 df.at[index, 'cns'] = cns_valor

@@ -128,25 +128,28 @@ def solicita_trata_dados():
         print(f"Arquivo corrigido: {csv_path}")
         print(f"Total de registros após o tratamento: {len(df_filtrado)}")
         
+        
         # Abre o arquivo CSV com o programa padrão de planilhas
-        try:
-            import subprocess
-            import platform
-            
-            print(f"📂 Abrindo arquivo: {csv_path}")
-            sistema = platform.system()
-            
-            if sistema == 'Windows':
-                os.startfile(csv_path)
-            elif sistema == 'Darwin':  # macOS
-                subprocess.run(['open', csv_path])
-            else:  # Linux
-                subprocess.run(['xdg-open', csv_path])
-                
-            print("✅ Arquivo aberto com sucesso!")
-        except Exception as e:
-            print(f"⚠️ Não foi possível abrir o arquivo automaticamente: {e}")
-            print(f"📍 Você pode abrir manualmente em: {csv_path}")
+        # Comentado: abertura automática desabilitada
+        # try:
+        #     import subprocess
+        #     import platform
+        #     
+        #     print(f"📂 Abrindo arquivo: {csv_path}")
+        #     sistema = platform.system()
+        #     
+        #     if sistema == 'Windows':
+        #         os.startfile(csv_path)
+        #     elif sistema == 'Darwin':  # macOS
+        #         subprocess.run(['open', csv_path])
+        #     else:  # Linux
+        #         subprocess.run(['xdg-open', csv_path])
+        #         
+        #     print("✅ Arquivo aberto com sucesso!")
+        # except Exception as e:
+        #     print(f"⚠️ Não foi possível abrir o arquivo automaticamente: {e}")
+        #     print(f"📍 Você pode abrir manualmente em: {csv_path}")
         
     except Exception as e:
         print(f"Erro ao processar o arquivo: {e}")
+        

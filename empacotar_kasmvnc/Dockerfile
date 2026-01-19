@@ -31,6 +31,17 @@ RUN mkdir -p /home/kasm-user/.autoreg /home/kasm-user/AutoReg \
     && touch /home/kasm-user/AutoReg/autoreg.log \
     && chown -R 1000:1000 /home/kasm-user
 
+# --- FIX SSL E HTTP ---
+# 1. Altera a config para não exigir SSL
+# 2. Gera um certificado fake para satisfazer o script vnc_startup.sh que exige a presença do arquivo
+RUN sed -i 's/require_ssl: true/require_ssl: false/g' /etc/kasmvnc/kasmvnc.yaml && \
+    mkdir -p /etc/ssl/private /etc/ssl/certs && \
+    openssl req -new -x509 -days 3650 -nodes \
+    -out /etc/ssl/certs/ssl-cert-snakeoil.pem \
+    -keyout /etc/ssl/private/ssl-cert-snakeoil.key \
+    -subj "/C=BR/ST=Acre/L=RioBranco/O=AutoReg/CN=localhost" \
+    && chown -R 1000:1000 /etc/ssl/private /etc/ssl/certs
+
 # Clona AutoReg
 USER 1000
 RUN git clone https://github.com/Mrpac6689/AutoReg.git /home/kasm-user/.autoreg

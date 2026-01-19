@@ -6,13 +6,7 @@ import base64
 import glob
 import pandas as pd
 import configparser
-try:
-    from PyPDF2 import PdfMerger
-except ImportError:
-    try:
-        from pypdf import PdfMerger
-    except ImportError:
-        PdfMerger = None
+from PyPDF2 import PdfMerger
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -350,58 +344,54 @@ def exames_ambulatorio_relatorio():
     # Junta todos os PDFs individuais em um único arquivo
     print("\n📄 Juntando PDFs individuais em um único arquivo...")
     try:
-        if PdfMerger is None:
-            print("   ⚠️  Biblioteca PyPDF2 ou pypdf não encontrada. Instale com: pip install PyPDF2 ou pip install pypdf")
-            print("   📋 PDFs individuais não foram juntados, mas foram mantidos na pasta.")
-        else:
-            # Encontra todos os PDFs gerados na ordem correta
-            pdfs_gerados = sorted(glob.glob(os.path.join(user_dir, 'relatorio_exame_*.pdf')))
+        # Encontra todos os PDFs gerados na ordem correta
+        pdfs_gerados = sorted(glob.glob(os.path.join(user_dir, 'relatorio_exame_*.pdf')))
+        
+        if pdfs_gerados:
+            # Gera timestamp para o nome do arquivo
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            # Define o caminho do PDF unificado com timestamp
+            pdf_unificado = os.path.join(user_dir, f'solicitacoes_exames_imprimir_{timestamp}.pdf')
             
-            if pdfs_gerados:
-                # Gera timestamp para o nome do arquivo
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                # Define o caminho do PDF unificado com timestamp
-                pdf_unificado = os.path.join(user_dir, f'solicitacoes_exames_imprimir_{timestamp}.pdf')
-                
-                # Se houver apenas um PDF, apenas renomeia
-                if len(pdfs_gerados) == 1:
-                    print(f"   ✅ Encontrado 1 PDF. Renomeando para {os.path.basename(pdf_unificado)}...")
-                    try:
-                        os.rename(pdfs_gerados[0], pdf_unificado)
-                        print(f"   ✅ PDF renomeado com sucesso: {pdf_unificado}")
-                        print(f"   ✅ Processo concluído! PDF unificado: {pdf_unificado}")
-                    except Exception as e:
-                        print(f"   ❌ Erro ao renomear PDF: {e}")
-                else:
-                    # Se houver mais de um PDF, faz o merge
-                    print(f"   ✅ Encontrados {len(pdfs_gerados)} PDF(s) para juntar")
-                    
-                    # Cria o merger e adiciona os PDFs em ordem
-                    merger = PdfMerger()
-                    for pdf_path in pdfs_gerados:
-                        try:
-                            merger.append(pdf_path)
-                            print(f"   ✅ Adicionado: {os.path.basename(pdf_path)}")
-                        except Exception as e:
-                            print(f"   ⚠️  Erro ao adicionar {os.path.basename(pdf_path)}: {e}")
-                    
-                    # Salva o PDF unificado
-                    merger.write(pdf_unificado)
-                    merger.close()
-                    print(f"   ✅ PDF unificado salvo: {pdf_unificado}")
-                    
-                    # Remove os PDFs individuais
-                    print("   🗑️  Removendo PDFs individuais...")
-                    for pdf_path in pdfs_gerados:
-                        try:
-                            os.remove(pdf_path)
-                            print(f"   ✅ Removido: {os.path.basename(pdf_path)}")
-                        except Exception as e:
-                            print(f"   ⚠️  Erro ao remover {os.path.basename(pdf_path)}: {e}")
-                    
+            # Se houver apenas um PDF, apenas renomeia
+            if len(pdfs_gerados) == 1:
+                print(f"   ✅ Encontrado 1 PDF. Renomeando para {os.path.basename(pdf_unificado)}...")
+                try:
+                    os.rename(pdfs_gerados[0], pdf_unificado)
+                    print(f"   ✅ PDF renomeado com sucesso: {pdf_unificado}")
                     print(f"   ✅ Processo concluído! PDF unificado: {pdf_unificado}")
+                except Exception as e:
+                    print(f"   ❌ Erro ao renomear PDF: {e}")
             else:
-                print("   ⚠️  Nenhum PDF individual encontrado para juntar.")
+                # Se houver mais de um PDF, faz o merge
+                print(f"   ✅ Encontrados {len(pdfs_gerados)} PDF(s) para juntar")
+                
+                # Cria o merger e adiciona os PDFs em ordem
+                merger = PdfMerger()
+                for pdf_path in pdfs_gerados:
+                    try:
+                        merger.append(pdf_path)
+                        print(f"   ✅ Adicionado: {os.path.basename(pdf_path)}")
+                    except Exception as e:
+                        print(f"   ⚠️  Erro ao adicionar {os.path.basename(pdf_path)}: {e}")
+                
+                # Salva o PDF unificado
+                merger.write(pdf_unificado)
+                merger.close()
+                print(f"   ✅ PDF unificado salvo: {pdf_unificado}")
+                
+                # Remove os PDFs individuais
+                print("   🗑️  Removendo PDFs individuais...")
+                for pdf_path in pdfs_gerados:
+                    try:
+                        os.remove(pdf_path)
+                        print(f"   ✅ Removido: {os.path.basename(pdf_path)}")
+                    except Exception as e:
+                        print(f"   ⚠️  Erro ao remover {os.path.basename(pdf_path)}: {e}")
+                
+                print(f"   ✅ Processo concluído! PDF unificado: {pdf_unificado}")
+        else:
+            print("   ⚠️  Nenhum PDF individual encontrado para juntar.")
     except Exception as e:
         print(f"   ❌ Erro ao juntar PDFs: {e}")
     

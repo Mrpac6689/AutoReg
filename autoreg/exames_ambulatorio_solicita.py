@@ -23,51 +23,79 @@ def exames_ambulatorio_solicita():
     chrome_options = get_chrome_options()
     navegador = webdriver.Chrome(options=chrome_options)
     wait = WebDriverWait(navegador, 20)
-    print("Acessando a página de Internação...\n")
-
-    navegador.get("https://sisregiii.saude.gov.br")
     
-    # Realiza o login
-    print("Localizando campo de usuário...")
-    usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
-    print("Campo de usuário localizado.")
-
-    print("Localizando campo de senha...")
-    senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
-    print("Campo de senha localizado.")
-
-    print("Lendo credenciais do SISREG...")
-    
+    # Lê credenciais do SISREG
     config = configparser.ConfigParser()
     base_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(base_dir, '..', 'config.ini')
     config.read(config_path)
     usuario_sisreg = config['SISREG-REG']['usuarioreg']
     senha_sisreg = config['SISREG-REG']['senhareg']
-    print("Credenciais lidas.")
     
+    def fazer_login():
+        """Realiza o login no SISREG"""
+        print("Acessando a página de login...")
+        navegador.get("https://sisregiii.saude.gov.br")
+        
+        print("Localizando campo de usuário...")
+        usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
+        print("Campo de usuário localizado.")
 
-    print("Preenchendo usuário...")
-    usuario_field.send_keys(usuario_sisreg)
-    print("Usuário preenchido.")
-    
-    print("Preenchendo senha...")
-    senha_field.send_keys(senha_sisreg)
-    print("Senha preenchida.")
-    
-    print("Aguardando antes de clicar no botão de login...")
-    time.sleep(5)
+        print("Localizando campo de senha...")
+        senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
+        print("Campo de senha localizado.")
 
-    print("Localizando botão de login...")
-    login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
-    print("Botão de login localizado.")
+        print("Preenchendo usuário...")
+        usuario_field.clear()
+        usuario_field.send_keys(usuario_sisreg)
+        print("Usuário preenchido.")
+        
+        print("Preenchendo senha...")
+        senha_field.clear()
+        senha_field.send_keys(senha_sisreg)
+        print("Senha preenchida.")
+        
+        print("Aguardando antes de clicar no botão de login...")
+        time.sleep(5)
 
-    print("Clicando no botão de login...")
-    login_button.click()
-    print("Botão de login clicado.")
+        print("Localizando botão de login...")
+        login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
+        print("Botão de login localizado.")
+
+        print("Clicando no botão de login...")
+        login_button.click()
+        print("Botão de login clicado.")
+        
+        time.sleep(5)
+        print("Login realizado com sucesso!")
     
-    time.sleep(5)
-    print("Login realizado com sucesso!")
+    def verificar_erro_sistema():
+        """Verifica se há erro de sistema na página atual"""
+        try:
+            # Procura por tabela com título "ERRO DE SISTEMA"
+            erro_elementos = navegador.find_elements(By.XPATH, "//table//*[contains(text(), 'ERRO DE SISTEMA')]")
+            if erro_elementos:
+                print("   ⚠️  ERRO DE SISTEMA detectado na página!")
+                return True
+            
+            # Também verifica no texto da página
+            page_text = navegador.find_element(By.TAG_NAME, "body").text
+            if "ERRO DE SISTEMA" in page_text.upper():
+                print("   ⚠️  ERRO DE SISTEMA detectado na página!")
+                return True
+                
+            return False
+        except Exception as e:
+            # Se houver erro ao verificar, assume que não há erro
+            return False
+    
+    # Realiza o login inicial
+    fazer_login()
+    
+    # Verifica erro após login
+    if verificar_erro_sistema():
+        print("   🔄 Refazendo login devido a erro de sistema...")
+        fazer_login()
 
 
     # Configuração dos diretórios e arquivos
@@ -86,6 +114,20 @@ def exames_ambulatorio_solicita():
             if 'ra' not in colunas:
                 print(f"   ❌ Coluna 'ra' não encontrada no arquivo. Colunas disponíveis: {', '.join(colunas)}")
                 return None
+            
+            # Remove linhas em branco (onde 'ra' está vazio, é NaN ou contém apenas espaços)
+            linhas_antes = len(df)
+            
+            # Remove linhas onde 'ra' está vazio, é NaN ou contém apenas espaços (coluna principal obrigatória)
+            df = df[df['ra'].notna()]  # Remove NaN
+            df = df[df['ra'].astype(str).str.strip() != '']  # Remove strings vazias ou apenas espaços
+            
+            linhas_depois = len(df)
+            linhas_removidas = linhas_antes - linhas_depois
+            if linhas_removidas > 0:
+                print(f"   🧹 {linhas_removidas} linha(s) em branco removida(s). {linhas_depois} linha(s) válida(s) restante(s).")
+            else:
+                print(f"   ✅ Nenhuma linha em branco encontrada. {linhas_depois} linha(s) válida(s).")
         else:
             print(f"   ❌ Arquivo não encontrado: {csv_exames}, crie o arquivo com o cabeçalho: 'ra' e insira a lista de prontuarios a pesquisar")
             return None
@@ -122,6 +164,15 @@ def exames_ambulatorio_solicita():
             cns = int(cns_float) if cns_float.is_integer() else cns_float
             print(f"\n[{index + 1}/{len(df)}] Processando Solicitação para o CNS: {cns}")
             navegador.get(f"https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar")
+            time.sleep(2)
+            
+            # Verifica erro de sistema após mudança de página
+            if verificar_erro_sistema():
+                print("   🔄 Refazendo login devido a erro de sistema...")
+                fazer_login()
+                # Retorna à página de marcação após login
+                navegador.get(f"https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar")
+                time.sleep(2)
             
             # Aguarda a página carregar e localiza o campo CNS
             print("   Aguardando campo CNS carregar...")
@@ -142,6 +193,21 @@ def exames_ambulatorio_solicita():
             
             time.sleep(2)  # Aguarda a pesquisa ser processada
             
+            # Verifica erro de sistema após mudança de página
+            if verificar_erro_sistema():
+                print("   🔄 Refazendo login devido a erro de sistema...")
+                fazer_login()
+                # Retorna à página de marcação após login
+                navegador.get(f"https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar")
+                time.sleep(2)
+                # Reinsere o CNS e clica em pesquisar novamente
+                cns_field = wait.until(EC.presence_of_element_located((By.NAME, "nu_cns")))
+                cns_field.clear()
+                cns_field.send_keys(str(cns))
+                pesquisar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btn_pesquisar")))
+                pesquisar_button.click()
+                time.sleep(2)
+            
             # Localiza e clica no botão continuar
             print("   Localizando botão continuar...")
             continuar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btn_continuar")))
@@ -150,6 +216,23 @@ def exames_ambulatorio_solicita():
             print("   Botão continuar clicado com sucesso.")
             
             time.sleep(2)  # Aguarda a próxima tela carregar
+            
+            # Verifica erro de sistema após mudança de página
+            if verificar_erro_sistema():
+                print("   🔄 Refazendo login devido a erro de sistema...")
+                fazer_login()
+                # Retorna ao fluxo após login
+                navegador.get(f"https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar")
+                time.sleep(2)
+                cns_field = wait.until(EC.presence_of_element_located((By.NAME, "nu_cns")))
+                cns_field.clear()
+                cns_field.send_keys(str(cns))
+                pesquisar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btn_pesquisar")))
+                pesquisar_button.click()
+                time.sleep(2)
+                continuar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btn_continuar")))
+                continuar_button.click()
+                time.sleep(2)
             
             # Seleciona o procedimento no dropdown "pa"
             print("   Localizando dropdown de procedimento (pa)...")
@@ -223,6 +306,45 @@ def exames_ambulatorio_solicita():
             print("   Botão OK clicado com sucesso.")
             
             time.sleep(2)  # Aguarda a próxima tela carregar
+            
+            # Verifica erro de sistema após mudança de página
+            if verificar_erro_sistema():
+                print("   🔄 Refazendo login devido a erro de sistema...")
+                fazer_login()
+                # Retorna ao fluxo após login (precisa refazer todo o processo)
+                navegador.get(f"https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar")
+                time.sleep(2)
+                cns_field = wait.until(EC.presence_of_element_located((By.NAME, "nu_cns")))
+                cns_field.clear()
+                cns_field.send_keys(str(cns))
+                pesquisar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btn_pesquisar")))
+                pesquisar_button.click()
+                time.sleep(2)
+                continuar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btn_continuar")))
+                continuar_button.click()
+                time.sleep(2)
+                # Refaz seleções
+                pa_dropdown = wait.until(EC.presence_of_element_located((By.NAME, "pa")))
+                pa_select = Select(pa_dropdown)
+                try:
+                    pa_select.select_by_value("0045000")
+                except:
+                    pa_select.select_by_visible_text("XXXXXXXXXX - GRUPO - TOMOGRAFIA COMPUTADORIZADA - INTERNADOS")
+                cid10_field = wait.until(EC.presence_of_element_located((By.NAME, "cid10")))
+                cid10_field.clear()
+                cid10_field.send_keys("R68")
+                cpfprofsol_dropdown = wait.until(EC.presence_of_element_located((By.NAME, "cpfprofsol")))
+                cpfprofsol_select = Select(cpfprofsol_dropdown)
+                opcoes = [opt for opt in cpfprofsol_select.options if opt.get_attribute("value")]
+                if opcoes:
+                    opcao_aleatoria = random.choice(opcoes)
+                    cpfprofsol_select.select_by_value(opcao_aleatoria.get_attribute("value"))
+                upsexec_dropdown = wait.until(EC.presence_of_element_located((By.NAME, "upsexec")))
+                upsexec_select = Select(upsexec_dropdown)
+                upsexec_select.select_by_value("6861849")
+                ok_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@value='OK']")))
+                ok_button.click()
+                time.sleep(2)
 
             # Compara os procedimentos do CSV com as opções disponíveis na tabela
             if procedimento:
@@ -299,6 +421,79 @@ def exames_ambulatorio_solicita():
             print("   Botão Confirmar clicado com sucesso.")
             
             time.sleep(2)  # Aguarda a próxima tela carregar
+            
+            # Verifica erro de sistema após mudança de página
+            if verificar_erro_sistema():
+                print("   🔄 Refazendo login devido a erro de sistema...")
+                fazer_login()
+                # Retorna ao fluxo após login (precisa refazer todo o processo)
+                navegador.get(f"https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar")
+                time.sleep(2)
+                cns_field = wait.until(EC.presence_of_element_located((By.NAME, "nu_cns")))
+                cns_field.clear()
+                cns_field.send_keys(str(cns))
+                pesquisar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btn_pesquisar")))
+                pesquisar_button.click()
+                time.sleep(2)
+                continuar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btn_continuar")))
+                continuar_button.click()
+                time.sleep(2)
+                # Refaz seleções
+                pa_dropdown = wait.until(EC.presence_of_element_located((By.NAME, "pa")))
+                pa_select = Select(pa_dropdown)
+                try:
+                    pa_select.select_by_value("0045000")
+                except:
+                    pa_select.select_by_visible_text("XXXXXXXXXX - GRUPO - TOMOGRAFIA COMPUTADORIZADA - INTERNADOS")
+                cid10_field = wait.until(EC.presence_of_element_located((By.NAME, "cid10")))
+                cid10_field.clear()
+                cid10_field.send_keys("R68")
+                cpfprofsol_dropdown = wait.until(EC.presence_of_element_located((By.NAME, "cpfprofsol")))
+                cpfprofsol_select = Select(cpfprofsol_dropdown)
+                opcoes = [opt for opt in cpfprofsol_select.options if opt.get_attribute("value")]
+                if opcoes:
+                    opcao_aleatoria = random.choice(opcoes)
+                    cpfprofsol_select.select_by_value(opcao_aleatoria.get_attribute("value"))
+                upsexec_dropdown = wait.until(EC.presence_of_element_located((By.NAME, "upsexec")))
+                upsexec_select = Select(upsexec_dropdown)
+                upsexec_select.select_by_value("6861849")
+                ok_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@value='OK']")))
+                ok_button.click()
+                time.sleep(2)
+                # Refaz marcação de checkboxes se houver procedimentos
+                if procedimento:
+                    wait.until(EC.presence_of_element_located((By.CLASS_NAME, "table_listagem")))
+                    checkboxes = navegador.find_elements(By.XPATH, "//table[@class='table_listagem']//input[@type='checkbox']")
+                    checkboxes_marcados = []
+                    procedimentos_lista = [p.strip() for p in procedimento.split('|') if p.strip()]
+                    for proc_csv in procedimentos_lista:
+                        melhor_similaridade = 0
+                        checkbox_selecionado = None
+                        for checkbox in checkboxes:
+                            if checkbox in checkboxes_marcados:
+                                continue
+                            try:
+                                td = checkbox.find_element(By.XPATH, "./..")
+                                texto_opcao = td.text.strip()
+                                similaridade = difflib.SequenceMatcher(None, proc_csv.upper(), texto_opcao.upper()).ratio()
+                                palavras_procedimento = set(proc_csv.upper().split())
+                                palavras_opcao = set(texto_opcao.upper().split())
+                                palavras_comuns = palavras_procedimento.intersection(palavras_opcao)
+                                if palavras_comuns:
+                                    bonus = len(palavras_comuns) / max(len(palavras_procedimento), len(palavras_opcao))
+                                    similaridade += bonus * 0.3
+                                if similaridade > melhor_similaridade:
+                                    melhor_similaridade = similaridade
+                                    checkbox_selecionado = checkbox
+                            except:
+                                continue
+                        if checkbox_selecionado and melhor_similaridade > 0.3:
+                            if not checkbox_selecionado.is_selected():
+                                checkbox_selecionado.click()
+                            checkboxes_marcados.append(checkbox_selecionado)
+                    confirmar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btnConfirmar")))
+                    confirmar_button.click()
+                    time.sleep(2)
         
             # Localiza e clica no link que expande a tabela de vagas
             print("   Localizando link para expandir tabela de vagas...")
@@ -312,6 +507,14 @@ def exames_ambulatorio_solicita():
                 vagas_link.click()
                 print("   Link clicado com sucesso.")
                 time.sleep(1)  # Aguarda a tabela expandir
+                
+                # Verifica erro de sistema após mudança de página
+                if verificar_erro_sistema():
+                    print("   🔄 Refazendo login devido a erro de sistema...")
+                    fazer_login()
+                    # Se houver erro após clicar em vagas, precisa refazer todo o processo
+                    print("   ⚠️  Erro após seleção de vagas. Processo precisa ser reiniciado manualmente.")
+                    continue
             except TimeoutException:
                 print("   ⚠️  Link de expansão não encontrado, tentando localizar tabela diretamente...")
             
@@ -352,6 +555,14 @@ def exames_ambulatorio_solicita():
             print("   Botão Próxima Etapa clicado com sucesso.")
             
             time.sleep(2)  # Aguarda a próxima tela carregar
+            
+            # Verifica erro de sistema após mudança de página
+            if verificar_erro_sistema():
+                print("   🔄 Refazendo login devido a erro de sistema...")
+                fazer_login()
+                # Se houver erro após próxima etapa, precisa refazer todo o processo
+                print("   ⚠️  Erro após próxima etapa. Processo precisa ser reiniciado manualmente.")
+                continue
 
             # Extrai a chave da solicitação
             print("   Extraindo chave da solicitação...")
@@ -478,6 +689,15 @@ def exames_ambulatorio_solicita():
                     print(f"\n[{index + 1}/{len(registros_pendentes)}] Reprocessando CNS: {cns}")
                     
                     navegador.get(f"https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar")
+                    time.sleep(2)
+                    
+                    # Verifica erro de sistema após mudança de página
+                    if verificar_erro_sistema():
+                        print("   🔄 Refazendo login devido a erro de sistema...")
+                        fazer_login()
+                        # Retorna à página de marcação após login
+                        navegador.get(f"https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar")
+                        time.sleep(2)
                     
                     # Aguarda a página carregar e localiza o campo CNS
                     print("   Aguardando campo CNS carregar...")
@@ -497,6 +717,21 @@ def exames_ambulatorio_solicita():
                     print("   Botão pesquisar clicado com sucesso.")
                     
                     time.sleep(2)  # Aguarda a pesquisa ser processada
+                    
+                    # Verifica erro de sistema após mudança de página
+                    if verificar_erro_sistema():
+                        print("   🔄 Refazendo login devido a erro de sistema...")
+                        fazer_login()
+                        # Retorna à página de marcação após login
+                        navegador.get(f"https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar")
+                        time.sleep(2)
+                        # Reinsere o CNS e clica em pesquisar novamente
+                        cns_field = wait.until(EC.presence_of_element_located((By.NAME, "nu_cns")))
+                        cns_field.clear()
+                        cns_field.send_keys(str(cns))
+                        pesquisar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btn_pesquisar")))
+                        pesquisar_button.click()
+                        time.sleep(2)
                     
                     # Continua com o restante do processamento...
                     # (código similar ao loop principal, mas sem repetir tudo aqui)
@@ -562,6 +797,45 @@ def exames_ambulatorio_solicita():
                     
                     time.sleep(2)  # Aguarda a próxima tela carregar
                     
+                    # Verifica erro de sistema após mudança de página
+                    if verificar_erro_sistema():
+                        print("   🔄 Refazendo login devido a erro de sistema...")
+                        fazer_login()
+                        # Retorna ao fluxo após login (precisa refazer todo o processo)
+                        navegador.get(f"https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar")
+                        time.sleep(2)
+                        cns_field = wait.until(EC.presence_of_element_located((By.NAME, "nu_cns")))
+                        cns_field.clear()
+                        cns_field.send_keys(str(cns))
+                        pesquisar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btn_pesquisar")))
+                        pesquisar_button.click()
+                        time.sleep(2)
+                        continuar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btn_continuar")))
+                        continuar_button.click()
+                        time.sleep(2)
+                        # Refaz seleções
+                        pa_dropdown = wait.until(EC.presence_of_element_located((By.NAME, "pa")))
+                        pa_select = Select(pa_dropdown)
+                        try:
+                            pa_select.select_by_value("0045000")
+                        except:
+                            pa_select.select_by_visible_text("XXXXXXXXXX - GRUPO - TOMOGRAFIA COMPUTADORIZADA - INTERNADOS")
+                        cid10_field = wait.until(EC.presence_of_element_located((By.NAME, "cid10")))
+                        cid10_field.clear()
+                        cid10_field.send_keys("R68")
+                        cpfprofsol_dropdown = wait.until(EC.presence_of_element_located((By.NAME, "cpfprofsol")))
+                        cpfprofsol_select = Select(cpfprofsol_dropdown)
+                        opcoes = [opt for opt in cpfprofsol_select.options if opt.get_attribute("value")]
+                        if opcoes:
+                            opcao_aleatoria = random.choice(opcoes)
+                            cpfprofsol_select.select_by_value(opcao_aleatoria.get_attribute("value"))
+                        upsexec_dropdown = wait.until(EC.presence_of_element_located((By.NAME, "upsexec")))
+                        upsexec_select = Select(upsexec_dropdown)
+                        upsexec_select.select_by_value("6861849")
+                        ok_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@value='OK']")))
+                        ok_button.click()
+                        time.sleep(2)
+                    
                     # Compara os procedimentos do CSV com as opções disponíveis na tabela
                     if procedimento:
                         procedimentos_lista = [p.strip() for p in procedimento.split('|') if p.strip()]
@@ -625,6 +899,14 @@ def exames_ambulatorio_solicita():
                     
                     time.sleep(2)  # Aguarda a próxima tela carregar
                     
+                    # Verifica erro de sistema após mudança de página
+                    if verificar_erro_sistema():
+                        print("   🔄 Refazendo login devido a erro de sistema...")
+                        fazer_login()
+                        # Se houver erro após confirmar, precisa refazer todo o processo
+                        print("   ⚠️  Erro após confirmar. Processo precisa ser reiniciado manualmente.")
+                        continue
+                    
                     # Localiza e clica no link que expande a tabela de vagas
                     print("   Localizando link para expandir tabela de vagas...")
                     try:
@@ -636,6 +918,13 @@ def exames_ambulatorio_solicita():
                         vagas_link.click()
                         print("   Link clicado com sucesso.")
                         time.sleep(1)
+                        
+                        # Verifica erro de sistema após mudança de página
+                        if verificar_erro_sistema():
+                            print("   🔄 Refazendo login devido a erro de sistema...")
+                            fazer_login()
+                            print("   ⚠️  Erro após seleção de vagas. Processo precisa ser reiniciado manualmente.")
+                            continue
                     except TimeoutException:
                         print("   ⚠️  Link de expansão não encontrado, tentando localizar tabela diretamente...")
                     
@@ -671,6 +960,14 @@ def exames_ambulatorio_solicita():
                     print("   Botão Próxima Etapa clicado com sucesso.")
                     
                     time.sleep(2)
+                    
+                    # Verifica erro de sistema após mudança de página
+                    if verificar_erro_sistema():
+                        print("   🔄 Refazendo login devido a erro de sistema...")
+                        fazer_login()
+                        # Se houver erro após próxima etapa, precisa refazer todo o processo
+                        print("   ⚠️  Erro após próxima etapa. Processo precisa ser reiniciado manualmente.")
+                        continue
                     
                     # Extrai a chave da solicitação
                     print("   Extraindo chave da solicitação...")
