@@ -133,6 +133,11 @@ def solicita_pre_aih():
     os.makedirs(user_dir, exist_ok=True)
     csv_path = os.path.join(user_dir, 'solicita_inf_aih.csv')
     
+    # Define os caminhos das flags no mesmo diretório do CSV
+    PAUSE_FLAG = os.path.join(user_dir, 'pause.flag')
+    GRAVA_FLAG = os.path.join(user_dir, 'grava.flag')
+    PULA_FLAG = os.path.join(user_dir, 'pula.flag')
+    
     # Relê o arquivo CSV atualizado para processamento
     df = None
 
@@ -160,74 +165,87 @@ def solicita_pre_aih():
             total_registros = len(df)  # Atualiza o total a cada iteração
             # Converte ra para inteiro para remover o .0
             ra = int(df.at[i, 'ra'])
-            print(f"\nProcessando registro {i + 1}/{total_registros}: {ra}")
-            time.sleep(1)
-            driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
             
-            #desenvolvimento
-            print(f"⏳ Aguardando interação do usuário para o registro {ra}...")
-            print("   O usuário deve clicar no link desejado, fazer as alterações necessárias.")
-            print("   💡 Comandos disponíveis:")
-            print("      Digite 's' e pressione Enter - Salvar URL atual e avançar")
-            print("      Digite 'p' e pressione Enter - Pular (remover linha) e avançar")
-            
-            try:
-                # Aguarda input do usuário
-                comando = input("   👉 Digite o comando (s/p): ").strip().lower()
+            # Verifica se existe pause.flag antes de processar cada registro
+            if os.path.exists(PAUSE_FLAG):
+                print(f"\n⏳ Pausado... aguardando sinal do frontend para o registro {i + 1} (RA: {ra})...")
+                # Carrega a página antes de entrar no loop de espera
+                print(f"Processando registro {i + 1}/{total_registros}: {ra}")
+                time.sleep(1)
+                driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
                 
-                if comando == 's':
-                    # Salvar URL atual
-                    url_atual = driver.current_url
-                    print(f"   📍 URL capturada: {url_atual}")
+                # Entra em loop aguardando grava.flag ou pula.flag
+                while os.path.exists(PAUSE_FLAG):
+                    time.sleep(1)  # Aguarda 1 segundo e verifica de novo
                     
-                    df.at[i, 'link'] = url_atual
-                    df.to_csv(csv_path, index=False)
-                    print(f"   ✅ Link salvo no CSV para o registro {ra}")
-
-                    # Clica no botão Gravar (com ID dinâmico baseado no tipo de URL)
-                    try:
-                        # Verifica o padrão da URL para determinar qual botão usar
-                        if '/formeletronicos' in url_atual:
-                            # Busca o botão usando XPath que aceita qualquer número no ID
-                            botao_gravar = WebDriverWait(driver, 5).until(
-                                EC.element_to_be_clickable((By.XPATH, '//form[starts-with(@id, "edit_formeletronico_")]/div[2]/input'))
-                            )
-                            botao_gravar.click()
-                            print(f"   ✅ Botão 'Gravar' (formeletronicos) clicado automaticamente")
-                        elif '/printernlaudos' in url_atual:
-                            # Busca o botão usando XPath dinâmico para printernlaudos
-                            botao_gravar = WebDriverWait(driver, 5).until(
-                                EC.element_to_be_clickable((By.XPATH, '//form[starts-with(@id, "edit_hhlaudosaih_")]/div/div/input'))
-                            )
-                            botao_gravar.click()
-                            print(f"   ✅ Botão 'Gravar' (printernlaudos) clicado automaticamente")
-                        else:
-                            print(f"   ⚠️  URL não corresponde aos padrões esperados - botão não foi clicado")
+                    # Verifica se grava.flag foi criada
+                    if os.path.exists(GRAVA_FLAG):
+                        print("   ✅ Sinal 'grava' recebido!")
+                        # Remove a flag grava.flag
+                        try:
+                            os.remove(GRAVA_FLAG)
+                        except Exception as e:
+                            print(f"   ⚠️  Erro ao remover grava.flag: {e}")
                         
-                        time.sleep(1)  # Aguarda um momento para processar
-                    except Exception as e:
-                        print(f"   ⚠️  Não foi possível clicar no botão 'Gravar': {e}")
+                        # Executa a lógica de 's' (salvar)
+                        url_atual = driver.current_url
+                        print(f"   📍 URL capturada: {url_atual}")
+                        
+                        df.at[i, 'link'] = url_atual
+                        df.to_csv(csv_path, index=False)
+                        print(f"   ✅ Link salvo no CSV para o registro {ra}")
+
+                        # Clica no botão Gravar (com ID dinâmico baseado no tipo de URL)
+                        try:
+                            # Verifica o padrão da URL para determinar qual botão usar
+                            if '/formeletronicos' in url_atual:
+                                # Busca o botão usando XPath que aceita qualquer número no ID
+                                botao_gravar = WebDriverWait(driver, 5).until(
+                                    EC.element_to_be_clickable((By.XPATH, '//form[starts-with(@id, "edit_formeletronico_")]/div[2]/input'))
+                                )
+                                botao_gravar.click()
+                                print(f"   ✅ Botão 'Gravar' (formeletronicos) clicado automaticamente")
+                            elif '/printernlaudos' in url_atual:
+                                # Busca o botão usando XPath dinâmico para printernlaudos
+                                botao_gravar = WebDriverWait(driver, 5).until(
+                                    EC.element_to_be_clickable((By.XPATH, '//form[starts-with(@id, "edit_hhlaudosaih_")]/div/div/input'))
+                                )
+                                botao_gravar.click()
+                                print(f"   ✅ Botão 'Gravar' (printernlaudos) clicado automaticamente")
+                            else:
+                                print(f"   ⚠️  URL não corresponde aos padrões esperados - botão não foi clicado")
+                            
+                            time.sleep(1)  # Aguarda um momento para processar
+                        except Exception as e:
+                            print(f"   ⚠️  Não foi possível clicar no botão 'Gravar': {e}")
+                        
+                        # Avança para o próximo registro
+                        i += 1
+                        break  # Sai do loop de espera
                     
-                    # Avança para o próximo registro apenas se salvou
-                    i += 1
+                    # Verifica se pula.flag foi criada
+                    elif os.path.exists(PULA_FLAG):
+                        print("   ✅ Sinal 'pula' recebido!")
+                        # Remove a flag pula.flag
+                        try:
+                            os.remove(PULA_FLAG)
+                        except Exception as e:
+                            print(f"   ⚠️  Erro ao remover pula.flag: {e}")
+                        
+                        # Executa a lógica de 'p' (pular/remover linha)
+                        print(f"   🗑️  Removendo linha do registro {ra}")
+                        df = df.drop(index=i).reset_index(drop=True)
+                        df.to_csv(csv_path, index=False)
+                        print(f"   ✅ Linha removida do CSV")
+                        # Não incrementa i pois a próxima linha agora está no índice atual
+                        break  # Sai do loop de espera
                 
-                elif comando == 'p':
-                    # Pular (remover linha)
-                    print(f"   🗑️  Removendo linha do registro {ra}")
-                    df = df.drop(index=i).reset_index(drop=True)
-                    df.to_csv(csv_path, index=False)
-                    print(f"   ✅ Linha removida do CSV")
-                    # Não incrementa i pois a próxima linha agora está no índice atual
-                
-                else:
-                    print(f"   ⚠️  Comando inválido '{comando}' - pulando registro sem alterar CSV")
-                    i += 1
-                
-            except KeyboardInterrupt:
-                print("\n   ⚠️  Operação cancelada pelo usuário (Ctrl+C)")
-                raise
-            except Exception as e:
-                print(f"   ⚠️ Erro ao processar comando: {e}")
+                # Se saiu do loop mas pause.flag ainda existe, continua aguardando
+                if os.path.exists(PAUSE_FLAG):
+                    continue
+            
+            # Se não há pause.flag, avança automaticamente para o próximo registro
+            else:
                 i += 1
 
         
