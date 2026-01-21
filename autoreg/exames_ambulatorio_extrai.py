@@ -105,13 +105,30 @@ def exames_ambulatorio_extrai():
         login_button.click()
         print("Login realizado com sucesso!")
 
-        # Garante que as colunas 'procedimento' e 'cns' existem no DataFrame
+        # Garante que as colunas necessárias existem no DataFrame
         if 'procedimento' not in df.columns:
             df['procedimento'] = ''
-        if 'cns' not in df.columns:
-            df['cns'] = ''
         if 'hora' not in df.columns:
             print("   ⚠️  Coluna 'hora' não encontrada no CSV. A filtragem por hora não será aplicada.")
+        if 'contraste' not in df.columns:
+            df['contraste'] = ''
+        if 'cns' not in df.columns:
+            df['cns'] = ''
+        
+        # Reordena as colunas para garantir a ordem: ra, hora, contraste, cns, procedimento, ...
+        colunas_ordenadas = ['ra']
+        if 'hora' in df.columns:
+            colunas_ordenadas.append('hora')
+        if 'contraste' in df.columns:
+            colunas_ordenadas.append('contraste')
+        if 'cns' in df.columns:
+            colunas_ordenadas.append('cns')
+        if 'procedimento' in df.columns:
+            colunas_ordenadas.append('procedimento')
+        # Adiciona outras colunas que possam existir
+        outras_colunas = [col for col in df.columns if col not in colunas_ordenadas]
+        colunas_ordenadas.extend(outras_colunas)
+        df = df[colunas_ordenadas]
         
         # Itera sobre os links do CSV
         for index, row in df.iterrows():

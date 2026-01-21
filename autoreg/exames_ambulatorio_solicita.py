@@ -139,6 +139,8 @@ def exames_ambulatorio_solicita():
     # Garante que as colunas necessárias existem no DataFrame
     if 'procedimento' not in df.columns:
         df['procedimento'] = ''
+    if 'contraste' not in df.columns:
+        df['contraste'] = ''
     if 'chave' not in df.columns:
         df['chave'] = ''
     if 'solicitacao' not in df.columns:
@@ -157,12 +159,25 @@ def exames_ambulatorio_solicita():
                 print(f"\n[{index + 1}/{len(df)}] ⏭️  Linha já processada (chave: {chave}, solicitação: {solicitacao}). Pulando...")
                 continue
             
-            cns = row['cns']
+            cns_val = row.get('cns', '')
             procedimento = row.get('procedimento', '').strip() if pd.notna(row.get('procedimento')) else ''
-            cns_float = float(cns)
-            # Remove o .0 se for um número inteiro
-            cns = int(cns_float) if cns_float.is_integer() else cns_float
+            contraste = row.get('contraste', '').strip() if pd.notna(row.get('contraste')) else ''
+            
+            # Valida e converte CNS para número
+            if pd.notna(cns_val) and str(cns_val).strip() != '':
+                try:
+                    cns_float = float(cns_val)
+                    # Remove o .0 se for um número inteiro
+                    cns = int(cns_float) if cns_float.is_integer() else cns_float
+                except (ValueError, TypeError):
+                    print(f"   ❌ Erro: valor inválido na coluna 'cns': '{cns_val}'. Pulando registro...")
+                    continue
+            else:
+                print(f"   ❌ Erro: coluna 'cns' está vazia. Pulando registro...")
+                continue
             print(f"\n[{index + 1}/{len(df)}] Processando Solicitação para o CNS: {cns}")
+            if contraste and contraste.upper() == 'S':
+                print(f"   ℹ️  Contraste obrigatório: apenas procedimentos 'COM CONTRASTE' serão selecionados")
             navegador.get(f"https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar")
             time.sleep(2)
             
@@ -379,6 +394,15 @@ def exames_ambulatorio_solicita():
                             td = checkbox.find_element(By.XPATH, "./..")
                             texto_opcao = td.text.strip()
                             
+                            # Se contraste for obrigatório ('s'), verifica se a opção contém "COM CONTRASTE"
+                            # Esta verificação é OBRIGATÓRIA e deve ser feita ANTES de calcular similaridade
+                            if contraste and contraste.upper() == 'S':
+                                # Normaliza o texto para comparação (remove espaços extras e converte para maiúsculas)
+                                texto_opcao_normalizado = ' '.join(texto_opcao.upper().split())
+                                if "COM CONTRASTE" not in texto_opcao_normalizado:
+                                    # Pula esta opção se não contiver "COM CONTRASTE" - não considera para seleção
+                                    continue
+                            
                             # Calcula a similaridade usando SequenceMatcher
                             similaridade = difflib.SequenceMatcher(None, proc_csv.upper(), texto_opcao.upper()).ratio()
                             
@@ -401,18 +425,30 @@ def exames_ambulatorio_solicita():
                     
                     # Marca o checkbox mais similar
                     if checkbox_selecionado and melhor_similaridade > 0.3:  # Threshold mínimo de 30%
+                        # Verificação adicional: se contraste é obrigatório, confirma que a opção selecionada contém "COM CONTRASTE"
+                        if contraste and contraste.upper() == 'S':
+                            texto_selecionado_normalizado = ' '.join(texto_selecionado.upper().split())
+                            if "COM CONTRASTE" not in texto_selecionado_normalizado:
+                                print(f"      ❌ Erro: Opção selecionada não contém 'COM CONTRASTE' como exigido. Opção: {texto_selecionado}")
+                                print(f"      ⚠️  Nenhum procedimento válido encontrado para '{proc_csv}' com contraste obrigatório")
+                                continue
+                        
                         print(f"      ✅ Procedimento encontrado: {texto_selecionado} (similaridade: {melhor_similaridade:.2%})")
                         if not checkbox_selecionado.is_selected():
                             checkbox_selecionado.click()
                         checkboxes_marcados.append(checkbox_selecionado)
                         print(f"      ✅ Checkbox marcado com sucesso.")
                     else:
-                        print(f"      ⚠️  Nenhum procedimento similar encontrado para '{proc_csv}' (melhor similaridade: {melhor_similaridade:.2%})")
+                        if contraste and contraste.upper() == 'S':
+                            print(f"      ⚠️  Nenhum procedimento similar encontrado para '{proc_csv}' com 'COM CONTRASTE' (melhor similaridade: {melhor_similaridade:.2%})")
+                        else:
+                            print(f"      ⚠️  Nenhum procedimento similar encontrado para '{proc_csv}' (melhor similaridade: {melhor_similaridade:.2%})")
                 
                 print(f"   ✅ Total de {len(checkboxes_marcados)} checkbox(es) marcado(s) de {len(procedimentos_lista)} procedimento(s)")
             else:
                 print("   ⚠️  Procedimento não informado no CSV, pulando seleção.")
             
+
             # Clica no botão Confirmar
             print("   Localizando botão Confirmar...")
             confirmar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btnConfirmar")))
@@ -649,7 +685,11 @@ def exames_ambulatorio_solicita():
         try:
             df_atualizado = pd.read_csv(csv_exames)
             
-            # Garante que a coluna 'erro' existe no DataFrame atualizado
+            # Garante que as colunas necessárias existem no DataFrame atualizado
+            if 'procedimento' not in df_atualizado.columns:
+                df_atualizado['procedimento'] = ''
+            if 'contraste' not in df_atualizado.columns:
+                df_atualizado['contraste'] = ''
             if 'erro' not in df_atualizado.columns:
                 df_atualizado['erro'] = ''
             
@@ -681,12 +721,26 @@ def exames_ambulatorio_solicita():
                         print(f"   ⏭️  Registro {index + 1} já foi processado. Pulando...")
                         continue
                     
-                    cns = row['cns']
+                    cns_val = row.get('cns', '')
                     procedimento_val = row.get('procedimento', '')
                     procedimento = str(procedimento_val).strip() if pd.notna(procedimento_val) and procedimento_val != '' else ''
-                    cns_float = float(cns)
-                    cns = int(cns_float) if cns_float.is_integer() else cns_float
+                    contraste_val = row.get('contraste', '')
+                    contraste = str(contraste_val).strip() if pd.notna(contraste_val) and contraste_val != '' else ''
+                    
+                    # Valida e converte CNS para número
+                    if pd.notna(cns_val) and str(cns_val).strip() != '':
+                        try:
+                            cns_float = float(cns_val)
+                            cns = int(cns_float) if cns_float.is_integer() else cns_float
+                        except (ValueError, TypeError):
+                            print(f"   ❌ Erro: valor inválido na coluna 'cns': '{cns_val}'. Pulando registro...")
+                            continue
+                    else:
+                        print(f"   ❌ Erro: coluna 'cns' está vazia. Pulando registro...")
+                        continue
                     print(f"\n[{index + 1}/{len(registros_pendentes)}] Reprocessando CNS: {cns}")
+                    if contraste and contraste.upper() == 'S':
+                        print(f"   ℹ️  Contraste obrigatório: apenas procedimentos 'COM CONTRASTE' serão selecionados")
                     
                     navegador.get(f"https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar")
                     time.sleep(2)
@@ -860,6 +914,14 @@ def exames_ambulatorio_solicita():
                                     td = checkbox.find_element(By.XPATH, "./..")
                                     texto_opcao = td.text.strip()
                                     
+                                    # Se contraste for obrigatório ('s'), verifica se a opção contém "COM CONTRASTE"
+                                    if contraste and contraste.upper() == 'S':
+                                        # Normaliza o texto para comparação (remove espaços extras e converte para maiúsculas)
+                                        texto_opcao_normalizado = ' '.join(texto_opcao.upper().split())
+                                        if "COM CONTRASTE" not in texto_opcao_normalizado:
+                                            # Pula esta opção se não contiver "COM CONTRASTE" - não considera para seleção
+                                            continue
+                                    
                                     similaridade = difflib.SequenceMatcher(None, proc_csv.upper(), texto_opcao.upper()).ratio()
                                     
                                     palavras_procedimento = set(proc_csv.upper().split())
@@ -878,13 +940,24 @@ def exames_ambulatorio_solicita():
                                     continue
                             
                             if checkbox_selecionado and melhor_similaridade > 0.3:
+                                # Verificação adicional: se contraste é obrigatório, confirma que a opção selecionada contém "COM CONTRASTE"
+                                if contraste and contraste.upper() == 'S':
+                                    texto_selecionado_normalizado = ' '.join(texto_selecionado.upper().split())
+                                    if "COM CONTRASTE" not in texto_selecionado_normalizado:
+                                        print(f"      ❌ Erro: Opção selecionada não contém 'COM CONTRASTE' como exigido. Opção: {texto_selecionado}")
+                                        print(f"      ⚠️  Nenhum procedimento válido encontrado para '{proc_csv}' com contraste obrigatório")
+                                        continue
+                                
                                 print(f"      ✅ Procedimento encontrado: {texto_selecionado} (similaridade: {melhor_similaridade:.2%})")
                                 if not checkbox_selecionado.is_selected():
                                     checkbox_selecionado.click()
                                 checkboxes_marcados.append(checkbox_selecionado)
                                 print(f"      ✅ Checkbox marcado com sucesso.")
                             else:
-                                print(f"      ⚠️  Nenhum procedimento similar encontrado para '{proc_csv}' (melhor similaridade: {melhor_similaridade:.2%})")
+                                if contraste and contraste.upper() == 'S':
+                                    print(f"      ⚠️  Nenhum procedimento similar encontrado para '{proc_csv}' com 'COM CONTRASTE' (melhor similaridade: {melhor_similaridade:.2%})")
+                                else:
+                                    print(f"      ⚠️  Nenhum procedimento similar encontrado para '{proc_csv}' (melhor similaridade: {melhor_similaridade:.2%})")
                         
                         print(f"   ✅ Total de {len(checkboxes_marcados)} checkbox(es) marcado(s) de {len(procedimentos_lista)} procedimento(s)")
                     else:
