@@ -1,0 +1,40 @@
+[SISREG]
+
+#seu_usuario_sisreg
+usuario = exec-huerb.michel
+
+#sua_senha_sisreg-
+senha = 992500
+
+usuariosol = sol-michel
+
+senhasol = 992500
+
+[G-HOSP]
+
+#seu_usuario_ghosp
+usuario = michel.paes@ac.gov.br
+
+#sua_senha_ghosp
+senha = 992500
+
+#Entre com o endereco local do G-Hosp. As portas serao selecionadas automaticamente.
+caminho = http://10.16.9.43
+
+[SISREG-REG]
+
+usuarioreg = reg.graca-HUERB
+
+senhareg = 10203040
+
+[G-HOSP-REG]
+
+#seu_usuario_ghosp
+usuario = maria.cunha@ac.gov.br
+
+#sua_senha_ghosp
+senha = Gcs1030*
+
+
+
+
