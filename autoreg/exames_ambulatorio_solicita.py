@@ -2,7 +2,6 @@ import os
 import csv
 import time
 import random
-import difflib
 import pandas as pd
 import configparser
 from selenium import webdriver
@@ -200,6 +199,306 @@ def exames_ambulatorio_solicita():
     else:
         print(f"   ✅ Nenhuma divisão necessária. Todas as linhas estão prontas para processamento.")
     
+    # Dicionário de correlação GHOSP → SISREG
+    dicionario_correlacao = {
+        'ANGIO-TC DA AORTA TORÁCICA': 'ANGIO-TC DA AORTA TORÁCICA',
+        'ANGIO-TC DAS ARTÉRIAS CERVICAIS': 'ANGIO-TC DAS ARTÉRIAS CERVICAIS',
+        'ANGIO-TC DE AORTA ABDOMINAL': 'ANGIOTOMOGRAFIA DE ABDOMEN SUPERIOR',
+        'ANGIO-TC DE ARTÉRIAS ILÍACAS': 'ANGIOTOMOGRAFIA DE ABDOMEM INFERIOR',
+        'ANGIOTOMOGRAFIA CEREBRAL': 'ANGIOTOMOGRAFIA CEREBRAL',
+        'ANGIOTOMOGRAFIA DE ABDOMEM INFERIOR': 'ANGIOTOMOGRAFIA DE ABDOMEM INFERIOR',
+        'ANGIOTOMOGRAFIA DE ABDOMEM SUPERIOR': 'ANGIOTOMOGRAFIA DE ABDOMEN SUPERIOR',
+        'TOMOGRAFIA COMPUTADORIZADA COLUNA CERVICAL - INTERNADOS': 'TOMOGRAFIA COMPUTADORIZADA DE COLUNA CERVICAL C/ OU S/ CONTRASTE',
+        'TOMOGRAFIA COMPUTADORIZADA COLUNA CERVICAL - INTERNADOS - COM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE COLUNA CERVICAL C/ OU S/ CONTRASTE',
+        'TOMOGRAFIA COMPUTADORIZADA COLUNA CERVICAL - INTERNADOS - SEM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE COLUNA CERVICAL C/ OU S/ CONTRASTE',
+        'TOMOGRAFIA COMPUTADORIZADA COLUNA DORSAL - INTERNADOS - COM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE COLUNA TORACICA C/ OU S/ CONTRASTE',
+        'TOMOGRAFIA COMPUTADORIZADA COLUNA DORSAL - INTERNADOS - SEM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE COLUNA TORACICA C/ OU S/ CONTRASTE',
+        'TOMOGRAFIA COMPUTADORIZADA COLUNA LOMBAR - INTERNADOS -COM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE COLUNA LOMBO-SACRA C/ OU S/ CONTRASTE',
+        'TOMOGRAFIA COMPUTADORIZADA COLUNA LOMBAR - INTERNADOS- SEM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE COLUNA LOMBO-SACRA C/ OU S/ CONTRASTE',
+        'TOMOGRAFIA COMPUTADORIZADA DA COXA DIREITA - INTERNADOS -COM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE ARTICULACOES DE MEMBRO INFERIOR',
+        'TOMOGRAFIA COMPUTADORIZADA DA COXA DIREITA - INTERNADOS - SEM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE ARTICULACOES DE MEMBRO INFERIOR',
+        'TOMOGRAFIA COMPUTADORIZADA DA MAO ESQUERDA - INTERNADOS - COM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE ARTICULACOES DE MEMBRO SUPERIOR',
+        'TOMOGRAFIA COMPUTADORIZADA DA MAO ESQUERDA - INTERNADOS- SEM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE ARTICULACOES DE MEMBRO SUPERIOR',
+        'TOMOGRAFIA COMPUTADORIZADA DA PERNA DIREITA - INTERNADOS - COM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE ARTICULACOES DE MEMBRO INFERIOR',
+        'TOMOGRAFIA COMPUTADORIZADA DA PERNA DIREITA - INTERNADOS - SEM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE ARTICULACOES DE MEMBRO INFERIOR',
+        'TOMOGRAFIA COMPUTADORIZADA DAS ARTICULACOES JOELHOS - INTERNADOS -COM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DAS ARTICULACOES- JOELHOS',
+        'TOMOGRAFIA COMPUTADORIZADA DAS ARTICULACOES JOELHOS - INTERNADOS - SEM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DAS ARTICULACOES- JOELHOS',
+        'TOMOGRAFIA COMPUTADORIZADA DE ARTICULACOES DE MEMBRO INFERIOR': 'TOMOGRAFIA COMPUTADORIZADA DE ARTICULACOES DE MEMBRO INFERIOR',
+        'TOMOGRAFIA COMPUTADORIZADA DE ARTICULACOES DE MEMBRO SUPERIOR': 'TOMOGRAFIA COMPUTADORIZADA DE ARTICULACOES DE MEMBRO SUPERIOR',
+        'TOMOGRAFIA COMPUTADORIZADA DE COLUNA CERVICAL C/ OU S/ CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE COLUNA CERVICAL C/ OU S/ CONTRASTE',
+        'TOMOGRAFIA COMPUTADORIZADA DE COLUNA LOMBO-SACRA C/ OU S/ CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE COLUNA LOMBO-SACRA C/ OU S/ CONTRASTE',
+        'TOMOGRAFIA COMPUTADORIZADA DE COLUNA LOMBO-SACRA - INTERNADOS': 'TOMOGRAFIA COMPUTADORIZADA DE COLUNA LOMBO-SACRA C/ OU S/ CONTRASTE',
+        'TOMOGRAFIA COMPUTADORIZADA DE COLUNA TORACICA C/ OU S/ CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE COLUNA TORACICA C/ OU S/ CONTRASTE',
+        'TOMOGRAFIA COMPUTADORIZADA DE COLUNA TORACICA - INTERNADOS': 'TOMOGRAFIA COMPUTADORIZADA DE COLUNA TORACICA C/ OU S/ CONTRASTE',
+        'TOMOGRAFIA COMPUTADORIZADA DE CRANIO - INTERNADOS': 'TOMOGRAFIA COMPUTADORIZADA DO CRANIO',
+        'TOMOGRAFIA COMPUTADORIZADA DE CRANIO - INTERNADOS - COM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DO CRANIO',
+        'TOMOGRAFIA COMPUTADORIZADA DE CRANIO - INTERNADOS - SEM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DO CRANIO',
+        'TOMOGRAFIA COMPUTADORIZADA DO CRANIO': 'TOMOGRAFIA COMPUTADORIZADA DO CRANIO',
+        'TOMOGRAFIA COMPUTADORIZADA DE FACE OU SEIOS DE FACE - INTERNADOS - COM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE FACE / SEIOS DA FACE',
+        'TOMOGRAFIA COMPUTADORIZADA DE FACE OU SEIOS DE FACE - INTERNADOS - SEM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE FACE / SEIOS DA FACE',
+        'TOMOGRAFIA COMPUTADORIZADA DE FACE / SEIOS DA FACE / ARTICULACOES - INTERNADOS': 'TOMOGRAFIA COMPUTADORIZADA DE FACE / SEIOS DA FACE',
+        'TOMOGRAFIA COMPUTADORIZADA DE FACE / SEIOS DA FACE / ARTICULACOES TEMPORO-MANDIBULARES': 'TOMOGRAFIA COMPUTADORIZADA DE FACE / SEIOS DA FACE',
+        'TOMOGRAFIA COMPUTADORIZADA DE MASTOIDES OU OUVIDOS - INTERNADOS - COM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE MASTOIDES OU OUVIDOS',
+        'TOMOGRAFIA COMPUTADORIZADA DE MASTOIDES OU OUVIDOS - INTERNADOS - SEM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE MASTOIDES OU OUVIDOS',
+        'TOMOGRAFIA COMPUTADORIZADA DE PELVE / BACIA / ABDOMEN INFERIOR - INTERNADOS': 'TOMOGRAFIA COMPUTADORIZADA DE PELVE / BACIA / ABDOMEN INFERIOR',
+        'TOMOGRAFIA COMPUTADORIZADA DE PELVE / BACIA / ABDOMEN INFERIOR - COM CONTARSTE': 'TOMOGRAFIA COMPUTADORIZADA DE PELVE / BACIA / ABDOMEN INFERIOR',
+        'TOMOGRAFIA COMPUTADORIZADA DE PELVE / BACIA / ABDOMEN INFERIOR - COM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE PELVE / BACIA / ABDOMEN INFERIOR',
+        'TOMOGRAFIA COMPUTADORIZADA DE PELVE OU BACIA - INTERNADOS - COM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE PELVE / BACIA / ABDOMEN INFERIOR',
+        'TOMOGRAFIA COMPUTADORIZADA DE PELVE OU BACIA - INTERNADOS - SEM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DE PELVE / BACIA / ABDOMEN INFERIOR',
+        'ANGIOTOMOGRAFIA DE ABDOMEN SUPERIOR - COM CONTARSTE': 'ANGIOTOMOGRAFIA DE ABDOMEN SUPERIOR',
+        'ANGIOTOMOGRAFIA DE ABDOMEN SUPERIOR - COM CONTRASTE': 'ANGIOTOMOGRAFIA DE ABDOMEN SUPERIOR',
+        'TOMOGRAFIA COMPUTADORIZADA DE PESCOCO - INTERNADOS': 'TOMOGRAFIA COMPUTADORIZADA DO PESCOCO',
+        'TOMOGRAFIA COMPUTADORIZADA DE PESCOCO - INTERNADOS - COM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DO PESCOCO',
+        'TOMOGRAFIA COMPUTADORIZADA DE PESCOCO - INTERNADOS - SEM CONTRASTE': 'TOMOGRAFIA COMPUTADORIZADA DO PESCOCO',
+        'TOMOGRAFIA COMPUTADORIZADA DO PESCOCO': 'TOMOGRAFIA COMPUTADORIZADA DO PESCOCO'
+    }
+    
+    def normalizar_texto(texto):
+        """Normaliza texto para comparação (maiúsculas, remove espaços extras)"""
+        return ' '.join(texto.upper().strip().split())
+    
+    def identificar_tipo_exame(procedimento):
+        """
+        Identifica o tipo de exame no procedimento.
+        
+        Args:
+            procedimento: Procedimento do CSV
+        
+        Returns:
+            'TOMOGRAFIA', 'ANGIO-TC', 'ANGIOTOMOGRAFIA' ou None
+        """
+        proc_normalizado = normalizar_texto(procedimento)
+        
+        if 'ANGIO-TC' in proc_normalizado or 'ANGIO TC' in proc_normalizado:
+            return 'ANGIO-TC'
+        elif 'ANGIOTOMOGRAFIA' in proc_normalizado:
+            return 'ANGIOTOMOGRAFIA'
+        elif 'TOMOGRAFIA' in proc_normalizado:
+            return 'TOMOGRAFIA'
+        
+        return None
+    
+    def identificar_parte_corpo(procedimento):
+        """
+        Identifica a parte do corpo no procedimento.
+        
+        Args:
+            procedimento: Procedimento do CSV
+        
+        Returns:
+            String com a parte do corpo identificada ou None
+        """
+        proc_normalizado = normalizar_texto(procedimento)
+        
+        # Lista de partes do corpo em ordem de especificidade (mais específicas primeiro)
+        # Cada item é uma tupla: (termo_busca, parte_identificada)
+        partes_corpo = [
+            ('AORTA TORÁCICA', 'AORTA TORÁCICA'),
+            ('AORTA TORACICA', 'AORTA TORÁCICA'),
+            ('TORAX', 'TORAX'),
+            ('TÓRAX', 'TORAX'),
+            ('ARTÉRIAS CERVICAIS', 'ARTÉRIAS CERVICAIS'),
+            ('ARTÉRIAS ILÍACAS', 'ARTÉRIAS ILÍACAS'),
+            ('ARTÉRIAS ILIACAS', 'ARTÉRIAS ILÍACAS'),
+            ('AORTA ABDOMINAL', 'AORTA ABDOMINAL'),
+            ('CEREBRAL', 'CEREBRAL'),
+            ('PELVE / BACIA / ABDOMEN INFERIOR', 'PELVE / BACIA / ABDOMEN INFERIOR'),
+            ('PELVE / BACIA / ABDOMEM INFERIOR', 'PELVE / BACIA / ABDOMEN INFERIOR'),
+            ('PELVE OU BACIA', 'PELVE / BACIA / ABDOMEN INFERIOR'),
+            ('PELVE', 'PELVE / BACIA / ABDOMEN INFERIOR'),
+            ('BACIA', 'PELVE / BACIA / ABDOMEN INFERIOR'),
+            ('ABDOMEM INFERIOR', 'ABDOMEM INFERIOR'),
+            ('ABDOMEN INFERIOR', 'ABDOMEM INFERIOR'),
+            ('ABDOMEM SUPERIOR', 'ABDOMEM SUPERIOR'),
+            ('ABDOMEN SUPERIOR', 'ABDOMEM SUPERIOR'),
+            ('COLUNA LOMBO-SACRA', 'COLUNA LOMBO-SACRA'),
+            ('COLUNA LOMBAR', 'COLUNA LOMBAR'),
+            ('COLUNA DORSAL', 'COLUNA DORSAL'),
+            ('COLUNA CERVICAL', 'COLUNA CERVICAL'),
+            ('ARTICULACOES JOELHOS', 'ARTICULACOES JOELHOS'),
+            ('ARTICULAÇÕES JOELHOS', 'ARTICULACOES JOELHOS'),
+            ('JOELHOS', 'ARTICULACOES JOELHOS'),
+            ('COXA DIREITA', 'COXA DIREITA'),
+            ('COXA ESQUERDA', 'COXA ESQUERDA'),
+            ('PERNA DIREITA', 'PERNA DIREITA'),
+            ('PERNA ESQUERDA', 'PERNA ESQUERDA'),
+            ('MAO DIREITA', 'MAO DIREITA'),
+            ('MAO ESQUERDA', 'MAO ESQUERDA'),
+            ('MÃO DIREITA', 'MAO DIREITA'),
+            ('MÃO ESQUERDA', 'MAO ESQUERDA'),
+            ('SEIOS DA FACE', 'SEIOS DA FACE'),
+            ('SEIOS DE FACE', 'SEIOS DA FACE'),
+            ('FACE', 'FACE'),
+            ('MASTOIDES OU OUVIDOS', 'MASTOIDES OU OUVIDOS'),
+            ('MASTÓIDES OU OUVIDOS', 'MASTOIDES OU OUVIDOS'),
+            ('CRANIO', 'CRANIO'),
+            ('CRÂNIO', 'CRANIO'),
+            ('PESCOCO', 'PESCOCO'),
+            ('PESCOÇO', 'PESCOCO')
+        ]
+        
+        for termo_busca, parte_identificada in partes_corpo:
+            # Busca o termo no texto normalizado
+            if termo_busca in proc_normalizado:
+                # Para termos de uma palavra como "TORAX", verifica se não é parte de outro termo
+                # Ex: "TORAX" não deve ser encontrado dentro de "AORTA TORÁCICA"
+                if termo_busca == 'TORAX' or termo_busca == 'TÓRAX':
+                    # Verifica se não está dentro de "AORTA TORÁCICA" (que já foi verificado antes na lista)
+                    if 'AORTA TORÁCICA' not in proc_normalizado and 'AORTA TORACICA' not in proc_normalizado:
+                        return parte_identificada
+                else:
+                    return parte_identificada
+        
+        return None
+    
+    def determinar_tipo_contraste(ghosp_exame, contraste_csv):
+        """
+        Determina qual tipo de contraste deve ser selecionado no SISREG.
+        
+        Args:
+            ghosp_exame: Procedimento do GHOSP (vem do CSV como 'procedimento')
+            contraste_csv: Valor da coluna 'contraste' do CSV ('S' ou vazio)
+        
+        Returns:
+            'COM_CONTRASTE', 'SEM_CONTRASTE' ou None
+        """
+        ghosp_normalizado = normalizar_texto(ghosp_exame)
+        contraste_solicitado = contraste_csv and contraste_csv.upper() == 'S'
+        
+        # Se contraste='S' no CSV, obrigatoriamente escolher COM CONTRASTE
+        if contraste_solicitado:
+            return 'COM_CONTRASTE'
+        
+        # Caso contrário, seguir a lógica baseada no texto do GHOSP
+        if 'C/ OU S/ CONTRASTE' in ghosp_normalizado or 'C/ OU S/ CONTARSTE' in ghosp_normalizado:
+            return 'SEM_CONTRASTE'
+        elif 'COM CONTRASTE' in ghosp_normalizado or 'COM CONTARSTE' in ghosp_normalizado:
+            return 'COM_CONTRASTE'
+        else:
+            return 'SEM_CONTRASTE'
+    
+    def calcular_similaridade_termos_chave(proc_csv, texto_opcao, tipo_exame, parte_corpo, tipo_contraste_necessario):
+        """
+        Calcula similaridade baseada em termos-chave: tipo de exame, parte do corpo e contraste.
+        
+        Args:
+            proc_csv: Procedimento do CSV
+            texto_opcao: Texto da opção na tabela SISREG
+            tipo_exame: Tipo de exame identificado ('TOMOGRAFIA', 'ANGIO-TC', 'ANGIOTOMOGRAFIA')
+            parte_corpo: Parte do corpo identificada
+            tipo_contraste_necessario: 'COM_CONTRASTE' ou 'SEM_CONTRASTE'
+        
+        Returns:
+            Score de similaridade (0.0 a 1.0)
+        """
+        proc_normalizado = normalizar_texto(proc_csv)
+        opcao_normalizada = normalizar_texto(texto_opcao)
+        
+        score = 0.0
+        
+        # 1. Verifica tipo de exame (peso alto: 0.4)
+        tipo_exame_encontrado = False
+        if tipo_exame:
+            if tipo_exame == 'ANGIO-TC':
+                if 'ANGIO-TC' in opcao_normalizada or 'ANGIO TC' in opcao_normalizada or 'ANGIOTOMOGRAFIA' in opcao_normalizada:
+                    score += 0.4
+                    tipo_exame_encontrado = True
+            elif tipo_exame == 'ANGIOTOMOGRAFIA':
+                if 'ANGIOTOMOGRAFIA' in opcao_normalizada or 'ANGIO-TC' in opcao_normalizada or 'ANGIO TC' in opcao_normalizada:
+                    score += 0.4
+                    tipo_exame_encontrado = True
+            elif tipo_exame == 'TOMOGRAFIA':
+                # Para TOMOGRAFIA, verifica se tem "TOMOGRAFIA" mas NÃO "ANGIOTOMOGRAFIA"
+                # Isso evita que "TOMOGRAFIA" seja encontrado dentro de "ANGIOTOMOGRAFIA"
+                if 'TOMOGRAFIA' in opcao_normalizada and 'ANGIOTOMOGRAFIA' not in opcao_normalizada:
+                    score += 0.4
+                    tipo_exame_encontrado = True
+                    # Bônus adicional se tem "TOMOGRAFIA COMPUTADORIZADA" (mais específico)
+                    if 'TOMOGRAFIA COMPUTADORIZADA' in opcao_normalizada:
+                        score += 0.1
+        
+        # 2. Verifica parte do corpo (peso muito alto: 0.5)
+        if parte_corpo:
+            # Normaliza variações comuns (incluindo ABDOMEN/ABDOMEM)
+            parte_normalizada = parte_corpo.replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+            parte_normalizada = parte_normalizada.replace('Ç', 'C')
+            # Normaliza ABDOMEN/ABDOMEM para comparação flexível
+            parte_normalizada = parte_normalizada.replace('ABDOMEM', 'ABDOMEN')
+            
+            opcao_sem_acentos = opcao_normalizada.replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+            opcao_sem_acentos = opcao_sem_acentos.replace('Ç', 'C')
+            # Normaliza ABDOMEN/ABDOMEM na opção também
+            opcao_sem_acentos = opcao_sem_acentos.replace('ABDOMEM', 'ABDOMEN')
+            
+            # Verifica correspondência exata
+            if parte_normalizada in opcao_sem_acentos:
+                score += 0.5
+            else:
+                # Tenta correspondência parcial (palavras-chave)
+                # Remove caracteres especiais para comparação
+                parte_limpa = parte_normalizada.replace('/', ' ').replace('-', ' ').replace('  ', ' ')
+                opcao_limpa = opcao_sem_acentos.replace('/', ' ').replace('-', ' ').replace('  ', ' ')
+                
+                palavras_parte = [p for p in parte_limpa.split() if len(p) > 2]
+                palavras_opcao = opcao_limpa.split()
+                
+                # Conta quantas palavras-chave da parte do corpo aparecem na opção
+                palavras_encontradas = sum(1 for palavra in palavras_parte if palavra in palavras_opcao)
+                
+                if palavras_encontradas > 0:
+                    # Calcula score proporcional
+                    proporcao = palavras_encontradas / len(palavras_parte)
+                    score += 0.4 * proporcao
+                    
+                    # Bônus se encontrou palavras-chave importantes
+                    palavras_importantes = ['PELVE', 'BACIA', 'ABDOMEN', 'ABDOMEM', 'COLUNA', 'CERVICAL', 
+                                          'DORSAL', 'LOMBAR', 'CRANIO', 'FACE', 'PESCOCO', 'JOELHOS', 'SUPERIOR', 'INFERIOR', 'TORAX', 'TÓRAX']
+                    palavras_importantes_encontradas = sum(1 for palavra in palavras_parte if palavra in palavras_importantes and palavra in palavras_opcao)
+                    if palavras_importantes_encontradas > 0:
+                        # Se encontrou palavras importantes, garante score mínimo
+                        bonus = 0.15 * min(1.0, palavras_importantes_encontradas / len(palavras_parte))
+                        score += bonus
+                        
+                        # Se encontrou todas as palavras importantes, garante score alto
+                        if palavras_importantes_encontradas == len([p for p in palavras_parte if p in palavras_importantes]):
+                            score = max(score, 0.5)  # Garante pelo menos 0.5 se todas palavras importantes foram encontradas
+        
+        # 3. Verifica contraste (peso: 0.1 se corresponder, pequena penalização se não corresponder)
+        tem_com_contraste = 'COM CONTRASTE' in opcao_normalizada or 'COM CONTARSTE' in opcao_normalizada
+        tem_sem_contraste = 'SEM CONTRASTE' in opcao_normalizada or 'SEM CONTARSTE' in opcao_normalizada
+        tem_c_ou_s_contraste = 'C/ OU S/ CONTRASTE' in opcao_normalizada or 'C/ OU S/ CONTARSTE' in opcao_normalizada
+        nao_mentiona_contraste = not tem_com_contraste and not tem_sem_contraste and not tem_c_ou_s_contraste
+        
+        # Salva o score antes de aplicar contraste para garantir mínimo se tipo e parte estão corretos
+        score_base = score
+        
+        if tipo_contraste_necessario == 'COM_CONTRASTE':
+            if tem_com_contraste or tem_c_ou_s_contraste:
+                # Bônus se tem o contraste correto
+                score += 0.1
+            elif nao_mentiona_contraste:
+                # Se não menciona contraste, aceita (pode ser que não esteja explícito)
+                score += 0.05
+            else:
+                # Penaliza levemente se tem SEM CONTRASTE quando deveria ter COM
+                # Mas não deixa cair abaixo de 0.5 se tipo e parte estão corretos
+                if tipo_exame_encontrado and score_base >= 0.4:
+                    score = max(score * 0.7, 0.5)
+                else:
+                    score *= 0.7
+        elif tipo_contraste_necessario == 'SEM_CONTRASTE':
+            if tem_sem_contraste or tem_c_ou_s_contraste or nao_mentiona_contraste:
+                # Bônus se tem SEM CONTRASTE, C/ OU S/ CONTRASTE, ou não menciona
+                score += 0.1
+            else:
+                # Penaliza levemente se tem COM CONTRASTE quando deveria ser SEM
+                # Mas não deixa cair abaixo de 0.5 se tipo e parte estão corretos
+                if tipo_exame_encontrado and score_base >= 0.4:
+                    score = max(score * 0.7, 0.5)
+                else:
+                    score *= 0.7
+        
+        return min(1.0, score)
     
     # Itera sobre os links do CSV
     for index, row in df.iterrows():
@@ -414,175 +713,6 @@ def exames_ambulatorio_solicita():
                 ok_button.click()
                 time.sleep(2)
 
-            # Função auxiliar para calcular similaridade melhorada
-            def calcular_similaridade_melhorada(proc_csv, texto_opcao, contraste_solicitado=False):
-                """
-                Calcula similaridade melhorada priorizando palavras-chave críticas:
-                - Partes anatômicas (OMBRO, JOELHO, TORAX, etc.)
-                - Lateralidade (DIREITO, ESQUERDO)
-                - Normaliza variações (DE/DO)
-                - Contraste: quando não solicitado, prioriza SEM CONTRASTE ou sem menção
-                
-                Args:
-                    proc_csv: Procedimento do CSV
-                    texto_opcao: Texto da opção na tabela
-                    contraste_solicitado: True se contraste foi solicitado ('S'), False caso contrário
-                """
-                # Normaliza textos
-                proc_normalizado = proc_csv.upper().strip()
-                opcao_normalizada = texto_opcao.upper().strip()
-                
-                # Palavras muito comuns que devem ser ignoradas no cálculo de peso
-                palavras_ignoradas = {
-                    'TOMOGRAFIA', 'COMPUTADORIZADA', 'DE', 'DO', 'DA', 'DAS', 'DOS',
-                    'INTERNADOS', 'COM', 'SEM', 'CONTRASTE', 'OU', 'E', 'C/', 'S/',
-                    'CLAVICULA', 'CLAVICULA)', '(', ')', '-', 'ARTICULACOES'
-                }
-                
-                # Palavras-chave críticas de lateralidade (peso muito alto)
-                lateralidades = {'DIREITO', 'DIREITA', 'ESQUERDO', 'ESQUERDA'}
-                
-                # Extrai palavras de cada texto, removendo palavras ignoradas
-                def extrair_palavras_relevantes(texto):
-                    # Remove parênteses e conteúdo dentro deles, normaliza espaços
-                    texto_limpo = texto.replace('(', ' ').replace(')', ' ')
-                    palavras = texto_limpo.split()
-                    return {p for p in palavras if p not in palavras_ignoradas and len(p) > 2}
-                
-                palavras_proc = extrair_palavras_relevantes(proc_normalizado)
-                palavras_opcao = extrair_palavras_relevantes(opcao_normalizada)
-                
-                # Identifica lateralidade no procedimento CSV
-                lateralidade_proc = None
-                for lat in lateralidades:
-                    if lat in proc_normalizado:
-                        lateralidade_proc = lat
-                        break
-                
-                # Identifica lateralidade na opção
-                lateralidade_opcao = None
-                for lat in lateralidades:
-                    if lat in opcao_normalizada:
-                        lateralidade_opcao = lat
-                        break
-                
-                # Identifica parte anatômica principal (palavras mais específicas)
-                partes_anatomicas = {
-                    'OMBRO', 'JOELHO', 'TORAX', 'CRANIO', 'COLUNA', 'CERVICAL', 'DORSAL',
-                    'LOMBAR', 'LOMBO-SACRA', 'TORACICA', 'FACE', 'SEIOS', 'PESCOCO',
-                    'ABDOMEN', 'PELVE', 'BACIA', 'RINS', 'BRACO', 'ANTEBRACO', 'COTOVELO',
-                    'PUNHO', 'MAO', 'COXA', 'PERNA', 'PE', 'TORNOZELO', 'AORTA', 'ARTÉRIAS',
-                    'CERVICAIS', 'ILÍACAS', 'CEREBRAL', 'URINARIO', 'SELA', 'TURCICA'
-                }
-                
-                parte_proc = None
-                for parte in partes_anatomicas:
-                    if parte in proc_normalizado:
-                        parte_proc = parte
-                        break
-                
-                parte_opcao = None
-                for parte in partes_anatomicas:
-                    if parte in opcao_normalizada:
-                        parte_opcao = parte
-                        break
-                
-                # Similaridade base usando SequenceMatcher
-                similaridade_base = difflib.SequenceMatcher(None, proc_normalizado, opcao_normalizada).ratio()
-                
-                # Bônus/Penalização baseado em palavras-chave críticas
-                bonus = 0.0
-                penalizacao = 0.0
-                
-                # 1. CORRESPONDÊNCIA DE PARTE ANATÔMICA (peso muito alto: +0.4)
-                if parte_proc and parte_opcao:
-                    if parte_proc == parte_opcao:
-                        bonus += 0.4
-                    else:
-                        # Penaliza MUITO se partes anatômicas diferentes (prioridade absoluta)
-                        penalizacao += 0.6
-                
-                # 2. CORRESPONDÊNCIA DE LATERALIDADE (peso muito alto: +0.3)
-                if lateralidade_proc and lateralidade_opcao:
-                    # Normaliza variações DIREITO/DIREITA e ESQUERDO/ESQUERDA
-                    lat_proc_norm = 'DIREITO' if 'DIREIT' in lateralidade_proc else 'ESQUERDO'
-                    lat_opcao_norm = 'DIREITO' if 'DIREIT' in lateralidade_opcao else 'ESQUERDO'
-                    
-                    if lat_proc_norm == lat_opcao_norm:
-                        bonus += 0.3
-                    else:
-                        # Penaliza muito se lateralidade não corresponde
-                        penalizacao += 0.4
-                
-                # 3. Se CSV tem lateralidade mas opção não tem (ou vice-versa), penaliza
-                if lateralidade_proc and not lateralidade_opcao:
-                    penalizacao += 0.2
-                elif not lateralidade_proc and lateralidade_opcao:
-                    # Menos penalização se CSV não especifica lateralidade
-                    penalizacao += 0.1
-                
-                # 4. Bônus por palavras relevantes em comum (peso menor)
-                palavras_comuns = palavras_proc.intersection(palavras_opcao)
-                if palavras_comuns:
-                    # Calcula proporção de palavras comuns
-                    total_palavras_relevantes = len(palavras_proc.union(palavras_opcao))
-                    if total_palavras_relevantes > 0:
-                        proporcao_comuns = len(palavras_comuns) / total_palavras_relevantes
-                        bonus += proporcao_comuns * 0.2
-                
-                # 5. Bônus se contém substring exata (para casos como "OMBRO DIREITO")
-                if parte_proc and lateralidade_proc:
-                    busca_exata = f"{parte_proc} {lateralidade_proc}"
-                    if busca_exata in opcao_normalizada or busca_exata.replace(' ', '') in opcao_normalizada.replace(' ', ''):
-                        bonus += 0.15
-                
-                # 6. LÓGICA DE CONTRASTE (só aplicada quando parte anatômica corresponde)
-                # Normaliza o texto da opção para verificação de contraste
-                texto_opcao_normalizado = ' '.join(opcao_normalizada.split())
-                tem_com_contraste = "COM CONTRASTE" in texto_opcao_normalizado
-                tem_sem_contraste = "SEM CONTRASTE" in texto_opcao_normalizado
-                nao_mentiona_contraste = not tem_com_contraste and not tem_sem_contraste
-                
-                # Verifica se a parte anatômica corresponde (fator crítico)
-                parte_anatomica_corresponde = parte_proc and parte_opcao and parte_proc == parte_opcao
-                
-                if contraste_solicitado:
-                    # Se contraste foi solicitado, já foi filtrado antes (só chegam opções COM CONTRASTE)
-                    # Mas damos um pequeno bônus para confirmar
-                    if tem_com_contraste:
-                        bonus += 0.1
-                else:
-                    # Se contraste NÃO foi solicitado, prioriza SEM CONTRASTE ou sem menção
-                    # MAS só aplica bônus/penalização quando a parte anatômica corresponde
-                    if parte_anatomica_corresponde:
-                        # Só considera contraste quando parte anatômica está correta
-                        if tem_sem_contraste:
-                            # Bônus alto para opções explicitamente SEM CONTRASTE (quando parte anatômica correta)
-                            bonus += 0.4
-                        elif nao_mentiona_contraste:
-                            # Bônus médio para opções que não mencionam contraste (quando parte anatômica correta)
-                            bonus += 0.2
-                        elif tem_com_contraste:
-                            # Penaliza opções COM CONTRASTE quando não foi solicitado (quando parte anatômica correta)
-                            penalizacao += 0.5
-                    # Se parte anatômica NÃO corresponde, não aplica bônus de contraste
-                    # Isso garante que parte anatômica errada nunca ganhe só por ter SEM CONTRASTE
-                
-                # Calcula similaridade final
-                similaridade_final = similaridade_base + bonus - penalizacao
-                
-                # Aplica penalização multiplicativa adicional para COM CONTRASTE quando não solicitado
-                # MAS só quando a parte anatômica corresponde (para não penalizar partes anatômicas erradas)
-                if not contraste_solicitado and tem_com_contraste and parte_anatomica_corresponde:
-                    # Reduz a similaridade final multiplicativamente para garantir que opções SEM CONTRASTE ganhem
-                    # Mas só quando a parte anatômica está correta
-                    similaridade_final = similaridade_final * 0.4
-                
-                # Garante que não ultrapasse 1.0 nem seja negativo
-                similaridade_final = max(0.0, min(1.0, similaridade_final))
-                
-                return similaridade_final
-
             # Compara os procedimentos do CSV com as opções disponíveis na tabela
             if procedimento:
                 # Separa os procedimentos pelo delimitador "|"
@@ -599,13 +729,30 @@ def exames_ambulatorio_solicita():
                 
                 # Para cada procedimento do CSV
                 for proc_idx, proc_csv in enumerate(procedimentos_lista, 1):
-                    print(f"   [{proc_idx}/{len(procedimentos_lista)}] Buscando procedimento mais similar a: {proc_csv}")
+                    print(f"   [{proc_idx}/{len(procedimentos_lista)}] Buscando procedimento correspondente a: {proc_csv}")
                     
-                    melhor_similaridade = 0
+                    # Identifica termos-chave: tipo de exame e parte do corpo
+                    tipo_exame = identificar_tipo_exame(proc_csv)
+                    parte_corpo = identificar_parte_corpo(proc_csv)
+                    tipo_contraste = determinar_tipo_contraste(proc_csv, contraste)
+                    
+                    if not tipo_exame:
+                        print(f"      ⚠️  Não foi possível identificar o tipo de exame em '{proc_csv}'")
+                        continue
+                    
+                    if not parte_corpo:
+                        print(f"      ⚠️  Não foi possível identificar a parte do corpo em '{proc_csv}'")
+                        continue
+                    
+                    print(f"      🔍 Tipo de exame identificado: {tipo_exame}")
+                    print(f"      🔍 Parte do corpo identificada: {parte_corpo}")
+                    print(f"      ℹ️  Tipo de contraste necessário: {tipo_contraste}")
+                    
+                    melhor_similaridade = 0.0
                     checkbox_selecionado = None
                     texto_selecionado = ""
                     
-                    # Compara cada opção da tabela com o procedimento atual
+                    # Compara cada opção da tabela usando termos-chave
                     for checkbox in checkboxes:
                         # Pula checkboxes já marcados
                         if checkbox in checkboxes_marcados:
@@ -616,20 +763,10 @@ def exames_ambulatorio_solicita():
                             td = checkbox.find_element(By.XPATH, "./..")
                             texto_opcao = td.text.strip()
                             
-                            # Verifica se contraste foi solicitado
-                            contraste_solicitado = contraste and contraste.upper() == 'S'
-                            
-                            # Se contraste for obrigatório ('s'), verifica se a opção contém "COM CONTRASTE"
-                            # Esta verificação é OBRIGATÓRIA e deve ser feita ANTES de calcular similaridade
-                            if contraste_solicitado:
-                                # Normaliza o texto para comparação (remove espaços extras e converte para maiúsculas)
-                                texto_opcao_normalizado = ' '.join(texto_opcao.upper().split())
-                                if "COM CONTRASTE" not in texto_opcao_normalizado:
-                                    # Pula esta opção se não contiver "COM CONTRASTE" - não considera para seleção
-                                    continue
-                            
-                            # Usa a função de similaridade melhorada, passando informação sobre contraste
-                            similaridade = calcular_similaridade_melhorada(proc_csv, texto_opcao, contraste_solicitado)
+                            # Calcula similaridade baseada em termos-chave
+                            similaridade = calcular_similaridade_termos_chave(
+                                proc_csv, texto_opcao, tipo_exame, parte_corpo, tipo_contraste
+                            )
                             
                             if similaridade > melhor_similaridade:
                                 melhor_similaridade = similaridade
@@ -638,32 +775,24 @@ def exames_ambulatorio_solicita():
                         except Exception as e:
                             continue
                     
-                    # Marca o checkbox mais similar
-                    if checkbox_selecionado and melhor_similaridade > 0.4:  # Threshold mínimo de 40%
-                        # Verificação adicional: se contraste é obrigatório, confirma que a opção selecionada contém "COM CONTRASTE"
-                        if contraste and contraste.upper() == 'S':
-                            texto_selecionado_normalizado = ' '.join(texto_selecionado.upper().split())
-                            if "COM CONTRASTE" not in texto_selecionado_normalizado:
-                                print(f"      ❌ Erro: Opção selecionada não contém 'COM CONTRASTE' como exigido. Opção: {texto_selecionado}")
-                                print(f"      ⚠️  Nenhum procedimento válido encontrado para '{proc_csv}' com contraste obrigatório")
-                                continue
-                        
+                    # Marca o checkbox encontrado (threshold mínimo de 0.5)
+                    if checkbox_selecionado and melhor_similaridade >= 0.5:
                         print(f"      ✅ Procedimento encontrado: {texto_selecionado} (similaridade: {melhor_similaridade:.2%})")
                         if not checkbox_selecionado.is_selected():
                             checkbox_selecionado.click()
                         checkboxes_marcados.append(checkbox_selecionado)
                         print(f"      ✅ Checkbox marcado com sucesso.")
                     else:
-                        if contraste and contraste.upper() == 'S':
-                            print(f"      ⚠️  Nenhum procedimento similar encontrado para '{proc_csv}' com 'COM CONTRASTE' (melhor similaridade: {melhor_similaridade:.2%})")
+                        if checkbox_selecionado:
+                            print(f"      ⚠️  Nenhum procedimento correspondente encontrado para '{proc_csv}'")
+                            print(f"      📊 Melhor opção encontrada: '{texto_selecionado}' (similaridade: {melhor_similaridade:.2%}, threshold: 0.50)")
                         else:
-                            print(f"      ⚠️  Nenhum procedimento similar encontrado para '{proc_csv}' (melhor similaridade: {melhor_similaridade:.2%})")
+                            print(f"      ⚠️  Nenhum procedimento correspondente encontrado para '{proc_csv}' (nenhuma opção com similaridade > 0)")
                 
                 print(f"   ✅ Total de {len(checkboxes_marcados)} checkbox(es) marcado(s) de {len(procedimentos_lista)} procedimento(s)")
             else:
                 print("   ⚠️  Procedimento não informado no CSV, pulando seleção.")
             
-           
             # Clica no botão Confirmar
             print("   Localizando botão Confirmar...")
             confirmar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btnConfirmar")))
@@ -718,30 +847,41 @@ def exames_ambulatorio_solicita():
                     checkboxes_marcados = []
                     procedimentos_lista = [p.strip() for p in procedimento.split('|') if p.strip()]
                     for proc_csv in procedimentos_lista:
-                        melhor_similaridade = 0
+                        # Identifica termos-chave: tipo de exame e parte do corpo
+                        tipo_exame = identificar_tipo_exame(proc_csv)
+                        parte_corpo = identificar_parte_corpo(proc_csv)
+                        tipo_contraste = determinar_tipo_contraste(proc_csv, contraste)
+                        
+                        if not tipo_exame or not parte_corpo:
+                            continue
+                        
+                        melhor_similaridade = 0.0
                         checkbox_selecionado = None
+                        
+                        # Compara cada opção da tabela usando termos-chave
                         for checkbox in checkboxes:
                             if checkbox in checkboxes_marcados:
                                 continue
                             try:
                                 td = checkbox.find_element(By.XPATH, "./..")
                                 texto_opcao = td.text.strip()
-                                similaridade = difflib.SequenceMatcher(None, proc_csv.upper(), texto_opcao.upper()).ratio()
-                                palavras_procedimento = set(proc_csv.upper().split())
-                                palavras_opcao = set(texto_opcao.upper().split())
-                                palavras_comuns = palavras_procedimento.intersection(palavras_opcao)
-                                if palavras_comuns:
-                                    bonus = len(palavras_comuns) / max(len(palavras_procedimento), len(palavras_opcao))
-                                    similaridade += bonus * 0.3
+                                
+                                # Calcula similaridade baseada em termos-chave
+                                similaridade = calcular_similaridade_termos_chave(
+                                    proc_csv, texto_opcao, tipo_exame, parte_corpo, tipo_contraste
+                                )
+                                
                                 if similaridade > melhor_similaridade:
                                     melhor_similaridade = similaridade
                                     checkbox_selecionado = checkbox
                             except:
                                 continue
-                        if checkbox_selecionado and melhor_similaridade > 0.3:
+                        
+                        if checkbox_selecionado and melhor_similaridade >= 0.5:
                             if not checkbox_selecionado.is_selected():
                                 checkbox_selecionado.click()
                             checkboxes_marcados.append(checkbox_selecionado)
+                    
                     confirmar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btnConfirmar")))
                     confirmar_button.click()
                     time.sleep(2)
@@ -797,7 +937,6 @@ def exames_ambulatorio_solicita():
             time.sleep(1)  # Aguarda a seleção ser processada
             
             
-            #aqui
             # Clica no botão Próxima Etapa
             print("   Localizando botão Próxima Etapa...")
             proxima_etapa_button = wait.until(EC.element_to_be_clickable((By.NAME, "btnProximaEtapa")))
@@ -1115,37 +1254,44 @@ def exames_ambulatorio_solicita():
                         checkboxes_marcados = []
                         
                         for proc_idx, proc_csv in enumerate(procedimentos_lista, 1):
-                            print(f"   [{proc_idx}/{len(procedimentos_lista)}] Buscando procedimento mais similar a: {proc_csv}")
+                            print(f"   [{proc_idx}/{len(procedimentos_lista)}] Buscando procedimento correspondente a: {proc_csv}")
                             
-                            melhor_similaridade = 0
+                            # Identifica termos-chave: tipo de exame e parte do corpo
+                            tipo_exame = identificar_tipo_exame(proc_csv)
+                            parte_corpo = identificar_parte_corpo(proc_csv)
+                            tipo_contraste = determinar_tipo_contraste(proc_csv, contraste)
+                            
+                            if not tipo_exame:
+                                print(f"      ⚠️  Não foi possível identificar o tipo de exame em '{proc_csv}'")
+                                continue
+                            
+                            if not parte_corpo:
+                                print(f"      ⚠️  Não foi possível identificar a parte do corpo em '{proc_csv}'")
+                                continue
+                            
+                            print(f"      🔍 Tipo de exame identificado: {tipo_exame}")
+                            print(f"      🔍 Parte do corpo identificada: {parte_corpo}")
+                            print(f"      ℹ️  Tipo de contraste necessário: {tipo_contraste}")
+                            
+                            melhor_similaridade = 0.0
                             checkbox_selecionado = None
                             texto_selecionado = ""
                             
+                            # Compara cada opção da tabela usando termos-chave
                             for checkbox in checkboxes:
+                                # Pula checkboxes já marcados
                                 if checkbox in checkboxes_marcados:
                                     continue
                                     
+                                # Obtém o texto da opção (texto do elemento pai td)
                                 try:
                                     td = checkbox.find_element(By.XPATH, "./..")
                                     texto_opcao = td.text.strip()
                                     
-                                    # Se contraste for obrigatório ('s'), verifica se a opção contém "COM CONTRASTE"
-                                    if contraste and contraste.upper() == 'S':
-                                        # Normaliza o texto para comparação (remove espaços extras e converte para maiúsculas)
-                                        texto_opcao_normalizado = ' '.join(texto_opcao.upper().split())
-                                        if "COM CONTRASTE" not in texto_opcao_normalizado:
-                                            # Pula esta opção se não contiver "COM CONTRASTE" - não considera para seleção
-                                            continue
-                                    
-                                    similaridade = difflib.SequenceMatcher(None, proc_csv.upper(), texto_opcao.upper()).ratio()
-                                    
-                                    palavras_procedimento = set(proc_csv.upper().split())
-                                    palavras_opcao = set(texto_opcao.upper().split())
-                                    palavras_comuns = palavras_procedimento.intersection(palavras_opcao)
-                                    
-                                    if palavras_comuns:
-                                        bonus = len(palavras_comuns) / max(len(palavras_procedimento), len(palavras_opcao))
-                                        similaridade += bonus * 0.3
+                                    # Calcula similaridade baseada em termos-chave
+                                    similaridade = calcular_similaridade_termos_chave(
+                                        proc_csv, texto_opcao, tipo_exame, parte_corpo, tipo_contraste
+                                    )
                                     
                                     if similaridade > melhor_similaridade:
                                         melhor_similaridade = similaridade
@@ -1154,25 +1300,15 @@ def exames_ambulatorio_solicita():
                                 except Exception as e:
                                     continue
                             
-                            if checkbox_selecionado and melhor_similaridade > 0.3:
-                                # Verificação adicional: se contraste é obrigatório, confirma que a opção selecionada contém "COM CONTRASTE"
-                                if contraste and contraste.upper() == 'S':
-                                    texto_selecionado_normalizado = ' '.join(texto_selecionado.upper().split())
-                                    if "COM CONTRASTE" not in texto_selecionado_normalizado:
-                                        print(f"      ❌ Erro: Opção selecionada não contém 'COM CONTRASTE' como exigido. Opção: {texto_selecionado}")
-                                        print(f"      ⚠️  Nenhum procedimento válido encontrado para '{proc_csv}' com contraste obrigatório")
-                                        continue
-                                
+                            # Marca o checkbox encontrado (threshold mínimo de 0.5)
+                            if checkbox_selecionado and melhor_similaridade >= 0.5:
                                 print(f"      ✅ Procedimento encontrado: {texto_selecionado} (similaridade: {melhor_similaridade:.2%})")
                                 if not checkbox_selecionado.is_selected():
                                     checkbox_selecionado.click()
                                 checkboxes_marcados.append(checkbox_selecionado)
                                 print(f"      ✅ Checkbox marcado com sucesso.")
                             else:
-                                if contraste and contraste.upper() == 'S':
-                                    print(f"      ⚠️  Nenhum procedimento similar encontrado para '{proc_csv}' com 'COM CONTRASTE' (melhor similaridade: {melhor_similaridade:.2%})")
-                                else:
-                                    print(f"      ⚠️  Nenhum procedimento similar encontrado para '{proc_csv}' (melhor similaridade: {melhor_similaridade:.2%})")
+                                print(f"      ⚠️  Nenhum procedimento correspondente encontrado para '{proc_csv}' (melhor similaridade: {melhor_similaridade:.2%})")
                         
                         print(f"   ✅ Total de {len(checkboxes_marcados)} checkbox(es) marcado(s) de {len(procedimentos_lista)} procedimento(s)")
                     else:
