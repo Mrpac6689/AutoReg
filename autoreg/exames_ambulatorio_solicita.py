@@ -313,19 +313,91 @@ def exames_ambulatorio_solicita():
             ('ABDOMEN SUPERIOR', 'ABDOMEM SUPERIOR'),
             ('COLUNA LOMBO-SACRA', 'COLUNA LOMBO-SACRA'),
             ('COLUNA LOMBAR', 'COLUNA LOMBAR'),
+            ('COLUNA TORACICA', 'COLUNA TORACICA'),
+            ('COLUNA TORÁCICA', 'COLUNA TORACICA'),
             ('COLUNA DORSAL', 'COLUNA DORSAL'),
             ('COLUNA CERVICAL', 'COLUNA CERVICAL'),
+            # JOELHO/JOELHOS - termos com lateralidade primeiro (mais específicos)
+            ('JOELHO DIREITO', 'ARTICULACOES JOELHOS'),
+            ('JOELHO DIREITA', 'ARTICULACOES JOELHOS'),
+            ('JOELHO ESQUERDO', 'ARTICULACOES JOELHOS'),
+            ('JOELHO ESQUERDA', 'ARTICULACOES JOELHOS'),
+            ('JOELHOS DIREITO', 'ARTICULACOES JOELHOS'),
+            ('JOELHOS DIREITA', 'ARTICULACOES JOELHOS'),
+            ('JOELHOS ESQUERDO', 'ARTICULACOES JOELHOS'),
+            ('JOELHOS ESQUERDA', 'ARTICULACOES JOELHOS'),
+            # JOELHO/JOELHOS - termos sem lateralidade depois
             ('ARTICULACOES JOELHOS', 'ARTICULACOES JOELHOS'),
             ('ARTICULAÇÕES JOELHOS', 'ARTICULACOES JOELHOS'),
+            ('JOELHO', 'ARTICULACOES JOELHOS'),
             ('JOELHOS', 'ARTICULACOES JOELHOS'),
-            ('COXA DIREITA', 'COXA DIREITA'),
-            ('COXA ESQUERDA', 'COXA ESQUERDA'),
-            ('PERNA DIREITA', 'PERNA DIREITA'),
-            ('PERNA ESQUERDA', 'PERNA ESQUERDA'),
-            ('MAO DIREITA', 'MAO DIREITA'),
-            ('MAO ESQUERDA', 'MAO ESQUERDA'),
-            ('MÃO DIREITA', 'MAO DIREITA'),
-            ('MÃO ESQUERDA', 'MAO ESQUERDA'),
+            ('COXA', 'COXA'),
+            ('COXA DIREITA', 'COXA'),
+            ('COXA DIREITO', 'COXA'),
+            ('COXA ESQUERDA', 'COXA'),
+            ('COXA ESQUERDO', 'COXA'),
+            ('PERNA', 'PERNA'),
+            ('PERNA DIREITA', 'PERNA'),
+            ('PERNA DIREITO', 'PERNA'),
+            ('PERNA ESQUERDA', 'PERNA'),
+            ('PERNA ESQUERDO', 'PERNA'),
+            ('MAO', 'MAO'),
+            ('MÃO', 'MAO'),
+            ('MAO DIREITA', 'MAO'),
+            ('MAO DIREITO', 'MAO'),
+            ('MÃO DIREITA', 'MAO'),
+            ('MÃO DIREITO', 'MAO'),
+            ('MAO ESQUERDA', 'MAO'),
+            ('MAO ESQUERDO', 'MAO'),
+            ('MÃO ESQUERDA', 'MAO'),
+            ('MÃO ESQUERDO', 'MAO'),
+            ('PESCOCO', 'PESCOCO'),
+            ('PESCOÇO', 'PESCOCO'),
+            ('PE', 'PE'),
+            ('PE DIREITO', 'PE'),
+            ('PE DIREITA', 'PE'),
+            ('PE ESQUERDO', 'PE'),
+            ('PE ESQUERDA', 'PE'),
+            ('OMBRO', 'OMBRO'),
+            ('OMBRO DIREITO', 'OMBRO'),
+            ('OMBRO DIREITA', 'OMBRO'),
+            ('OMBRO ESQUERDO', 'OMBRO'),
+            ('OMBRO ESQUERDA', 'OMBRO'),
+            ('PUNHO', 'PUNHO'),
+            ('PUNHO DIREITO', 'PUNHO'),
+            ('PUNHO DIREITA', 'PUNHO'),
+            ('PUNHO ESQUERDO', 'PUNHO'),
+            ('PUNHO ESQUERDA', 'PUNHO'),
+            ('TORNOZELO', 'TORNOZELO'),
+            ('TORNOZELO DIREITO', 'TORNOZELO'),
+            ('TORNOZELO DIREITA', 'TORNOZELO'),
+            ('TORNOZELO ESQUERDO', 'TORNOZELO'),
+            ('TORNOZELO ESQUERDA', 'TORNOZELO'),
+            ('COTOVELO', 'COTOVELO'),
+            ('COTOVELO DIREITO', 'COTOVELO'),
+            ('COTOVELO DIREITA', 'COTOVELO'),
+            ('COTOVELO ESQUERDO', 'COTOVELO'),
+            ('COTOVELO ESQUERDA', 'COTOVELO'),
+            ('BRACO', 'BRACO'),
+            ('BRAÇO', 'BRACO'),
+            ('BRACO DIREITO', 'BRACO'),
+            ('BRACO DIREITA', 'BRACO'),
+            ('BRAÇO DIREITO', 'BRACO'),
+            ('BRAÇO DIREITA', 'BRACO'),
+            ('BRACO ESQUERDO', 'BRACO'),
+            ('BRACO ESQUERDA', 'BRACO'),
+            ('BRAÇO ESQUERDO', 'BRACO'),
+            ('BRAÇO ESQUERDA', 'BRACO'),
+            ('ANTEBRACO', 'ANTEBRACO'),
+            ('ANTEBRAÇO', 'ANTEBRACO'),
+            ('ANTEBRACO DIREITO', 'ANTEBRACO'),
+            ('ANTEBRACO DIREITA', 'ANTEBRACO'),
+            ('ANTEBRAÇO DIREITO', 'ANTEBRACO'),
+            ('ANTEBRAÇO DIREITA', 'ANTEBRACO'),
+            ('ANTEBRACO ESQUERDO', 'ANTEBRACO'),
+            ('ANTEBRACO ESQUERDA', 'ANTEBRACO'),
+            ('ANTEBRAÇO ESQUERDO', 'ANTEBRACO'),
+            ('ANTEBRAÇO ESQUERDA', 'ANTEBRACO'),
             ('SEIOS DA FACE', 'SEIOS DA FACE'),
             ('SEIOS DE FACE', 'SEIOS DA FACE'),
             ('FACE', 'FACE'),
@@ -333,8 +405,8 @@ def exames_ambulatorio_solicita():
             ('MASTÓIDES OU OUVIDOS', 'MASTOIDES OU OUVIDOS'),
             ('CRANIO', 'CRANIO'),
             ('CRÂNIO', 'CRANIO'),
-            ('PESCOCO', 'PESCOCO'),
-            ('PESCOÇO', 'PESCOCO')
+            ('ORBITA', 'CRANIO'),
+            ('ÓRBITA', 'CRANIO')
         ]
         
         for termo_busca, parte_identificada in partes_corpo:
@@ -346,10 +418,281 @@ def exames_ambulatorio_solicita():
                     # Verifica se não está dentro de "AORTA TORÁCICA" (que já foi verificado antes na lista)
                     if 'AORTA TORÁCICA' not in proc_normalizado and 'AORTA TORACICA' not in proc_normalizado:
                         return parte_identificada
+                # Para termos de uma palavra como "JOELHO", verifica se não é parte de "JOELHOS"
+                elif termo_busca == 'JOELHO':
+                    # Verifica se não está dentro de "JOELHOS" (plural) - se estiver, continua procurando
+                    if 'JOELHOS' in proc_normalizado:
+                        continue  # Continua procurando por termos mais específicos
+                    return parte_identificada
+                # Para termos de uma palavra como "PE", verifica se não é parte de "PESCOCO"
+                elif termo_busca == 'PE':
+                    # Verifica se não está dentro de "PESCOCO" ou "PESCOÇO" - se estiver, continua procurando
+                    if 'PESCOCO' in proc_normalizado or 'PESCOÇO' in proc_normalizado:
+                        continue  # Continua procurando por termos mais específicos
+                    return parte_identificada
                 else:
                     return parte_identificada
         
         return None
+    
+    def verificar_cranio_e_orbita(procedimento):
+        """
+        Verifica se o procedimento menciona tanto CRANIO quanto ÓRBITA.
+        Neste caso, CRANIO deve ser selecionado duas vezes.
+        
+        Args:
+            procedimento: Procedimento do CSV
+        
+        Returns:
+            True se há menção a ambos CRANIO e ÓRBITA, False caso contrário
+        """
+        proc_normalizado = normalizar_texto(procedimento)
+        
+        tem_cranio = 'CRANIO' in proc_normalizado or 'CRÂNIO' in proc_normalizado
+        tem_orbita = 'ORBITA' in proc_normalizado or 'ÓRBITA' in proc_normalizado
+        
+        return tem_cranio and tem_orbita
+    
+    def identificar_lateralidade(procedimento):
+        """
+        Identifica a lateralidade (DIREITO/ESQUERDO) no procedimento.
+        
+        Args:
+            procedimento: Procedimento do CSV
+        
+        Returns:
+            'DIREITO', 'ESQUERDO' ou None
+        """
+        proc_normalizado = normalizar_texto(procedimento)
+        
+        # Verifica se há menção a DIREITO ou DIREITA
+        if 'DIREITO' in proc_normalizado or 'DIREITA' in proc_normalizado:
+            return 'DIREITO'
+        # Verifica se há menção a ESQUERDO ou ESQUERDA
+        elif 'ESQUERDO' in proc_normalizado or 'ESQUERDA' in proc_normalizado:
+            return 'ESQUERDO'
+        
+        return None
+    
+    def opcao_corresponde_tipo_exame(texto_opcao, tipo_exame):
+        """
+        Verifica se a opção corresponde ao tipo de exame especificado.
+        
+        Args:
+            texto_opcao: Texto da opção na tabela SISREG
+            tipo_exame: Tipo de exame identificado ('TOMOGRAFIA', 'ANGIO-TC', 'ANGIOTOMOGRAFIA')
+        
+        Returns:
+            True se corresponde, False caso contrário
+        """
+        opcao_normalizada = normalizar_texto(texto_opcao)
+        
+        if tipo_exame == 'ANGIO-TC':
+            return 'ANGIO-TC' in opcao_normalizada or 'ANGIO TC' in opcao_normalizada or 'ANGIOTOMOGRAFIA' in opcao_normalizada
+        elif tipo_exame == 'ANGIOTOMOGRAFIA':
+            return 'ANGIOTOMOGRAFIA' in opcao_normalizada or 'ANGIO-TC' in opcao_normalizada or 'ANGIO TC' in opcao_normalizada
+        elif tipo_exame == 'TOMOGRAFIA':
+            # Para TOMOGRAFIA, verifica se tem "TOMOGRAFIA" mas NÃO "ANGIOTOMOGRAFIA"
+            return 'TOMOGRAFIA' in opcao_normalizada and 'ANGIOTOMOGRAFIA' not in opcao_normalizada
+        
+        return False
+    
+    def opcao_corresponde_parte_corpo(texto_opcao, parte_corpo):
+        """
+        Verifica se a opção corresponde à parte do corpo especificada.
+        Usa verificação rigorosa para evitar correspondências incorretas.
+        
+        Args:
+            texto_opcao: Texto da opção na tabela SISREG
+            parte_corpo: Parte do corpo identificada
+        
+        Returns:
+            True se corresponde, False caso contrário
+        """
+        opcao_normalizada = normalizar_texto(texto_opcao)
+        
+        # Normaliza variações comuns (incluindo ABDOMEN/ABDOMEM)
+        parte_normalizada = parte_corpo.replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+        parte_normalizada = parte_normalizada.replace('Ç', 'C')
+        parte_normalizada = parte_normalizada.replace('ABDOMEM', 'ABDOMEN')
+        
+        opcao_sem_acentos = opcao_normalizada.replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+        opcao_sem_acentos = opcao_sem_acentos.replace('Ç', 'C')
+        opcao_sem_acentos = opcao_sem_acentos.replace('ABDOMEM', 'ABDOMEN')
+        
+        # Verifica correspondência exata primeiro
+        if parte_normalizada in opcao_sem_acentos:
+            return True
+        
+        # Remove lateralidade para comparação (DIREITO, ESQUERDO, DIREITA, ESQUERDA)
+        parte_sem_lateralidade = parte_normalizada
+        opcao_sem_lateralidade = opcao_sem_acentos
+        for lat in ['DIREITO', 'DIREITA', 'ESQUERDO', 'ESQUERDA']:
+            parte_sem_lateralidade = parte_sem_lateralidade.replace(lat, '').strip()
+            opcao_sem_lateralidade = opcao_sem_lateralidade.replace(lat, '').strip()
+        
+        # Normaliza espaços após remover lateralidade
+        parte_sem_lateralidade = ' '.join(parte_sem_lateralidade.split())
+        opcao_sem_lateralidade = ' '.join(opcao_sem_lateralidade.split())
+        
+        # Verifica correspondência sem lateralidade
+        if parte_sem_lateralidade in opcao_sem_lateralidade:
+            return True
+        
+        # Tenta correspondência parcial (palavras-chave)
+        parte_limpa = parte_sem_lateralidade.replace('/', ' ').replace('-', ' ').replace('  ', ' ')
+        opcao_limpa = opcao_sem_lateralidade.replace('/', ' ').replace('-', ' ').replace('  ', ' ')
+        
+        palavras_parte = [p for p in parte_limpa.split() if len(p) > 2]
+        palavras_opcao = opcao_limpa.split()
+        
+        # Lista de palavras-chave específicas que não devem ser confundidas
+        palavras_especificas = {
+            'JOELHOS': ['JOELHOS', 'JOELHO', 'ARTICULACOES', 'ARTICULAÇÕES'],
+            'COXA': ['COXA'],
+            'PERNA': ['PERNA'],
+            'MAO': ['MAO', 'MÃO'],
+            'PE': ['PE'],
+            'OMBRO': ['OMBRO'],
+            'PUNHO': ['PUNHO'],
+            'TORNOZELO': ['TORNOZELO'],
+            'COTOVELO': ['COTOVELO'],
+            'BRACO': ['BRACO', 'BRAÇO'],
+            'ANTEBRACO': ['ANTEBRACO', 'ANTEBRAÇO'],
+            'PESCOCO': ['PESCOCO', 'PESCOÇO'],
+            'CRANIO': ['CRANIO', 'CRÂNIO', 'ORBITA', 'ÓRBITA'],
+            'FACE': ['FACE', 'SEIOS'],
+            'COLUNA': ['COLUNA'],
+            'CERVICAL': ['CERVICAL'],
+            'DORSAL': ['DORSAL'],
+            'LOMBAR': ['LOMBAR'],
+            'TORACICA': ['TORACICA'],
+            'ABDOMEN': ['ABDOMEN', 'ABDOMEM'],
+            'PELVE': ['PELVE', 'BACIA']
+        }
+        
+        # Verifica correspondência especial: ÓRBITA/ORBITA corresponde a CRANIO
+        tem_orbita_parte = 'ORBITA' in palavras_parte or 'ÓRBITA' in palavras_parte
+        tem_cranio_opcao = 'CRANIO' in palavras_opcao or 'CRÂNIO' in palavras_opcao
+        
+        # Se a parte tem ÓRBITA/ORBITA e a opção tem CRANIO, corresponde
+        if tem_orbita_parte and tem_cranio_opcao:
+            return True
+        
+        # Verifica correspondência entre singular/plural para JOELHO/JOELHOS
+        tem_joelho_parte = 'JOELHO' in palavras_parte or 'JOELHOS' in palavras_parte
+        tem_joelho_opcao = 'JOELHO' in palavras_opcao or 'JOELHOS' in palavras_opcao
+        tem_articulacoes_parte = 'ARTICULACOES' in palavras_parte or 'ARTICULAÇÕES' in palavras_parte
+        tem_articulacoes_opcao = 'ARTICULACOES' in palavras_opcao or 'ARTICULAÇÕES' in palavras_opcao
+        
+        # Se a parte tem JOELHO/JOELHOS e a opção também tem, aceita mesmo sem ARTICULACOES na opção
+        if tem_joelho_parte and tem_joelho_opcao:
+            # Se ambas têm ARTICULACOES, aceita
+            if tem_articulacoes_parte and tem_articulacoes_opcao:
+                return True
+            # Se nenhuma tem ARTICULACOES, aceita
+            if not tem_articulacoes_parte and not tem_articulacoes_opcao:
+                return True
+            # Se a parte tem ARTICULACOES mas a opção não tem, ainda aceita se ambas têm JOELHO/JOELHOS
+            if tem_articulacoes_parte and not tem_articulacoes_opcao:
+                return True
+        
+        # Verifica se há palavras específicas que não devem ser confundidas
+        for palavra_especifica, variacoes in palavras_especificas.items():
+            tem_palavra_parte = any(var in palavras_parte for var in variacoes)
+            tem_palavra_opcao = any(var in palavras_opcao for var in variacoes)
+            
+            # Se a parte tem uma palavra específica, a opção DEVE ter a mesma
+            if tem_palavra_parte and not tem_palavra_opcao:
+                # Exceção: JOELHO/JOELHOS são equivalentes
+                if palavra_especifica == 'JOELHOS' and ('JOELHO' in palavras_opcao or 'JOELHOS' in palavras_opcao):
+                    continue
+                return False
+            # Se a opção tem uma palavra específica diferente, não corresponde
+            if tem_palavra_opcao and not tem_palavra_parte:
+                # Exceção: JOELHO/JOELHOS são equivalentes
+                if palavra_especifica == 'JOELHOS' and ('JOELHO' in palavras_parte or 'JOELHOS' in palavras_parte):
+                    continue
+                # Verifica se não é uma palavra que pode estar em outra parte
+                outras_palavras_especificas = [p for p, vars in palavras_especificas.items() if p != palavra_especifica]
+                outras_variacoes = []
+                for p in outras_palavras_especificas:
+                    outras_variacoes.extend(palavras_especificas[p])
+                
+                # Se a parte tem outra palavra específica diferente, não corresponde
+                if any(var in palavras_parte for var in outras_variacoes):
+                    return False
+        
+        # Verifica se todas as palavras-chave importantes da parte do corpo aparecem na opção
+        palavras_importantes = ['PELVE', 'BACIA', 'ABDOMEN', 'ABDOMEM', 'COLUNA', 'CERVICAL', 
+                              'DORSAL', 'LOMBAR', 'CRANIO', 'CRÂNIO', 'ORBITA', 'ÓRBITA', 'FACE', 'PESCOCO', 'JOELHOS', 'JOELHO',
+                              'SUPERIOR', 'INFERIOR', 'TORAX', 'TÓRAX', 'ARTICULACOES', 'ARTICULAÇÕES',
+                              'COXA', 'PERNA', 'MAO', 'MÃO', 'PE', 'OMBRO', 'PUNHO', 'TORNOZELO',
+                              'COTOVELO', 'BRACO', 'BRAÇO', 'ANTEBRACO', 'ANTEBRAÇO']
+        
+        palavras_parte_importantes = [p for p in palavras_parte if p in palavras_importantes]
+        
+        if palavras_parte_importantes:
+            # Todas as palavras importantes devem estar na opção
+            return all(palavra in palavras_opcao for palavra in palavras_parte_importantes)
+        
+        # Se não há palavras importantes específicas, verifica correspondência parcial geral
+        palavras_encontradas = sum(1 for palavra in palavras_parte if palavra in palavras_opcao)
+        return palavras_encontradas > 0 and palavras_encontradas == len(palavras_parte)
+    
+    def opcao_corresponde_lateralidade(texto_opcao, lateralidade):
+        """
+        Verifica se a opção corresponde à lateralidade especificada.
+        
+        Args:
+            texto_opcao: Texto da opção na tabela SISREG
+            lateralidade: Lateralidade identificada ('DIREITO', 'ESQUERDO' ou None)
+        
+        Returns:
+            True se corresponde, False caso contrário
+        """
+        opcao_normalizada = normalizar_texto(texto_opcao)
+        
+        tem_direito_opcao = 'DIREITO' in opcao_normalizada or 'DIREITA' in opcao_normalizada
+        tem_esquerdo_opcao = 'ESQUERDO' in opcao_normalizada or 'ESQUERDA' in opcao_normalizada
+        nao_mentiona_lateralidade_opcao = not tem_direito_opcao and not tem_esquerdo_opcao
+        
+        if lateralidade == 'DIREITO':
+            return tem_direito_opcao
+        elif lateralidade == 'ESQUERDO':
+            return tem_esquerdo_opcao
+        else:
+            # Se não há lateralidade especificada, aceita opções sem lateralidade
+            return nao_mentiona_lateralidade_opcao
+    
+    def opcao_corresponde_contraste(texto_opcao, tipo_contraste_necessario):
+        """
+        Verifica se a opção corresponde ao tipo de contraste necessário.
+        
+        Args:
+            texto_opcao: Texto da opção na tabela SISREG
+            tipo_contraste_necessario: 'COM_CONTRASTE', 'SEM_CONTRASTE' ou None
+        
+        Returns:
+            True se corresponde, False caso contrário
+        """
+        if not tipo_contraste_necessario:
+            return True  # Se não há requisito de contraste, aceita qualquer opção
+        
+        opcao_normalizada = normalizar_texto(texto_opcao)
+        
+        tem_com_contraste = 'COM CONTRASTE' in opcao_normalizada or 'COM CONTARSTE' in opcao_normalizada
+        tem_sem_contraste = 'SEM CONTRASTE' in opcao_normalizada or 'SEM CONTARSTE' in opcao_normalizada
+        tem_c_ou_s_contraste = 'C/ OU S/ CONTRASTE' in opcao_normalizada or 'C/ OU S/ CONTARSTE' in opcao_normalizada
+        
+        if tipo_contraste_necessario == 'COM_CONTRASTE':
+            # Aceita COM CONTRASTE ou C/ OU S/ CONTRASTE
+            return tem_com_contraste or tem_c_ou_s_contraste
+        elif tipo_contraste_necessario == 'SEM_CONTRASTE':
+            # Aceita SEM CONTRASTE ou C/ OU S/ CONTRASTE (que pode ser SEM)
+            return tem_sem_contraste or tem_c_ou_s_contraste
+        
+        return True
     
     def determinar_tipo_contraste(ghosp_exame, contraste_csv):
         """
@@ -377,9 +720,9 @@ def exames_ambulatorio_solicita():
         else:
             return 'SEM_CONTRASTE'
     
-    def calcular_similaridade_termos_chave(proc_csv, texto_opcao, tipo_exame, parte_corpo, tipo_contraste_necessario):
+    def calcular_similaridade_termos_chave(proc_csv, texto_opcao, tipo_exame, parte_corpo, tipo_contraste_necessario, lateralidade=None):
         """
-        Calcula similaridade baseada em termos-chave: tipo de exame, parte do corpo e contraste.
+        Calcula similaridade baseada em termos-chave: tipo de exame, parte do corpo, contraste e lateralidade.
         
         Args:
             proc_csv: Procedimento do CSV
@@ -387,6 +730,7 @@ def exames_ambulatorio_solicita():
             tipo_exame: Tipo de exame identificado ('TOMOGRAFIA', 'ANGIO-TC', 'ANGIOTOMOGRAFIA')
             parte_corpo: Parte do corpo identificada
             tipo_contraste_necessario: 'COM_CONTRASTE' ou 'SEM_CONTRASTE'
+            lateralidade: Lateralidade identificada ('DIREITO', 'ESQUERDO' ou None)
         
         Returns:
             Score de similaridade (0.0 a 1.0)
@@ -442,8 +786,24 @@ def exames_ambulatorio_solicita():
                 palavras_parte = [p for p in parte_limpa.split() if len(p) > 2]
                 palavras_opcao = opcao_limpa.split()
                 
+                # Função auxiliar para verificar correspondência considerando singular/plural
+                def palavra_corresponde(palavra_parte, palavras_opcao_lista):
+                    """Verifica se palavra_parte corresponde a alguma palavra em palavras_opcao_lista"""
+                    if palavra_parte in palavras_opcao_lista:
+                        return True
+                    # Trata singular/plural para JOELHO/JOELHOS
+                    if palavra_parte == 'JOELHO' and 'JOELHOS' in palavras_opcao_lista:
+                        return True
+                    if palavra_parte == 'JOELHOS' and 'JOELHO' in palavras_opcao_lista:
+                        return True
+                    # Trata ARTICULACOES - se a parte tem ARTICULACOES mas a opção tem JOELHO/JOELHOS, aceita
+                    if palavra_parte == 'ARTICULACOES' or palavra_parte == 'ARTICULAÇÕES':
+                        if 'JOELHO' in palavras_opcao_lista or 'JOELHOS' in palavras_opcao_lista:
+                            return True
+                    return False
+                
                 # Conta quantas palavras-chave da parte do corpo aparecem na opção
-                palavras_encontradas = sum(1 for palavra in palavras_parte if palavra in palavras_opcao)
+                palavras_encontradas = sum(1 for palavra in palavras_parte if palavra_corresponde(palavra, palavras_opcao))
                 
                 if palavras_encontradas > 0:
                     # Calcula score proporcional
@@ -452,8 +812,20 @@ def exames_ambulatorio_solicita():
                     
                     # Bônus se encontrou palavras-chave importantes
                     palavras_importantes = ['PELVE', 'BACIA', 'ABDOMEN', 'ABDOMEM', 'COLUNA', 'CERVICAL', 
-                                          'DORSAL', 'LOMBAR', 'CRANIO', 'FACE', 'PESCOCO', 'JOELHOS', 'SUPERIOR', 'INFERIOR', 'TORAX', 'TÓRAX']
-                    palavras_importantes_encontradas = sum(1 for palavra in palavras_parte if palavra in palavras_importantes and palavra in palavras_opcao)
+                                          'DORSAL', 'LOMBAR', 'TORACICA', 'TORÁCICA', 'CRANIO', 'CRÂNIO', 'ORBITA', 'ÓRBITA', 'FACE', 'PESCOCO', 'JOELHOS', 'JOELHO',
+                                          'SUPERIOR', 'INFERIOR', 'TORAX', 'TÓRAX', 'ARTICULACOES', 'ARTICULAÇÕES',
+                                          'COXA', 'PERNA', 'MAO', 'MÃO', 'PE', 'OMBRO', 'PUNHO', 'TORNOZELO',
+                                          'COTOVELO', 'BRACO', 'BRAÇO', 'ANTEBRACO', 'ANTEBRAÇO']
+                    # Verifica palavras importantes considerando singular/plural e ARTICULACOES
+                    palavras_importantes_encontradas = 0
+                    for palavra in palavras_parte:
+                        if palavra in palavras_importantes:
+                            # Verifica correspondência direta ou através de equivalências
+                            if palavra_corresponde(palavra, palavras_opcao):
+                                palavras_importantes_encontradas += 1
+                            # Se é ARTICULACOES e encontrou JOELHO/JOELHOS, conta como encontrado
+                            elif (palavra == 'ARTICULACOES' or palavra == 'ARTICULAÇÕES') and ('JOELHO' in palavras_opcao or 'JOELHOS' in palavras_opcao):
+                                palavras_importantes_encontradas += 1
                     if palavras_importantes_encontradas > 0:
                         # Se encontrou palavras importantes, garante score mínimo
                         bonus = 0.15 * min(1.0, palavras_importantes_encontradas / len(palavras_parte))
@@ -463,7 +835,47 @@ def exames_ambulatorio_solicita():
                         if palavras_importantes_encontradas == len([p for p in palavras_parte if p in palavras_importantes]):
                             score = max(score, 0.5)  # Garante pelo menos 0.5 se todas palavras importantes foram encontradas
         
-        # 3. Verifica contraste (peso: 0.1 se corresponder, pequena penalização se não corresponder)
+        # 3. Verifica lateralidade (peso alto: 0.2 se corresponder, penalização forte se não corresponder)
+        if lateralidade:
+            # Verifica lateralidade na opção
+            tem_direito_opcao = 'DIREITO' in opcao_normalizada or 'DIREITA' in opcao_normalizada
+            tem_esquerdo_opcao = 'ESQUERDO' in opcao_normalizada or 'ESQUERDA' in opcao_normalizada
+            nao_mentiona_lateralidade_opcao = not tem_direito_opcao and not tem_esquerdo_opcao
+            
+            if lateralidade == 'DIREITO':
+                if tem_direito_opcao:
+                    # Bônus se tem DIREITO na opção também
+                    score += 0.2
+                elif nao_mentiona_lateralidade_opcao:
+                    # Penalização forte se CSV tem DIREITO mas opção não menciona
+                    score *= 0.3
+                else:
+                    # Penalização muito forte se CSV tem DIREITO mas opção tem ESQUERDO
+                    score *= 0.1
+            elif lateralidade == 'ESQUERDO':
+                if tem_esquerdo_opcao:
+                    # Bônus se tem ESQUERDO na opção também
+                    score += 0.2
+                elif nao_mentiona_lateralidade_opcao:
+                    # Penalização forte se CSV tem ESQUERDO mas opção não menciona
+                    score *= 0.3
+                else:
+                    # Penalização muito forte se CSV tem ESQUERDO mas opção tem DIREITO
+                    score *= 0.1
+        else:
+            # Se não há lateralidade no CSV, prefere opções sem lateralidade
+            tem_direito_opcao = 'DIREITO' in opcao_normalizada or 'DIREITA' in opcao_normalizada
+            tem_esquerdo_opcao = 'ESQUERDO' in opcao_normalizada or 'ESQUERDA' in opcao_normalizada
+            nao_mentiona_lateralidade_opcao = not tem_direito_opcao and not tem_esquerdo_opcao
+            
+            if nao_mentiona_lateralidade_opcao:
+                # Bônus se opção também não menciona lateralidade
+                score += 0.1
+            else:
+                # Penalização leve se opção tem lateralidade mas CSV não tem
+                score *= 0.8
+        
+        # 4. Verifica contraste (peso: 0.1 se corresponder, pequena penalização se não corresponder)
         tem_com_contraste = 'COM CONTRASTE' in opcao_normalizada or 'COM CONTARSTE' in opcao_normalizada
         tem_sem_contraste = 'SEM CONTRASTE' in opcao_normalizada or 'SEM CONTARSTE' in opcao_normalizada
         tem_c_ou_s_contraste = 'C/ OU S/ CONTRASTE' in opcao_normalizada or 'C/ OU S/ CONTARSTE' in opcao_normalizada
@@ -528,8 +940,6 @@ def exames_ambulatorio_solicita():
                 print(f"   ❌ Erro: coluna 'cns' está vazia. Pulando registro...")
                 continue
             print(f"\n[{index + 1}/{len(df)}] Processando Solicitação para o CNS: {cns}")
-            if contraste and contraste.upper() == 'S':
-                print(f"   ℹ️  Contraste obrigatório: apenas procedimentos 'COM CONTRASTE' serão selecionados")
             navegador.get(f"https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar")
             time.sleep(2)
             
@@ -719,6 +1129,21 @@ def exames_ambulatorio_solicita():
                 procedimentos_lista = [p.strip() for p in procedimento.split('|') if p.strip()]
                 print(f"   Encontrados {len(procedimentos_lista)} procedimento(s) para processar")
                 
+                # Verifica se há CRANIO e ÓRBITA na lista de procedimentos
+                tem_cranio = False
+                tem_orbita = False
+                for proc in procedimentos_lista:
+                    parte_proc = identificar_parte_corpo(proc)
+                    if parte_proc == 'CRANIO':
+                        tem_cranio = True
+                    proc_normalizado = normalizar_texto(proc)
+                    if 'ORBITA' in proc_normalizado or 'ÓRBITA' in proc_normalizado:
+                        tem_orbita = True
+                
+                precisa_marcar_cranio_duas_vezes = tem_cranio and tem_orbita
+                if precisa_marcar_cranio_duas_vezes:
+                    print(f"   ⚠️  Detectado CRANIO e ÓRBITA na lista: será marcado CRANIO duas vezes")
+                
                 # Aguarda a tabela carregar
                 wait.until(EC.presence_of_element_located((By.CLASS_NAME, "table_listagem")))
                 
@@ -726,15 +1151,28 @@ def exames_ambulatorio_solicita():
                 checkboxes = navegador.find_elements(By.XPATH, "//table[@class='table_listagem']//input[@type='checkbox']")
                 
                 checkboxes_marcados = []
+                opcoes_cranio_coletadas = []  # Para armazenar opções de CRANIO encontradas
                 
                 # Para cada procedimento do CSV
                 for proc_idx, proc_csv in enumerate(procedimentos_lista, 1):
                     print(f"   [{proc_idx}/{len(procedimentos_lista)}] Buscando procedimento correspondente a: {proc_csv}")
                     
-                    # Identifica termos-chave: tipo de exame e parte do corpo
+                    # Identifica termos-chave: tipo de exame, parte do corpo e lateralidade
                     tipo_exame = identificar_tipo_exame(proc_csv)
-                    parte_corpo = identificar_parte_corpo(proc_csv)
+                    parte_corpo_original = identificar_parte_corpo(proc_csv)
+                    lateralidade = identificar_lateralidade(proc_csv)
                     tipo_contraste = determinar_tipo_contraste(proc_csv, contraste)
+                    
+                    # Se a parte do corpo é ÓRBITA/ORBITA, trata como CRANIO
+                    if parte_corpo_original == 'CRANIO' or (parte_corpo_original and 'ORBITA' in parte_corpo_original.upper()):
+                        parte_corpo = 'CRANIO'
+                        if parte_corpo_original != 'CRANIO':
+                            print(f"      🔄 Parte do corpo '{parte_corpo_original}' mapeada para CRANIO")
+                    else:
+                        parte_corpo = parte_corpo_original
+                    
+                    # Verifica se precisa marcar CRANIO duas vezes (quando há CRANIO e ÓRBITA na lista)
+                    este_proc_eh_cranio_ou_orbita = parte_corpo == 'CRANIO'
                     
                     if not tipo_exame:
                         print(f"      ⚠️  Não foi possível identificar o tipo de exame em '{proc_csv}'")
@@ -746,48 +1184,152 @@ def exames_ambulatorio_solicita():
                     
                     print(f"      🔍 Tipo de exame identificado: {tipo_exame}")
                     print(f"      🔍 Parte do corpo identificada: {parte_corpo}")
-                    print(f"      ℹ️  Tipo de contraste necessário: {tipo_contraste}")
-                    
-                    melhor_similaridade = 0.0
-                    checkbox_selecionado = None
-                    texto_selecionado = ""
-                    
-                    # Compara cada opção da tabela usando termos-chave
-                    for checkbox in checkboxes:
-                        # Pula checkboxes já marcados
-                        if checkbox in checkboxes_marcados:
-                            continue
-                            
-                        # Obtém o texto da opção (texto do elemento pai td)
-                        try:
-                            td = checkbox.find_element(By.XPATH, "./..")
-                            texto_opcao = td.text.strip()
-                            
-                            # Calcula similaridade baseada em termos-chave
-                            similaridade = calcular_similaridade_termos_chave(
-                                proc_csv, texto_opcao, tipo_exame, parte_corpo, tipo_contraste
-                            )
-                            
-                            if similaridade > melhor_similaridade:
-                                melhor_similaridade = similaridade
-                                checkbox_selecionado = checkbox
-                                texto_selecionado = texto_opcao
-                        except Exception as e:
-                            continue
-                    
-                    # Marca o checkbox encontrado (threshold mínimo de 0.5)
-                    if checkbox_selecionado and melhor_similaridade >= 0.5:
-                        print(f"      ✅ Procedimento encontrado: {texto_selecionado} (similaridade: {melhor_similaridade:.2%})")
-                        if not checkbox_selecionado.is_selected():
-                            checkbox_selecionado.click()
-                        checkboxes_marcados.append(checkbox_selecionado)
-                        print(f"      ✅ Checkbox marcado com sucesso.")
+                    if lateralidade:
+                        print(f"      🔍 Lateralidade identificada: {lateralidade}")
                     else:
-                        if checkbox_selecionado:
-                            print(f"      ⚠️  Nenhum procedimento correspondente encontrado para '{proc_csv}'")
-                            print(f"      📊 Melhor opção encontrada: '{texto_selecionado}' (similaridade: {melhor_similaridade:.2%}, threshold: 0.50)")
+                        print(f"      🔍 Lateralidade: não especificada")
+                    print(f"      ℹ️  Tipo de contraste necessário: {tipo_contraste}")
+                    if precisa_marcar_cranio_duas_vezes and este_proc_eh_cranio_ou_orbita:
+                        print(f"      ⚠️  Este procedimento contribui para marcação dupla de CRANIO")
+                    
+                    # Se precisa marcar CRANIO duas vezes e este procedimento é CRANIO ou ÓRBITA, coleta opções
+                    if precisa_marcar_cranio_duas_vezes and este_proc_eh_cranio_ou_orbita:
+                        # Busca todas as opções de CRANIO que correspondem para este procedimento
+                        for checkbox in checkboxes:
+                            # Pula checkboxes já marcados (mas permite coletar para marcação dupla)
+                            if checkbox in checkboxes_marcados:
+                                continue
+                                
+                            try:
+                                td = checkbox.find_element(By.XPATH, "./..")
+                                texto_opcao = td.text.strip()
+                                
+                                # FILTRO 1: Verifica tipo de exame (OBRIGATÓRIO)
+                                if not opcao_corresponde_tipo_exame(texto_opcao, tipo_exame):
+                                    continue
+                                
+                                # FILTRO 2: Verifica parte do corpo (OBRIGATÓRIO) - deve ser CRANIO
+                                if not opcao_corresponde_parte_corpo(texto_opcao, parte_corpo):
+                                    continue
+                                
+                                # FILTRO 3: Verifica lateralidade (OBRIGATÓRIO se especificada)
+                                if lateralidade and not opcao_corresponde_lateralidade(texto_opcao, lateralidade):
+                                    continue
+                                
+                                # Se passou por todos os filtros hierárquicos, calcula similaridade
+                                similaridade = calcular_similaridade_termos_chave(
+                                    proc_csv, texto_opcao, tipo_exame, parte_corpo, tipo_contraste, lateralidade
+                                )
+                                
+                                if similaridade >= 0.5:
+                                    # Adiciona à lista coletada (evita duplicatas)
+                                    ja_existe = any(cb == checkbox for cb, _, _ in opcoes_cranio_coletadas)
+                                    if not ja_existe:
+                                        opcoes_cranio_coletadas.append((checkbox, texto_opcao, similaridade))
+                            except Exception as e:
+                                continue
+                        
+                        # Não marca ainda, apenas coleta - marcação será feita ao final
+                        print(f"      📋 Opções de CRANIO coletadas para marcação dupla: {len(opcoes_cranio_coletadas)}")
+                    else:
+                        # Lógica normal para outros procedimentos
+                        melhor_similaridade = 0.0
+                        checkbox_selecionado = None
+                        texto_selecionado = ""
+                        
+                        # FILTRAGEM HIERÁRQUICA:
+                        # 1. Primeiro filtra por tipo de exame
+                        # 2. Depois filtra por parte do corpo (dentro do tipo já filtrado)
+                        # 3. Por último filtra por lateralidade (dentro do tipo + parte já filtrados)
+                        # O contraste será considerado apenas na similaridade (sem filtro obrigatório)
+                        
+                        # Compara cada opção da tabela usando filtragem hierárquica
+                        for checkbox in checkboxes:
+                            # Pula checkboxes já marcados
+                            if checkbox in checkboxes_marcados:
+                                continue
+                                
+                            # Obtém o texto da opção (texto do elemento pai td)
+                            try:
+                                td = checkbox.find_element(By.XPATH, "./..")
+                                texto_opcao = td.text.strip()
+                                
+                                # FILTRO 1: Verifica tipo de exame (OBRIGATÓRIO)
+                                if not opcao_corresponde_tipo_exame(texto_opcao, tipo_exame):
+                                    continue  # Pula esta opção se não corresponde ao tipo de exame
+                                
+                                # FILTRO 2: Verifica parte do corpo (OBRIGATÓRIO)
+                                if not opcao_corresponde_parte_corpo(texto_opcao, parte_corpo):
+                                    continue  # Pula esta opção se não corresponde à parte do corpo
+                                
+                                # FILTRO 3: Verifica lateralidade (OBRIGATÓRIO se especificada)
+                                if lateralidade and not opcao_corresponde_lateralidade(texto_opcao, lateralidade):
+                                    continue  # Pula esta opção se não corresponde à lateralidade
+                                
+                                # Se passou por todos os filtros hierárquicos, calcula similaridade
+                                # O contraste será considerado apenas na similaridade (sem filtro obrigatório)
+                                similaridade = calcular_similaridade_termos_chave(
+                                    proc_csv, texto_opcao, tipo_exame, parte_corpo, tipo_contraste, lateralidade
+                                )
+                                
+                                if similaridade > melhor_similaridade:
+                                    melhor_similaridade = similaridade
+                                    checkbox_selecionado = checkbox
+                                    texto_selecionado = texto_opcao
+                            except Exception as e:
+                                continue
+                        
+                        # Marca o checkbox encontrado (threshold mínimo de 0.5)
+                        if checkbox_selecionado and melhor_similaridade >= 0.5:
+                            print(f"      ✅ Procedimento encontrado: {texto_selecionado} (similaridade: {melhor_similaridade:.2%})")
+                            if not checkbox_selecionado.is_selected():
+                                checkbox_selecionado.click()
+                            checkboxes_marcados.append(checkbox_selecionado)
+                            print(f"      ✅ Checkbox marcado com sucesso.")
                         else:
-                            print(f"      ⚠️  Nenhum procedimento correspondente encontrado para '{proc_csv}' (nenhuma opção com similaridade > 0)")
+                            if checkbox_selecionado:
+                                print(f"      ⚠️  Nenhum procedimento correspondente encontrado para '{proc_csv}'")
+                                print(f"      📊 Melhor opção encontrada: '{texto_selecionado}' (similaridade: {melhor_similaridade:.2%}, threshold: 0.50)")
+                            else:
+                                print(f"      ⚠️  Nenhum procedimento correspondente encontrado para '{proc_csv}' (nenhuma opção com similaridade > 0)")
+                
+                # Se precisa marcar CRANIO duas vezes e coletou opções, marca agora
+                if precisa_marcar_cranio_duas_vezes and opcoes_cranio_coletadas:
+                    print(f"   🔄 Processando marcação dupla de CRANIO com {len(opcoes_cranio_coletadas)} opção(ões) encontrada(s)...")
+                    
+                    # Ordena por similaridade (maior primeiro)
+                    opcoes_cranio_coletadas.sort(key=lambda x: x[2], reverse=True)
+                    
+                    # Marca até duas opções diferentes de CRANIO
+                    opcoes_marcadas = 0
+                    for checkbox_cranio, texto_cranio, similaridade_cranio in opcoes_cranio_coletadas:
+                        if opcoes_marcadas >= 2:
+                            break
+                        
+                        # Verifica se já foi marcado
+                        if checkbox_cranio not in checkboxes_marcados:
+                            print(f"      ✅ Procedimento CRANIO encontrado: {texto_cranio} (similaridade: {similaridade_cranio:.2%})")
+                            if not checkbox_cranio.is_selected():
+                                checkbox_cranio.click()
+                            checkboxes_marcados.append(checkbox_cranio)
+                            opcoes_marcadas += 1
+                            print(f"      ✅ Checkbox CRANIO marcado ({opcoes_marcadas}/2)")
+                    
+                    # Se encontrou menos de 2 opções diferentes, marca a mesma opção duas vezes
+                    if opcoes_marcadas < 2 and opcoes_cranio_coletadas:
+                        checkbox_cranio, texto_cranio, similaridade_cranio = opcoes_cranio_coletadas[0]
+                        print(f"      ✅ Marcando CRANIO segunda vez: {texto_cranio}")
+                        # Clica novamente no mesmo checkbox
+                        if checkbox_cranio.is_selected():
+                            checkbox_cranio.click()  # Desmarca
+                            checkbox_cranio.click()  # Marca novamente
+                        else:
+                            checkbox_cranio.click()
+                        opcoes_marcadas += 1
+                        print(f"      ✅ Checkbox CRANIO marcado segunda vez ({opcoes_marcadas}/2)")
+                    
+                    if opcoes_marcadas == 2:
+                        print(f"   ✅ CRANIO marcado duas vezes com sucesso!")
                 
                 print(f"   ✅ Total de {len(checkboxes_marcados)} checkbox(es) marcado(s) de {len(procedimentos_lista)} procedimento(s)")
             else:
@@ -800,6 +1342,8 @@ def exames_ambulatorio_solicita():
             confirmar_button.click()
             print("   Botão Confirmar clicado com sucesso.")
             
+            
+
             time.sleep(2)  # Aguarda a próxima tela carregar
             
             # Verifica erro de sistema após mudança de página
@@ -846,41 +1390,134 @@ def exames_ambulatorio_solicita():
                     checkboxes = navegador.find_elements(By.XPATH, "//table[@class='table_listagem']//input[@type='checkbox']")
                     checkboxes_marcados = []
                     procedimentos_lista = [p.strip() for p in procedimento.split('|') if p.strip()]
+                    
+                    # Verifica se há CRANIO e ÓRBITA na lista de procedimentos
+                    tem_cranio = False
+                    tem_orbita = False
+                    for proc in procedimentos_lista:
+                        parte_proc = identificar_parte_corpo(proc)
+                        if parte_proc == 'CRANIO':
+                            tem_cranio = True
+                        proc_normalizado = normalizar_texto(proc)
+                        if 'ORBITA' in proc_normalizado or 'ÓRBITA' in proc_normalizado:
+                            tem_orbita = True
+                    
+                    precisa_marcar_cranio_duas_vezes = tem_cranio and tem_orbita
+                    opcoes_cranio_coletadas_fallback = []
+                    
                     for proc_csv in procedimentos_lista:
-                        # Identifica termos-chave: tipo de exame e parte do corpo
+                        # Identifica termos-chave: tipo de exame, parte do corpo e lateralidade
                         tipo_exame = identificar_tipo_exame(proc_csv)
-                        parte_corpo = identificar_parte_corpo(proc_csv)
+                        parte_corpo_original = identificar_parte_corpo(proc_csv)
+                        lateralidade = identificar_lateralidade(proc_csv)
                         tipo_contraste = determinar_tipo_contraste(proc_csv, contraste)
+                        
+                        # Se a parte do corpo é ÓRBITA/ORBITA, trata como CRANIO
+                        if parte_corpo_original == 'CRANIO' or (parte_corpo_original and 'ORBITA' in parte_corpo_original.upper()):
+                            parte_corpo = 'CRANIO'
+                        else:
+                            parte_corpo = parte_corpo_original
+                        
+                        este_proc_eh_cranio_ou_orbita = parte_corpo == 'CRANIO'
                         
                         if not tipo_exame or not parte_corpo:
                             continue
                         
-                        melhor_similaridade = 0.0
-                        checkbox_selecionado = None
+                        # Se precisa marcar CRANIO duas vezes e este procedimento é CRANIO ou ÓRBITA, coleta opções
+                        if precisa_marcar_cranio_duas_vezes and este_proc_eh_cranio_ou_orbita:
+                            for checkbox in checkboxes:
+                                if checkbox in checkboxes_marcados:
+                                    continue
+                                try:
+                                    td = checkbox.find_element(By.XPATH, "./..")
+                                    texto_opcao = td.text.strip()
+                                    
+                                    if not opcao_corresponde_tipo_exame(texto_opcao, tipo_exame):
+                                        continue
+                                    if not opcao_corresponde_parte_corpo(texto_opcao, parte_corpo):
+                                        continue
+                                    if lateralidade and not opcao_corresponde_lateralidade(texto_opcao, lateralidade):
+                                        continue
+                                    
+                                    similaridade = calcular_similaridade_termos_chave(
+                                        proc_csv, texto_opcao, tipo_exame, parte_corpo, tipo_contraste, lateralidade
+                                    )
+                                    
+                                    if similaridade >= 0.5:
+                                        ja_existe = any(cb == checkbox for cb, _, _ in opcoes_cranio_coletadas_fallback)
+                                        if not ja_existe:
+                                            opcoes_cranio_coletadas_fallback.append((checkbox, texto_opcao, similaridade))
+                                except:
+                                    continue
+                        else:
+                            melhor_similaridade = 0.0
+                            checkbox_selecionado = None
+                            
+                            # FILTRAGEM HIERÁRQUICA:
+                            # 1. Primeiro filtra por tipo de exame
+                            # 2. Depois filtra por parte do corpo (dentro do tipo já filtrado)
+                            # 3. Por último filtra por lateralidade (dentro do tipo + parte já filtrados)
+                            # O contraste será considerado apenas na similaridade (sem filtro obrigatório)
+                            
+                            # Compara cada opção da tabela usando filtragem hierárquica
+                            for checkbox in checkboxes:
+                                if checkbox in checkboxes_marcados:
+                                    continue
+                                try:
+                                    td = checkbox.find_element(By.XPATH, "./..")
+                                    texto_opcao = td.text.strip()
+                                    
+                                    # FILTRO 1: Verifica tipo de exame (OBRIGATÓRIO)
+                                    if not opcao_corresponde_tipo_exame(texto_opcao, tipo_exame):
+                                        continue
+                                    
+                                    # FILTRO 2: Verifica parte do corpo (OBRIGATÓRIO)
+                                    if not opcao_corresponde_parte_corpo(texto_opcao, parte_corpo):
+                                        continue
+                                    
+                                    # FILTRO 3: Verifica lateralidade (OBRIGATÓRIO se especificada)
+                                    if lateralidade and not opcao_corresponde_lateralidade(texto_opcao, lateralidade):
+                                        continue
+                                    
+                                    # Se passou por todos os filtros hierárquicos, calcula similaridade
+                                    # O contraste será considerado apenas na similaridade (sem filtro obrigatório)
+                                    similaridade = calcular_similaridade_termos_chave(
+                                        proc_csv, texto_opcao, tipo_exame, parte_corpo, tipo_contraste, lateralidade
+                                    )
+                                    
+                                    if similaridade > melhor_similaridade:
+                                        melhor_similaridade = similaridade
+                                        checkbox_selecionado = checkbox
+                                except:
+                                    continue
+                            
+                            if checkbox_selecionado and melhor_similaridade >= 0.5:
+                                if not checkbox_selecionado.is_selected():
+                                    checkbox_selecionado.click()
+                                checkboxes_marcados.append(checkbox_selecionado)
+                    
+                    # Se precisa marcar CRANIO duas vezes e coletou opções, marca agora
+                    if precisa_marcar_cranio_duas_vezes and opcoes_cranio_coletadas_fallback:
+                        opcoes_cranio_coletadas_fallback.sort(key=lambda x: x[2], reverse=True)
                         
-                        # Compara cada opção da tabela usando termos-chave
-                        for checkbox in checkboxes:
-                            if checkbox in checkboxes_marcados:
-                                continue
-                            try:
-                                td = checkbox.find_element(By.XPATH, "./..")
-                                texto_opcao = td.text.strip()
-                                
-                                # Calcula similaridade baseada em termos-chave
-                                similaridade = calcular_similaridade_termos_chave(
-                                    proc_csv, texto_opcao, tipo_exame, parte_corpo, tipo_contraste
-                                )
-                                
-                                if similaridade > melhor_similaridade:
-                                    melhor_similaridade = similaridade
-                                    checkbox_selecionado = checkbox
-                            except:
-                                continue
+                        opcoes_marcadas = 0
+                        for checkbox_cranio, texto_cranio, similaridade_cranio in opcoes_cranio_coletadas_fallback:
+                            if opcoes_marcadas >= 2:
+                                break
+                            if checkbox_cranio not in checkboxes_marcados:
+                                if not checkbox_cranio.is_selected():
+                                    checkbox_cranio.click()
+                                checkboxes_marcados.append(checkbox_cranio)
+                                opcoes_marcadas += 1
                         
-                        if checkbox_selecionado and melhor_similaridade >= 0.5:
-                            if not checkbox_selecionado.is_selected():
-                                checkbox_selecionado.click()
-                            checkboxes_marcados.append(checkbox_selecionado)
+                        if opcoes_marcadas < 2 and opcoes_cranio_coletadas_fallback:
+                            checkbox_cranio, texto_cranio, similaridade_cranio = opcoes_cranio_coletadas_fallback[0]
+                            if checkbox_cranio.is_selected():
+                                checkbox_cranio.click()
+                                checkbox_cranio.click()
+                            else:
+                                checkbox_cranio.click()
+                            opcoes_marcadas += 1
                     
                     confirmar_button = wait.until(EC.element_to_be_clickable((By.NAME, "btnConfirmar")))
                     confirmar_button.click()
@@ -934,9 +1571,9 @@ def exames_ambulatorio_solicita():
             except TimeoutException:
                 print("   ⚠️  Nenhum radio button disponível encontrado.")
             
+            
             time.sleep(1)  # Aguarda a seleção ser processada
-            
-            
+                        
             # Clica no botão Próxima Etapa
             print("   Localizando botão Próxima Etapa...")
             proxima_etapa_button = wait.until(EC.element_to_be_clickable((By.NAME, "btnProximaEtapa")))
@@ -1249,17 +1886,44 @@ def exames_ambulatorio_solicita():
                         procedimentos_lista = [p.strip() for p in procedimento.split('|') if p.strip()]
                         print(f"   Encontrados {len(procedimentos_lista)} procedimento(s) para processar")
                         
+                        # Verifica se há CRANIO e ÓRBITA na lista de procedimentos
+                        tem_cranio = False
+                        tem_orbita = False
+                        for proc in procedimentos_lista:
+                            parte_proc = identificar_parte_corpo(proc)
+                            if parte_proc == 'CRANIO':
+                                tem_cranio = True
+                            proc_normalizado = normalizar_texto(proc)
+                            if 'ORBITA' in proc_normalizado or 'ÓRBITA' in proc_normalizado:
+                                tem_orbita = True
+                        
+                        precisa_marcar_cranio_duas_vezes = tem_cranio and tem_orbita
+                        if precisa_marcar_cranio_duas_vezes:
+                            print(f"   ⚠️  Detectado CRANIO e ÓRBITA na lista: será marcado CRANIO duas vezes")
+                        
                         wait.until(EC.presence_of_element_located((By.CLASS_NAME, "table_listagem")))
                         checkboxes = navegador.find_elements(By.XPATH, "//table[@class='table_listagem']//input[@type='checkbox']")
                         checkboxes_marcados = []
+                        opcoes_cranio_coletadas_reproc = []
                         
                         for proc_idx, proc_csv in enumerate(procedimentos_lista, 1):
                             print(f"   [{proc_idx}/{len(procedimentos_lista)}] Buscando procedimento correspondente a: {proc_csv}")
                             
-                            # Identifica termos-chave: tipo de exame e parte do corpo
+                            # Identifica termos-chave: tipo de exame, parte do corpo e lateralidade
                             tipo_exame = identificar_tipo_exame(proc_csv)
-                            parte_corpo = identificar_parte_corpo(proc_csv)
+                            parte_corpo_original = identificar_parte_corpo(proc_csv)
+                            lateralidade = identificar_lateralidade(proc_csv)
                             tipo_contraste = determinar_tipo_contraste(proc_csv, contraste)
+                            
+                            # Se a parte do corpo é ÓRBITA/ORBITA, trata como CRANIO
+                            if parte_corpo_original == 'CRANIO' or (parte_corpo_original and 'ORBITA' in parte_corpo_original.upper()):
+                                parte_corpo = 'CRANIO'
+                                if parte_corpo_original != 'CRANIO':
+                                    print(f"      🔄 Parte do corpo '{parte_corpo_original}' mapeada para CRANIO")
+                            else:
+                                parte_corpo = parte_corpo_original
+                            
+                            este_proc_eh_cranio_ou_orbita = parte_corpo == 'CRANIO'
                             
                             if not tipo_exame:
                                 print(f"      ⚠️  Não foi possível identificar o tipo de exame em '{proc_csv}'")
@@ -1271,44 +1935,131 @@ def exames_ambulatorio_solicita():
                             
                             print(f"      🔍 Tipo de exame identificado: {tipo_exame}")
                             print(f"      🔍 Parte do corpo identificada: {parte_corpo}")
-                            print(f"      ℹ️  Tipo de contraste necessário: {tipo_contraste}")
-                            
-                            melhor_similaridade = 0.0
-                            checkbox_selecionado = None
-                            texto_selecionado = ""
-                            
-                            # Compara cada opção da tabela usando termos-chave
-                            for checkbox in checkboxes:
-                                # Pula checkboxes já marcados
-                                if checkbox in checkboxes_marcados:
-                                    continue
-                                    
-                                # Obtém o texto da opção (texto do elemento pai td)
-                                try:
-                                    td = checkbox.find_element(By.XPATH, "./..")
-                                    texto_opcao = td.text.strip()
-                                    
-                                    # Calcula similaridade baseada em termos-chave
-                                    similaridade = calcular_similaridade_termos_chave(
-                                        proc_csv, texto_opcao, tipo_exame, parte_corpo, tipo_contraste
-                                    )
-                                    
-                                    if similaridade > melhor_similaridade:
-                                        melhor_similaridade = similaridade
-                                        checkbox_selecionado = checkbox
-                                        texto_selecionado = texto_opcao
-                                except Exception as e:
-                                    continue
-                            
-                            # Marca o checkbox encontrado (threshold mínimo de 0.5)
-                            if checkbox_selecionado and melhor_similaridade >= 0.5:
-                                print(f"      ✅ Procedimento encontrado: {texto_selecionado} (similaridade: {melhor_similaridade:.2%})")
-                                if not checkbox_selecionado.is_selected():
-                                    checkbox_selecionado.click()
-                                checkboxes_marcados.append(checkbox_selecionado)
-                                print(f"      ✅ Checkbox marcado com sucesso.")
+                            if lateralidade:
+                                print(f"      🔍 Lateralidade identificada: {lateralidade}")
                             else:
-                                print(f"      ⚠️  Nenhum procedimento correspondente encontrado para '{proc_csv}' (melhor similaridade: {melhor_similaridade:.2%})")
+                                print(f"      🔍 Lateralidade: não especificada")
+                            print(f"      ℹ️  Tipo de contraste necessário: {tipo_contraste}")
+                            if precisa_marcar_cranio_duas_vezes and este_proc_eh_cranio_ou_orbita:
+                                print(f"      ⚠️  Este procedimento contribui para marcação dupla de CRANIO")
+                            
+                            # Se precisa marcar CRANIO duas vezes e este procedimento é CRANIO ou ÓRBITA, coleta opções
+                            if precisa_marcar_cranio_duas_vezes and este_proc_eh_cranio_ou_orbita:
+                                for checkbox in checkboxes:
+                                    if checkbox in checkboxes_marcados:
+                                        continue
+                                    
+                                    try:
+                                        td = checkbox.find_element(By.XPATH, "./..")
+                                        texto_opcao = td.text.strip()
+                                        
+                                        if not opcao_corresponde_tipo_exame(texto_opcao, tipo_exame):
+                                            continue
+                                        if not opcao_corresponde_parte_corpo(texto_opcao, parte_corpo):
+                                            continue
+                                        if lateralidade and not opcao_corresponde_lateralidade(texto_opcao, lateralidade):
+                                            continue
+                                        
+                                        similaridade = calcular_similaridade_termos_chave(
+                                            proc_csv, texto_opcao, tipo_exame, parte_corpo, tipo_contraste, lateralidade
+                                        )
+                                        
+                                        if similaridade >= 0.5:
+                                            ja_existe = any(cb == checkbox for cb, _, _ in opcoes_cranio_coletadas_reproc)
+                                            if not ja_existe:
+                                                opcoes_cranio_coletadas_reproc.append((checkbox, texto_opcao, similaridade))
+                                    except Exception as e:
+                                        continue
+                                
+                                print(f"      📋 Opções de CRANIO coletadas para marcação dupla: {len(opcoes_cranio_coletadas_reproc)}")
+                            else:
+                                melhor_similaridade = 0.0
+                                checkbox_selecionado = None
+                                texto_selecionado = ""
+                                
+                                # FILTRAGEM HIERÁRQUICA:
+                                # 1. Primeiro filtra por tipo de exame
+                                # 2. Depois filtra por parte do corpo (dentro do tipo já filtrado)
+                                # 3. Por último filtra por lateralidade (dentro do tipo + parte já filtrados)
+                                # O contraste será considerado apenas na similaridade (sem filtro obrigatório)
+                                
+                                # Compara cada opção da tabela usando filtragem hierárquica
+                                for checkbox in checkboxes:
+                                    # Pula checkboxes já marcados
+                                    if checkbox in checkboxes_marcados:
+                                        continue
+                                        
+                                    # Obtém o texto da opção (texto do elemento pai td)
+                                    try:
+                                        td = checkbox.find_element(By.XPATH, "./..")
+                                        texto_opcao = td.text.strip()
+                                        
+                                        # FILTRO 1: Verifica tipo de exame (OBRIGATÓRIO)
+                                        if not opcao_corresponde_tipo_exame(texto_opcao, tipo_exame):
+                                            continue  # Pula esta opção se não corresponde ao tipo de exame
+                                        
+                                        # FILTRO 2: Verifica parte do corpo (OBRIGATÓRIO)
+                                        if not opcao_corresponde_parte_corpo(texto_opcao, parte_corpo):
+                                            continue  # Pula esta opção se não corresponde à parte do corpo
+                                        
+                                        # FILTRO 3: Verifica lateralidade (OBRIGATÓRIO se especificada)
+                                        if lateralidade and not opcao_corresponde_lateralidade(texto_opcao, lateralidade):
+                                            continue  # Pula esta opção se não corresponde à lateralidade
+                                        
+                                        # Se passou por todos os filtros hierárquicos, calcula similaridade
+                                        # O contraste será considerado apenas na similaridade (sem filtro obrigatório)
+                                        similaridade = calcular_similaridade_termos_chave(
+                                            proc_csv, texto_opcao, tipo_exame, parte_corpo, tipo_contraste, lateralidade
+                                        )
+                                        
+                                        if similaridade > melhor_similaridade:
+                                            melhor_similaridade = similaridade
+                                            checkbox_selecionado = checkbox
+                                            texto_selecionado = texto_opcao
+                                    except Exception as e:
+                                        continue
+                                
+                                # Marca o checkbox encontrado (threshold mínimo de 0.5)
+                                if checkbox_selecionado and melhor_similaridade >= 0.5:
+                                    print(f"      ✅ Procedimento encontrado: {texto_selecionado} (similaridade: {melhor_similaridade:.2%})")
+                                    if not checkbox_selecionado.is_selected():
+                                        checkbox_selecionado.click()
+                                    checkboxes_marcados.append(checkbox_selecionado)
+                                    print(f"      ✅ Checkbox marcado com sucesso.")
+                                else:
+                                    print(f"      ⚠️  Nenhum procedimento correspondente encontrado para '{proc_csv}' (melhor similaridade: {melhor_similaridade:.2%})")
+                        
+                        # Se precisa marcar CRANIO duas vezes e coletou opções, marca agora
+                        if precisa_marcar_cranio_duas_vezes and opcoes_cranio_coletadas_reproc:
+                            print(f"   🔄 Processando marcação dupla de CRANIO com {len(opcoes_cranio_coletadas_reproc)} opção(ões) encontrada(s)...")
+                            
+                            opcoes_cranio_coletadas_reproc.sort(key=lambda x: x[2], reverse=True)
+                            
+                            opcoes_marcadas = 0
+                            for checkbox_cranio, texto_cranio, similaridade_cranio in opcoes_cranio_coletadas_reproc:
+                                if opcoes_marcadas >= 2:
+                                    break
+                                if checkbox_cranio not in checkboxes_marcados:
+                                    print(f"      ✅ Procedimento CRANIO encontrado: {texto_cranio} (similaridade: {similaridade_cranio:.2%})")
+                                    if not checkbox_cranio.is_selected():
+                                        checkbox_cranio.click()
+                                    checkboxes_marcados.append(checkbox_cranio)
+                                    opcoes_marcadas += 1
+                                    print(f"      ✅ Checkbox CRANIO marcado ({opcoes_marcadas}/2)")
+                            
+                            if opcoes_marcadas < 2 and opcoes_cranio_coletadas_reproc:
+                                checkbox_cranio, texto_cranio, similaridade_cranio = opcoes_cranio_coletadas_reproc[0]
+                                print(f"      ✅ Marcando CRANIO segunda vez: {texto_cranio}")
+                                if checkbox_cranio.is_selected():
+                                    checkbox_cranio.click()
+                                    checkbox_cranio.click()
+                                else:
+                                    checkbox_cranio.click()
+                                opcoes_marcadas += 1
+                                print(f"      ✅ Checkbox CRANIO marcado segunda vez ({opcoes_marcadas}/2)")
+                            
+                            if opcoes_marcadas == 2:
+                                print(f"   ✅ CRANIO marcado duas vezes com sucesso!")
                         
                         print(f"   ✅ Total de {len(checkboxes_marcados)} checkbox(es) marcado(s) de {len(procedimentos_lista)} procedimento(s)")
                     else:

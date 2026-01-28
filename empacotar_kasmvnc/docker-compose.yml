@@ -5,7 +5,7 @@ services:
     container_name: autoreg
     ports:
       - "6901:6901"
-    shm_size: "512m"
+    shm_size: "2gb"
     environment:
       - VNC_PW=senha_segura
       - VNCOPTIONS=-disableBasicAuth
@@ -14,4 +14,6 @@ services:
     volumes:
       - /home/michel/code/AutoReg:/home/kasm-user/.autoreg
       - /home/michel/AutoReg:/home/kasm-user/AutoReg
+      - /home/michel/code/Autoreg-web:/home/kasm-user/Autoreg-web
+
     restart: unless-stopped

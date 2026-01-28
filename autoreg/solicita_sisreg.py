@@ -146,12 +146,31 @@ def solicita_sisreg():
                 
                 # Clica no botão na nova tela
                 print("Clicando no botão de confirmação...")
-                botao_confirmar = wait.until(
-                    EC.element_to_be_clickable((By.XPATH, "//*[@id='main_div']/form/center[3]/input[3]"))
-                )
-                botao_confirmar.click()
-                print("Botão de confirmação clicado com sucesso!")
-                logging.info("Botão de confirmação clicado com sucesso")
+                try:
+                    botao_confirmar = wait.until(
+                        EC.element_to_be_clickable((By.XPATH, "//*[@id='main_div']/form/center[3]/input[3]"))
+                    )
+                    botao_confirmar.click()
+                    print("Botão de confirmação clicado com sucesso!")
+                    logging.info("Botão de confirmação clicado com sucesso")
+                except TimeoutException:
+                    # Se o botão não for encontrado, significa que o CNS não foi encontrado na base
+                    erro_msg = "CNS incorreto ou não encontrado na base do DATASUS"
+                    print(f"⚠️  {erro_msg}")
+                    logging.warning(f"Registro {index + 1}: {erro_msg}")
+                    
+                    # Cria a coluna 'erro' se não existir
+                    if 'erro' not in df.columns:
+                        df['erro'] = ''
+                    
+                    # Atualiza o CSV com a mensagem de erro
+                    df.at[index, 'erro'] = erro_msg
+                    df.to_csv(csv_path, index=False)
+                    print(f"Erro registrado no CSV: {erro_msg}")
+                    logging.info(f"Erro registrado no CSV para registro {index + 1}: {erro_msg}")
+                    
+                    navegador.switch_to.default_content()
+                    continue  # Pula para o próximo registro
                 
                 time.sleep(3)  # Aguarda processamento após o clique
 

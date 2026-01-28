@@ -13,6 +13,12 @@ WHATSAPP_API_URL="http://100.98.29.11:9080/message/sendText/instancia2"
 API_KEY="429683C4C977415CAAFCCE10F7D57E11"
 WHATSAPP_NUMBER="5568984063903"
 
+# --- Configurações de Diretórios ---
+RELATORIODIR="/home/kasm-user/Autoreg-web"
+WORKDIR="/home/kasm-user/AutoReg"
+RELATORIO_CSV="$RELATORIODIR/relatorio.csv"
+USUARIO="michel"
+
 # --- Limpar Log Anterior ---
 echo "--- Início da Execução Automatizada (Dentro do Container): $(date) ---" > $LOG_FILE
 echo "" >> $LOG_FILE
@@ -43,16 +49,66 @@ execute_and_log() {
 }
 
 # ----------------------------------------
-# 1. Executar: -interna
+# Função para Gravar no Relatório CSV
 # ----------------------------------------
-execute_and_log "interna"
+gravar_relatorio() {
+    local rotina=$1
+    local arquivo_csv=$2
+    
+    # Verifica se o diretório existe, se não, cria
+    mkdir -p "$RELATORIODIR"
+    
+    # Verifica se o arquivo CSV existe
+    if [ ! -f "$arquivo_csv" ]; then
+        echo "AVISO: Arquivo $arquivo_csv não encontrado. Registros = 0" >> $LOG_FILE
+        local registros=0
+    else
+        # Conta o número de registros (linhas não vazias, excluindo cabeçalho se houver)
+        local registros=$(tail -n +2 "$arquivo_csv" 2>/dev/null | grep -v '^$' | wc -l)
+        # Se não tiver cabeçalho ou se o arquivo tiver apenas cabeçalho, conta todas as linhas não vazias
+        if [ "$registros" -eq 0 ]; then
+            registros=$(grep -v '^$' "$arquivo_csv" 2>/dev/null | wc -l)
+        fi
+    fi
+    
+    # Obtém data e hora atual
+    local data=$(date +"%Y-%m-%d")
+    local hora=$(date +"%H:%M:%S")
+    
+    # Verifica se o arquivo de relatório existe, se não, cria com cabeçalho
+    if [ ! -f "$RELATORIO_CSV" ]; then
+        echo "data,hora,rotina,usuario,registros" > "$RELATORIO_CSV"
+    fi
+    
+    # Adiciona a linha ao relatório
+    echo "$data,$hora,$rotina,$USUARIO,$registros" >> "$RELATORIO_CSV"
+    
+    echo "Relatório gravado: $rotina - $registros registros" >> $LOG_FILE
+}
+
+# ----------------------------------------
+# 1. Executar: -eci (Extrair Códigos de Internação)
+# ----------------------------------------
+execute_and_log "eci"
+if [ $? -ne 0 ]; then
+    send_whatsapp_log # Envia o log parcial de erro
+    exit 1
+fi
+
+# Contar registros em codigos_internacao.csv e gravar no relatório
+gravar_relatorio "Internar Pacientes" "$WORKDIR/codigos_internacao.csv"
+
+# ----------------------------------------
+# 2. Executar: -ip (Internar Pacientes)
+# ----------------------------------------
+execute_and_log "ip"
 if [ $? -ne 0 ]; then
     send_whatsapp_log # Envia o log parcial de erro
     exit 1
 fi
 
 # ----------------------------------------
-# 2. Executar: -analisa
+# 3. Executar: -analisa
 # ----------------------------------------
 execute_and_log "analisa"
 if [ $? -ne 0 ]; then
@@ -60,8 +116,11 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Contar registros em pacientes_de_alta.csv e gravar no relatório
+gravar_relatorio "Altas" "$WORKDIR/pacientes_de_alta.csv"
+
 # ----------------------------------------
-# 3. Executar: -alta
+# 4. Executar: -alta
 # ----------------------------------------
 execute_and_log "alta"
 if [ $? -ne 0 ]; then
