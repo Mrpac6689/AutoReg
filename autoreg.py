@@ -47,6 +47,7 @@ from autoreg import producao_ambulatorial_gmus  # Importa a função producao_am
 from autoreg import exames_ambulatorio_extrai  # Importa a função exames_ambulatorio_extrai
 from autoreg import exames_ambulatorio_solicita  # Importa a função exames_ambulatorio_solicita
 from autoreg import exames_ambulatorio_relatorio  # Importa a função exames_ambulatorio_relatorio
+from autoreg import producao_relatorio  # Registro de produção via AUTOREG-API
 
 # Dicionário com as funções e suas descrições
 FUNCOES = {
@@ -244,7 +245,8 @@ FUNÇÕES DISPONÍVEIS:
         ('-analisa', '--analisa', None),
         ('-alta', '--alta', None),
         ('-solicita', '--solicita', None),
-        ('-aihs', '--aihs', None)
+        ('-aihs', '--aihs', None),
+        ('-R', '--registro-producao', None)
     ]
     
     for short, long, func_name in flags:
@@ -260,6 +262,8 @@ FUNÇÕES DISPONÍVEIS:
             desc = 'Executa rotina de Solicitação: -spa -sia -ssr -snt'
         elif short == '-aihs':
             desc = 'Executa rotina de notas: -iga -ign -std'
+        elif short == '-R':
+            desc = 'Registra produção na AUTOREG-API (use com -solicita, -interna ou -alta)'
         else:
             desc = ''
         print(f"    {short:<6} {long:<32} {desc}")
@@ -269,6 +273,7 @@ FUNÇÕES ESPECIAIS:
     -all   --all                         Executa workflow completo: -interna -analisa -alta
     -cfg   --config                      Edita arquivo de configuração
     -dir   --directory                   Abre pasta de arquivos do AutoReg
+    -R     --registro-producao           Registra produção na AUTOREG-API (use com -solicita, -interna ou -alta)
 
 EXEMPLOS DE USO:
     python autoreg.py -eci               Extrai códigos de internação
@@ -276,6 +281,9 @@ EXEMPLOS DE USO:
     python autoreg.py --all              Executa workflow completo
     python autoreg.py --config           Edita configuração
     python autoreg.py --help             Mostra esta ajuda
+    python autoreg.py -solicita -R       Executa rotina de solicitação e registra produção na API
+    python autoreg.py -interna -R       Executa rotina de internação e registra produção na API
+    python autoreg.py -alta -R          Executa rotina de alta e registra produção na API
 
 Para mais informações, consulte o README.md
 """)
@@ -454,6 +462,9 @@ Exemplos de uso:
   %(prog)s -eci -ip             Executa duas funções em sequência
   %(prog)s --all                Executa workflow completo
   %(prog)s --config             Edita configuração
+  %(prog)s -solicita -R         Executa rotina de solicitação e registra produção na API
+  %(prog)s -interna -R         Executa rotina de internação e registra produção na API
+  %(prog)s -alta -R            Executa rotina de alta e registra produção na API
         """
     )
     
@@ -534,6 +545,8 @@ Exemplos de uso:
                        help='Executa rotina de Solicitação: -spa -sia -ssr -snt')
     parser.add_argument('-aihs', '--aihs', action='store_true',
                        help='Executa rotina de notas: -iga -ign -std')
+    parser.add_argument('-R', '--registro-producao', action='store_true',
+                       help='Registra produção na AUTOREG-API (válido com -solicita, -interna ou -alta)')
     
     # Funções especiais
     parser.add_argument('-all', '--all', action='store_true',
@@ -599,6 +612,8 @@ Exemplos de uso:
             if not executar_funcao(func_name):
                 print(f"❌ Parando execução devido ao erro em {func_name}")
                 break
+        if args.registro_producao:
+            producao_relatorio.registrar_producao('Internar Pacientes', 'codigos_internacao.csv')
         return
 
     if args.analisa:
@@ -612,6 +627,8 @@ Exemplos de uso:
         return
 
     if args.alta:
+        if args.registro_producao:
+            producao_relatorio.registrar_producao('Altas', 'pacientes_de_alta.csv')
         print("🔄 Executando sequência de alta (-tat -ecsa -ea -ar -eid -td -clc)...")
         seq = ['trata_altas', 'extrai_codigos_sisreg_alta', 'executa_alta', 'atualiza_restos', 'extrai_internacoes_duplicadas', 'trata_duplicados', 'limpa_cache']
         for i, func_name in enumerate(seq, 1):
@@ -622,6 +639,8 @@ Exemplos de uso:
         return
 
     if args.solicita:
+        if args.registro_producao:
+            producao_relatorio.registrar_producao('Solicitar Internações', 'internados_ghosp_avancado.csv')
         print("🔄 Executando rotina de Solicitação (-spa -sia -ssr -snt)...")
         seq = ['solicita_pre_aih', 'solicita_inf_aih', 'solicita_sisreg', 'solicita_nota']
         for i, func_name in enumerate(seq, 1):

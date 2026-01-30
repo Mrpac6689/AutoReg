@@ -35,5 +35,14 @@ usuario =
 #sua_senha_ghosp
 senha = 
 
+[EVOLUTION-API]
 
+evolution_api_key = 
+evolution_api_url = 
+evolution_api_number = 
+
+[AUTOREG-API]
+
+autoreg_api_key = 
+autoreg_api_relatorio_url = 
 

@@ -194,6 +194,16 @@ Segurança e recomendações:
   - docker tag autoreg:9.6.5 registry.exemplo.com/autoreg:9.6.5
   - docker push registry.exemplo.com/autoreg:9.6.5
 
+### 📤 Registro de Produção (flag -R)
+
+A flag opcional **`-R`** (ou **`--registro-producao`**) permite enviar um relatório de execução para a **AUTOREG-API** quando usada junto com as rotinas **`-solicita`**, **`-interna`** ou **`-alta`**. O envio é um POST JSON com `rotina` e `registros` (número de linhas do CSV correspondente). Configure em `config.ini` na seção `[AUTOREG-API]`: `autoreg_api_relatorio_url` e `autoreg_api_key`.
+
+| Rotina     | Momento do envio | Arquivo CSV usado para contar registros        |
+|------------|------------------|-------------------------------------------------|
+| -solicita  | Antes da execução| `internados_ghosp_avancado.csv` (rotina: "Solicitar Internações") |
+| -interna   | Após a execução  | `codigos_internacao.csv` (rotina: "Internar Pacientes")         |
+| -alta      | Antes da execução| `pacientes_de_alta.csv` (rotina: "Altas")       |
+
 ### 📋 Funções Disponíveis e Workflows Agrupados
 
 | Flag         | Função                        | Descrição |
@@ -235,6 +245,7 @@ Segurança e recomendações:
 | `-alta`      | [workflow agrupado]           | Executa rotina de alta completa: -tat -ecsa -ea -ar -eid -td -clc |
 | `-solicita`  | [workflow agrupado]           | Executa rotina de Solicitação: -spa -sia -ssr -snt |
 | `-aihs`      | [workflow agrupado]           | Executa rotina de AIHs: -iga -ign -std |
+| `-R`         | registro-producao             | Registra produção na AUTOREG-API (use com -solicita, -interna ou -alta) |
 | `--all`      | [workflow completo]           | Executa todas as funções principais com repetição interativa |
 
 ### 📜 Histórico de Versões
@@ -571,6 +582,11 @@ autoreg -alta                   # Executa rotina de alta completa (inclui -tat e
 autoreg -solicita               # Executa rotina de solicitação completa (inclui -spa)
 autoreg -aihs                   # Executa rotina de AIHs completa (inclui -std)
 
+# Registro de produção na AUTOREG-API (flag -R, opcional)
+autoreg -solicita -R             # Executa solicitação e envia relatório (registros de internados_ghosp_avancado.csv)
+autoreg -interna -R             # Executa internação e envia relatório (registros de codigos_internacao.csv)
+autoreg -alta -R                 # Executa alta e envia relatório (registros de pacientes_de_alta.csv)
+
 # Workflow completo (todas as funções principais com repetição interativa)
 autoreg --all                   # Executa tudo com prompt de repetição
 
@@ -679,6 +695,10 @@ senha = sua_senha_sisreg
 usuario = seu_usuario_ghosp
 senha = sua_senha_ghosp
 caminho = http://10.0.0.0:4001  # Endereço do seu servidor G-HOSP
+
+[AUTOREG-API]   # Opcional: para registro de produção com a flag -R
+autoreg_api_key = sua_chave_api
+autoreg_api_relatorio_url = https://exemplo.com/api/externa/relatorio/registrar
 ```
 
 ## 📁 **Estrutura de Arquivos**
