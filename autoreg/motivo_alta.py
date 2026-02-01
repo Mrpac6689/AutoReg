@@ -39,10 +39,10 @@ def motivo_alta():
     )
     senha_field.send_keys(senha_ghosp)
 
-    # Localiza e clica no botão de login (//*[@id="new_user"]/div/input)
+    # Localiza e clica no botão de login (value="Entrar" ou class="botao")
     print("Localizando botão de login...")
     login_button = WebDriverWait(driver, 10).until(
-        EC.element_to_be_clickable((By.XPATH, '//*[@id="new_user"]/div/input'))
+        EC.element_to_be_clickable((By.CSS_SELECTOR, 'input.botao[value="Entrar"]'))
     )
     login_button.click()
 
