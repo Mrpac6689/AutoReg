@@ -1,549 +1,299 @@
 # AutoReg
-Operação automatizada de Sistemas de Saúde - SISREG & G-HOSP
 
-## 🌌 Versão 9.7.0 Universe - Janeiro de 2026
+**Sistema de Automação para Operação de Sistemas de Saúde - SISREG & G-HOSP**
 
-### 🆕 Novas Funcionalidades v9.7.0
-
-- **Sistema Completo de Gestão de Exames Ambulatoriais**:
-  - **`exames_ambulatorio_extrai` (`-eae`)**: Extrai dados de exames a solicitar do G-Hosp
-    - Login automático no G-HOSP
-    - Extração de procedimentos de tomografia por atendimento (RA)
-    - Suporte a múltiplos procedimentos por atendimento (separados por `|`)
-    - Extração de CNS/CPF do modal de dados do paciente
-    - Filtragem inteligente por número de atendimento
-    - Saída: `~/AutoReg/exames_solicitar.csv` com colunas: `ra`, `procedimento`, `cns`
-  
-  - **`exames_ambulatorio_solicita` (`-eas`)**: Executa solicitações de exames no SISREG
-    - Login automático no SISREG
-    - Processamento baseado em CSV com CNS e procedimentos
-    - Seleção automática de procedimentos por similaridade (múltiplos procedimentos suportados)
-    - Seleção aleatória de profissional solicitante
-    - Seleção automática de unidade de execução
-    - Seleção de primeira vaga disponível
-    - Extração automática de chave e número de solicitação
-    - Proteção contra duplicidades (pula registros já processados)
-    - Saída: `~/AutoReg/exames_solicitar.csv` atualizado com `chave` e `solicitacao`
-  
-  - **`exames_ambulatorio_relatorio` (`-ear`)**: Extrai relatórios de exames solicitados no SISREG
-    - Login automático no SISREG
-    - Geração de PDFs individuais por solicitação
-    - Numeração sequencial automática (001, 002, 003...)
-    - Junção automática de todos os PDFs em um único arquivo
-    - Remoção automática de PDFs individuais após junção
-    - Processa apenas registros com chave e solicitação preenchidos
-    - Saída: `~/AutoReg/solicitacoes_exames_imprimir.pdf` (PDF unificado)
-
-- **Melhorias de Robustez**:
-  - Sistema de similaridade de strings para matching de procedimentos
-  - Tratamento inteligente de valores numéricos (remoção de `.0`)
-  - Validação de campos obrigatórios antes do processamento
-  - Salvamento incremental de CSV durante processamento
-  - Tratamento de erros com continuidade do processamento
-
-### 🆕 Novas Funcionalidades v9.6.7
-
-- **Extração de Produção Ambulatorial GMUs**:
-  - **`producao_ambulatorial_gmus` (`-pag`)**: Extrai dados detalhados de produção ambulatorial para GMUs (Gestão de Múltiplas Unidades)
-    - Login automático no G-HOSP
-    - Interface para seleção de mês e ano
-    - Identificação automática de dias úteis (exclui sábados e domingos)
-    - Navegação direta por URL para cada dia
-    - Extração de dados completos por paciente:
-      - Data do atendimento
-      - Período (Manhã/Tarde)
-      - Posição na agenda
-      - Nome do paciente
-      - Nome do agendador (via tooltip hover)
-    - Salvamento incremental após cada dia processado
-    - Sistema de pausa/retomada interativo (P/C + ENTER)
-    - Thread daemon para não bloquear o Selenium durante pausa
-    - Navegador permanece responsivo durante pausas
-    - Saída: `~/AutoReg/producao_ambulatorial_gmus.csv`
-
-- **Sistema de Pausa/Retomada para Processos Longos**:
-  - Implementado em `producao_ambulatorial_dados`
-  - Comandos simples: `P` + ENTER para pausar, `C` + ENTER para continuar
-  - Thread separada que não bloqueia o driver do Selenium
-  - Navegador permanece totalmente funcional durante pausa
-  - Thread-safe com locks para evitar race conditions
-  - Permite interação manual com o navegador se necessário
-
-### 🆕 Novas Funcionalidades v9.6.6
-
-- **Extração de Produção Ambulatorial SISREG**:
-  - **`producao_ambulatorial` (`-pra`)**: Extrai códigos de solicitação de produção ambulatorial com navegação multi-página automática
-    - Login automático no SISREG
-    - Interface para configuração manual de filtros
-    - Extração inteligente de tabelas (identifica segunda tabela com dados)
-    - Navegação automática entre páginas
-    - Sistema de checkpoint: salva progresso a cada 10 páginas
-    - Retomada automática em caso de interrupção
-    - Suporte a grandes volumes (200+ páginas)
-    - Saída: `~/AutoReg/producao_ambulatorial.csv`
-  
-  - **`producao_ambulatorial_dados` (`-pad`)**: Extrai dados detalhados de cada solicitação
-    - Acesso direto via URL para cada código
-    - Extração de 5 campos essenciais:
-      - Data da solicitação
-      - Unidade solicitante
-      - Unidade autorizadora
-      - Unidade executante
-      - Procedimento solicitado
-    - Processamento em lote de todos os códigos do CSV anterior
-    - Feedback detalhado por solicitação
-    - Saída: `~/AutoReg/producao_ambulatorial_dados.csv`
-
-- **Melhorias de Robustez**:
-  - Sistema de checkpoint com arquivo `producao_ambulatorial_checkpoint.txt`
-  - Salvamento incremental para evitar perda de dados
-  - Tratamento de interrupção por Ctrl+C com salvamento automático
-  - Detecção de página atual e total de páginas
-  - Retomada inteligente de onde parou
-
-### 🆕 Novas Funcionalidades v9.6.5
-
-- **Empacotamento com Docker + Integração Kasm VNC**: Imagem Docker pronta para uso em ambientes Kasm Workspaces (VNC/noVNC)
-  - Imagem baseada em Python slim com todas as dependências do AutoReg instaladas
-  - Entrypoint que inicia a aplicação e mantém um ambiente gráfico acessível via VNC/noVNC
-  - Orientações para registrar a imagem no Kasm e disponibilizar a interface pelo painel Kasm
-  - Exemplos de Dockerfile e docker-compose para teste local e para preparação do artefato a ser importado no Kasm
-  - Recomendações de volumes e variáveis de ambiente para persistência de dados e configuração de credenciais
-- Atualizações menores de compatibilidade e correções de dependências para execução em container
-- Documentação básica para criação da imagem e publicação em registry privado
-
-### Empacotamento Docker + Kasm VNC (guia rápido)
-
-Objetivo: gerar uma imagem Docker que execute AutoReg em um ambiente com interface gráfica acessível via VNC/noVNC; essa imagem pode ser importada no Kasm Workspaces para uso centralizado.
-
-Passos resumidos:
-1. Criar Dockerfile (exemplo abaixo).
-2. Construir a imagem localmente: docker build -t autoreg:9.6.5 .
-3. Testar localmente com docker-compose (exemplo incluído).
-4. Subir a imagem para registry (opcional) e registrar no Kasm.
-5. No Kasm, criar um Workspace que utilize a imagem e configurar portas/recursos.
-
-Exemplo mínimo de Dockerfile (ajustar conforme política de base do Kasm):
-```bash
-# Dockerfile mínimo de exemplo (teste local)
-FROM python:3.11-slim
-
-# Dependências para ambiente gráfico/VNC (exemplos; ajustar conforme distribuição)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    xfce4 xfce4-terminal tigervnc-standalone-server xvfb wget curl git supervisor \
-  && rm -rf /var/lib/apt/lists/*
-
-# Diretório da aplicação
-WORKDIR /opt/autoreg
-
-# Copia código e instala dependências
-COPY . /opt/autoreg
-RUN python -m pip install --upgrade pip \
-  && if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-# Cria usuário não-root
-RUN useradd -m -s /bin/bash autoreg
-RUN chown -R autoreg:autoreg /opt/autoreg
-USER autoreg
-
-# Porta padrão VNC (se for usar diretamente) e porta da aplicação se necessário
-EXPOSE 5901 6901
-
-# Entrypoint: exemplo que inicia o VNC e a aplicação (ajustar conforme necessidade)
-CMD ["bash", "-lc", "vncserver :1 -geometry 1280x800 -depth 24 && tail -f /dev/null"]
-```
-
-Exemplo de docker-compose para teste local:
-```yaml
-version: '3.8'
-services:
-  autoreg:
-    build: .
-    image: autoreg:9.6.5
-    container_name: autoreg_kasm_test
-    volumes:
-      - ./data:/home/autoreg/data
-    environment:
-      - TZ=America/Sao_Paulo
-      - AUTOREG_CONFIG=/home/autoreg/data/config.ini
-    ports:
-      - "5901:5901"   # VNC
-      - "6901:6901"   # noVNC (se configurado)
-    restart: unless-stopped
-```
-
-Observações para uso com Kasm:
-- Kasm Workspaces espera imagens preparadas com um serviço de sessão (ex.: supervisord iniciando ambiente de desktop + noVNC). Recomenda-se criar um Dockerfile baseado nas imagens oficiais do Kasm ou adaptar o Dockerfile acima para iniciar supervisor e noVNC.
-- Após construir e testar a imagem, faça push para o registry que o Kasm pode acessar (ex.: registry.local/empresa/autoreg:9.6.5).
-- No painel do Kasm, crie um novo Workspace Image apontando para a imagem, configure a sessão e permissões (GPU, memória, tempo de sessão).
-- Mapear volumes para persistência: ~/.autoreg ou /home/autoreg/data para manter logs, CSVs e venv.
-- Variáveis de ambiente sensíveis (credenciais) devem ser gerenciadas pelo Kasm Secrets ou mounted files, não em ENV públicos.
-
-Segurança e recomendações:
-- Não exponha VNC diretamente à internet; use o noVNC via Kasm ou túnel seguro.
-- Rode containers com usuários não-root e limite recursos (CPU/memória).
-- Use registry privado e imagens assinadas quando possível.
-- Verifique políticas de compliance do hospital antes de disponibilizar workspaces que contenham credenciais.
-
-### Comandos úteis
-- Construir imagem:
-  - docker build -t autoreg:9.6.5 .
-- Testar com docker-compose:
-  - docker-compose up --build
-- Enviar para registry:
-  - docker tag autoreg:9.6.5 registry.exemplo.com/autoreg:9.6.5
-  - docker push registry.exemplo.com/autoreg:9.6.5
-
-### 📤 Registro de Produção (flag -R)
-
-A flag opcional **`-R`** (ou **`--registro-producao`**) permite enviar um relatório de execução para a **AUTOREG-API** quando usada junto com as rotinas **`-solicita`**, **`-interna`** ou **`-alta`**. O envio é um POST JSON com `rotina` e `registros` (número de linhas do CSV correspondente). Configure em `config.ini` na seção `[AUTOREG-API]`: `autoreg_api_relatorio_url` e `autoreg_api_key`.
-
-| Rotina     | Momento do envio | Arquivo CSV usado para contar registros        |
-|------------|------------------|-------------------------------------------------|
-| -solicita  | Antes da execução| `internados_ghosp_avancado.csv` (rotina: "Solicitar Internações") |
-| -interna   | Após a execução  | `codigos_internacao.csv` (rotina: "Internar Pacientes")         |
-| -alta      | Antes da execução| `pacientes_de_alta.csv` (rotina: "Altas")       |
-
-### 📋 Funções Disponíveis e Workflows Agrupados
-
-| Flag         | Função                        | Descrição |
-|--------------|-------------------------------|-----------|
-| `-css`       | consulta_solicitacao_sisreg   | Consulta status de solicitações no SISREG |
-| `-eci`       | extrai_codigos_internacao     | Extrai códigos de internação do SISREG |
-| `-ip`        | interna_pacientes             | Realiza internação de pacientes no SISREG |
-| `-eis`       | extrai_internados_sisreg      | Extrai lista de internados do SISREG |
-| `-eig`       | extrai_internados_ghosp       | Extrai lista de internados do G-HOSP |
-| `-ci`        | compara_internados            | Compara listas de internados entre sistemas |
-| `-ma`        | motivo_alta                   | Captura motivos de alta no G-HOSP |
-| `-tat`       | trata_altas                   | Trata Motivos de Alta capturados |
-| `-ecsa`      | extrai_codigos_sisreg_alta    | Extrai códigos SISREG para alta |
-| `-ea`        | executa_alta                  | Executa altas no SISREG |
-| `-ar`        | atualiza_restos               | Atualiza arquivo de pacientes restantes |
-| `-eid`       | extrai_internacoes_duplicadas | Identifica internações duplicadas |
-| `-td`        | trata_duplicados              | Processa pacientes com duplicações |
-| `-clc`       | limpa_cache                   | Limpa todos os arquivos da pasta ~/AutoReg, mantendo apenas solicita_inf_aih.csv |
-| `-dev`       | devolvidos                    | Processa solicitações devolvidas |
-| `-p2c`       | pdf2csv                       | Converte PDF de solicitações em CSV |
-| `-pag`       | producao_ambulatorial_gmus    | Extrai produção ambulatorial GMUs do G-HOSP |
-| `-ghn`       | ghosp_nota                    | Extrair notas de prontuários Ghosp |
-| `-ghc`       | ghosp_cns                     | Extrai CNSs dos prontuários |
-| `-iga`       | internados_ghosp_avancado     | Extrai pacientes internados no GHOSP com informações adicionais |
-| `-ign`       | internados_ghosp_nota         | Extrai o conteúdo das notas dos prontuários do GHOSP |
-| `-std`       | solicita_trata_dados          | Ajusta CSV para tratamento das solicitações de AIH previamente ao SISREG |
-| `-spa`       | solicita_pre_aih              | Extrai link para solicitação de AIH do GHOSP |
-| `-especial`  | [workflow agrupado]           | Extração de dados personalizados do GHOSP |
-| `-sia`       | solicita_inf_aih              | Extrai informações da AIH |
-| `-ssr`       | solicita_sisreg               | Executa Solicitações no Sistema SISREG |
-| `-snt`       | solicita_nota                 | Insere numero da solicitação SISREG na nota de prontuário |
-| `-pra`       | producao_ambulatorial         | Extrai códigos de solicitação de produção ambulatorial do SISREG (com checkpoint) |
-| `-pad`       | producao_ambulatorial_dados   | Extrai dados detalhados de cada solicitação de produção ambulatorial |
-| `-eae`       | exames_ambulatorio_extrai    | Extrai dados de exames a solicitar do G-Hosp |
-| `-eas`       | exames_ambulatorio_solicita   | Executa solicitações de exames no SISREG |
-| `-ear`       | exames_ambulatorio_relatorio | Extrai relatórios de exames solicitados no SISREG |
-| `-interna`   | [workflow agrupado]           | Executa rotina de internação completa: -eci -ip |
-| `-analisa`   | [workflow agrupado]           | Executa rotina de análise/comparação: -eis -eig -ci -ma |
-| `-alta`      | [workflow agrupado]           | Executa rotina de alta completa: -tat -ecsa -ea -ar -eid -td -clc |
-| `-solicita`  | [workflow agrupado]           | Executa rotina de Solicitação: -spa -sia -ssr -snt |
-| `-aihs`      | [workflow agrupado]           | Executa rotina de AIHs: -iga -ign -std |
-| `-R`         | registro-producao             | Registra produção na AUTOREG-API (use com -solicita, -interna ou -alta) |
-| `--all`      | [workflow completo]           | Executa todas as funções principais com repetição interativa |
-
-### 📜 Histórico de Versões
-
-## 🌌 v9.7.0 Universe - Janeiro de 2026
-- **Sistema Completo de Gestão de Exames Ambulatoriais**:
-  - Nova função `-eae` para extração de dados de exames do G-HOSP
-    - Extração de procedimentos de tomografia por atendimento
-    - Suporte a múltiplos procedimentos (separados por `|`)
-    - Extração de CNS/CPF do modal de dados do paciente
-    - Filtragem por número de atendimento (RA)
-  - Nova função `-eas` para execução de solicitações no SISREG
-    - Seleção automática de procedimentos por similaridade
-    - Seleção aleatória de profissional
-    - Seleção automática de unidade e vaga
-    - Extração de chave e número de solicitação
-    - Proteção contra duplicidades
-  - Nova função `-ear` para extração de relatórios
-    - Geração de PDFs individuais por solicitação
-    - Junção automática em PDF unificado
-    - Numeração sequencial (001, 002, 003...)
-    - Remoção automática de PDFs individuais
-  - Melhorias de robustez e tratamento de erros
-  - Suporte a múltiplos procedimentos por registro
-
-## 🌌 v9.6.6 Universe - Novembro de 2025
-- **Sistema de Extração de Produção Ambulatorial SISREG**:
-  - Nova função `-pra` para extração de códigos com sistema de checkpoint
-  - Nova função `-pad` para extração de dados detalhados das solicitações
-  - Salvamento incremental a cada 10 páginas para segurança
-  - Retomada automática em caso de interrupção
-  - Suporte a grandes volumes (200+ páginas, 2000+ registros)
-  - Extração de 5 campos essenciais: data, solicitante, autorizador, executante, procedimento
-  - Detecção inteligente de tabelas (ignora filtros, processa apenas dados)
-  - Navegação multi-página automática com feedback de progresso
-  - Tratamento robusto de erros com salvamento de checkpoint
-  - CSVs gerados: `producao_ambulatorial.csv` e `producao_ambulatorial_dados.csv`
-
-## 🌌 v9.6.5 Universe - Outubro de 2025
-- **Empacotamento com Docker + Integração Kasm VNC**: Imagem Docker pronta para uso em ambientes Kasm Workspaces (VNC/noVNC)
-- Imagem baseada em Python slim com todas as dependências do AutoReg instaladas
-- Entrypoint que inicia a aplicação e mantém um ambiente gráfico acessível via VNC/noVNC
-- Orientações para registrar a imagem no Kasm e disponibilizar a interface pelo painel Kasm
-- Exemplos de Dockerfile e docker-compose para teste local e para preparação do artefato a ser importado no Kasm
-- Recomendações de volumes e variáveis de ambiente para persistência de dados e configuração de credenciais
-- Atualizações menores de compatibilidade e correções de dependências para execução em container
-- Documentação básica para criação da imagem e publicação em registry privado
-
-## 🌌 v9.6.2 Universe - Outubro de 2025
-- **Sanitização completa de dados**: Remoção de quebras de linha e caracteres problemáticos em CSV/Selenium
-- **XPaths dinâmicos**: Seletores que se adaptam a IDs variáveis em formulários e laudos
-- **Localização semântica**: Campos identificados por nome ao invés de posição fixa
-- **Gerenciamento robusto de modais**: Sistema de fechamento com tentativa de botão X e fallback para ESC
-- **Hover automático**: Revelação de elementos ocultos via ActionChains
-- **URLs com intern_id**: Acesso a formulários eletrônicos via RA ao invés de prontuário
-- **Pausas entre workflows**: Time.sleep(1) entre funções de `-solicita` para estabilidade
-- **Suporte a múltiplos tipos de laudo**: Extração adaptativa para formeletronicos e printernlaudos
-- **Extração de CNS/CPF via fieldset**: Busca por "Documentos" com classes semânticas
-- **Tratamento de TextAreas por name**: Campos identificados por attributes ao invés de XPath
-- **Melhorias de robustez**: Código mais resiliente a mudanças na estrutura HTML
-
-## 🌌 v9.6.0 Universe - Outubro de 2025
-- **Performance 4x mais rápida**: Acesso direto a prontuários via URL em `-ign` e `-snt`
-- **Eliminação de navegação desnecessária**: Sem preenchimento de campos ou cliques em botões
-- **Verificação automática de CNS/CPF**: Loop adicional em `-snt` para detectar e tratar dados faltantes
-- **Lembretes automáticos**: Inserção de avisos sobre CNS/CPF faltante em prontuários
-- **Abertura automática de planilhas**: CSVs abertos no programa padrão após processamento
-- **Workflow `-solicita` expandido**: Agora inclui `-spa` no início (-spa -sia -ssr -snt)
-- **Renomeação de workflow**: `-nota` renomeado para `-aihs` para melhor clareza
-- **Tratamento de dados em `-spa`**: Preparação automática de solicita_inf_aih.csv
-- **Extração inteligente**: Transferência automática de dados de internados_ghosp_avancado.csv
-- **Validações robustas**: Verificação completa de arquivos e colunas com feedback detalhado
-- **Suporte multiplataforma**: Abertura de arquivos em Windows, macOS e Linux
-
-## 🌌 v9.5.9 Universe - Outubro de 2025
-- Nova função `-std` para filtrar e organizar dados de solicitação de AIH
-- Nova função `-spa` para extração interativa de links de formulários do GHOSP
-- Sistema de captura de URLs com comandos simples ('s' para salvar, 'p' para pular)
-- Clique automático no botão "Gravar" após captura de URL
-- Workflow `-nota` aprimorado com tratamento de dados integrado (-iga → -std → -ign)
-- Filtros inteligentes: remoção de setores específicos, filtro temporal de 48h, filtro de datas ±15 dias
-- Organização automática de registros com campo 'dados' vazio
-- Interface interativa para processamento manual de formulários
-- Melhorias na robustez do tratamento de dados CSV
-
-## 🌌 v9.5.8 Universe - Outubro de 2025
-- Nova função `-tat` para tratamento automatizado de motivos de alta
-- Nova função `-clc` para limpeza inteligente de cache com proteção de arquivos
-- Workflow `-alta` aprimorado com tratamento de dados e limpeza automática
-- Workflow `-all` interativo com sistema de repetição personalizável
-- Contadores visuais de progresso por ciclo e função
-- Relatórios estatísticos detalhados de execução
-- Otimizações de performance em todo o sistema
-- Melhorias na experiência do usuário com prompts interativos
-
-## 🌌 v9.5.6 Universe - Outubro de 2025
-- Nova função `-iga` para extração avançada de dados de internados do GHOSP
-- Nova função `-ign` para extração de notas de prontuários com atualização de setor
-- Novo workflow `-nota` para processamento completo de dados e notas
-- Sistema de mapeamento inteligente de setores hospitalares
-- Ordenação automática de dados por setor nos CSVs
-- Tratamento universal de dados numéricos (remoção de pontos e .0)
-- Fallback automático CNS/CPF para identificação de pacientes
-- Contadores de progresso em tempo real [x/xx]
-- Limpeza automática de CSVs mantendo apenas registros para revisão
-- Relatórios estatísticos de distribuição de pacientes por setor
-- Melhorias na robustez do tratamento de dados em todos os módulos
-
-## 🌌 v9.5.0 Universe - Outubro de 2025
-- Nova função `-css` para consulta de status de solicitações no SISREG
-- Sistema automático de atualização de status em CSVs
-- Processamento em lote de múltiplas solicitações
-- Feedback em tempo real durante as consultas
-- Logs detalhados de todas as operações
-- Tratamento inteligente de diferentes status
-
-## 🌌 v9.0.0 Universe - Outubro de 2025
-
-- Nova sequência de workflow `-solicita` para automatizar o processo completo de solicitações
-- Nova função `-snt` para inserir números de solicitação SISREG em notas de prontuário
-- Sistema inteligente de detecção e tratamento de dados faltantes em CSVs
-- Limpeza automática de formatos numéricos (.0) nos códigos de solicitação
-- Marcação automática de registros que precisam de revisão
-- Interface CLI atualizada com novas opções e feedbacks
-- Melhorias na robustez do tratamento de dados
-
-## 🌌 v8.5.0 Universe - Setembro de 2025
-
-- Instalador universal refeito: install.sh (Linux/macOS) e install.bat (Windows) agora detectam pasta do usuário, movem dados para ~/.autoreg, criam pasta ~/AutoReg, geram log, verificam Python3, criam venv, instalam dependências e configuram alias global.
-- Novos workflows agrupados: flags -interna, -analisa, -alta para execução de rotinas completas.
-- Ajuda CLI aprimorada: todas as flags e agrupamentos aparecem corretamente no --help.
-- Função pdf2csv para conversão de PDF em CSV com extração e limpeza de dados.
-- Função ghosp_nota para extração automatizada de notas de prontuários do G-HOSP, processando múltiplos códigos do CSV e salvando resultados.
-- Loop automatizado para busca sequencial de prontuários e extração de lembretes.
-- Atualização dinâmica do CSV com coluna 'dados'.
-
-## 🌌 Versão 8.0.0 Universe - Julho de 2025
-
-**Coordenador de Workflow Multiplataforma**
-
-- **Autor**: Michel Ribeiro Paes (MrPaC6689)
-- **Repositório**: https://github.com/Mrpac6689/AutoReg
-- **Contato**: michelrpaes@gmail.com
-- **Desenvolvido com**: ChatGPT 4.1 e Claude 3.7 Sonnet
-- **Python**: 3.7+ (Compatível com 3.12.8)
-- **Plataformas**: Windows, macOS, Linux
+[![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-GPL%20v3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Version](https://img.shields.io/badge/Version-9.7.0-orange.svg)](https://github.com/Mrpac6689/AutoReg)
 
 ---
 
-## 🎯 Principais Novidades da v8.0.0 Universe
+## 📋 Índice
 
-### 🔄 **Arquitetura Modular Completa**
-- **Refatoração total**: Código dividido em módulos independentes na pasta `autoreg/`
-- **Coordenador de Workflow**: `autoreg.py` como orquestrador principal
-- **Imports otimizados**: Sistema de importação limpo e organizados
-
-### 🖥️ **Interface de Linha de Comando Avançada**
-- **12 funções individuais** com flags específicas (`-eci`, `-ip`, `-eis`, etc.)
-- **Execução sequencial**: Múltiplas funções em uma chamada (`autoreg -eci -ip -eis`)
-- **Workflow completo**: Flag `--all` executa todas as funções automaticamente
-- **Configuração integrada**: `--config` para editar credenciais
-- **Gestão de arquivos**: `--directory` para acessar pasta de trabalho
-
-### 🚀 **Sistema de Instalação Universal**
-- **Scripts multiplataforma**: `install.sh` (Linux/macOS) e `install.bat` (Windows)
-- **Detecção automática**: Sistema operacional, Python, pip e venv
-- **Instalação de dependências**: Automática por distro Linux/Homebrew/Manual Windows
-- **Ambiente virtual isolado**: Instalação em `~/.autoreg/` sem conflitos
-- **PATH global**: Comando `autoreg` disponível globalmente
-- **Desinstalação limpa**: Script `uninstall.sh` para remoção completa
-
-### 📋 **Funções Disponíveis**
-| Flag | Função | Descrição |
-|------|--------|-----------|
-| `-eci` | `extrai_codigos_internacao` | Extrai códigos de internação do SISREG |
-| `-ip` | `interna_pacientes` | Realiza internação de pacientes no SISREG |
-| `-eis` | `extrai_internados_sisreg` | Extrai lista de internados do SISREG |
-| `-eig` | `extrai_internados_ghosp` | Extrai lista de internados do G-HOSP |
-| `-ci` | `compara_internados` | Compara listas de internados entre sistemas |
-| `-ma` | `motivo_alta` | Captura motivos de alta no G-HOSP |
-| `-tat` | `trata_altas` | Trata Motivos de Alta capturados |
-| `-ecsa` | `extrai_codigos_sisreg_alta` | Extrai códigos SISREG para alta |
-| `-ea` | `executa_alta` | Executa altas no SISREG |
-| `-ar` | `atualiza_restos` | Atualiza arquivo de pacientes restantes |
-| `-eid` | `extrai_internacoes_duplicadas` | Identifica internações duplicadas |
-| `-td` | `trata_duplicados` | Processa pacientes com duplicações |
-| `-clc` | `limpa_cache` | Limpa cache mantendo arquivos protegidos |
-| `-dev` | `devolvidos` | Processa solicitações devolvidas |
-
-### 🛠️ **Melhorias Técnicas**
-- **Logging estruturado**: Sistema de logs melhorado
-- **Tratamento de erros**: Feedback detalhado e recuperação automática
-- **Configuração flexível**: Suporte a diferentes ambientes hospitalares
-- **Performance otimizada**: Execução mais rápida e eficiente
+- [Sobre o AutoReg](#sobre-o-autoreg)
+- [Funcionalidades Principais](#funcionalidades-principais)
+- [Tecnologias Utilizadas](#tecnologias-utilizadas)
+- [Integração com KASM Workspaces](#integração-com-kasm-workspaces)
+- [Interface Web - Autoreg-WEB](#interface-web---autoreg-web)
+- [Instalação](#instalação)
+- [Uso](#uso)
+- [Configuração](#configuração)
+- [Licença](#licença)
+- [Contribuindo](#contribuindo)
+- [Contato](#contato)
 
 ---
 
-# 📝 Descrição
+## 🌟 Sobre o AutoReg
 
-O **AutoReg v8.0.0 Universe** é um sistema completo de automação para processos hospitalares, oferecendo um **coordenador de workflow inteligente** que integra os sistemas SISREG e G-HOSP. Esta versão representa uma evolução significativa com **arquitetura modular**, **interface de linha de comando avançada** e **instalação universal**.
+O **AutoReg** é uma solução completa de automação desenvolvida especificamente para otimizar e automatizar processos operacionais em sistemas de saúde, com foco na integração entre os sistemas **SISREG** (Sistema de Regulação) e **G-HOSP** (Sistema de Gestão Hospitalar).
 
-## 🎯 **Características Principais**
+Desenvolvido com uma arquitetura modular e interface de linha de comando intuitiva, o AutoReg permite que profissionais de saúde e equipes administrativas hospitalares automatizem tarefas repetitivas e complexas, reduzindo significativamente o tempo de processamento e minimizando erros manuais.
 
-### 🔧 **Coordenador de Workflow**
-- **Execução orquestrada**: Controle centralizado de todas as funções
-- **Linha de comando intuitiva**: Interface CLI com flags mnêmicas
-- **Execução flexível**: Individual, sequencial ou workflow completo
-- **Feedback em tempo real**: Progresso detalhado com emojis e cores
+### 🎯 Objetivos Principais
 
-### 🏗️ **Arquitetura Modular**
-- **Módulos independentes**: Cada função em arquivo separado
-- **Imports otimizados**: Sistema de dependências limpo
-- **Manutenibilidade**: Código organizado e documentado
-- **Escalabilidade**: Fácil adição de novas funcionalidades
+- **Automatização Completa**: Reduzir a necessidade de intervenção manual em processos rotineiros
+- **Integração de Sistemas**: Facilitar a comunicação e sincronização entre SISREG e G-HOSP
+- **Eficiência Operacional**: Aumentar a produtividade das equipes hospitalares
+- **Confiabilidade**: Garantir precisão e consistência nas operações automatizadas
+- **Flexibilidade**: Suportar diferentes ambientes e configurações hospitalares
 
-### 🌐 **Multiplataforma Universal**
-- **Instalação automática**: Scripts para Windows, macOS e Linux
-- **Detecção inteligente**: Identificação automática de dependências
-- **Ambiente isolado**: Virtual environment dedicado
-- **Comando global**: Acesso via `autoreg` de qualquer local
+---
 
-# ⚡ **Funcionalidades Principais**
+## ⚡ Funcionalidades Principais
 
-## 🏥 **Módulo de Internação**
-- **Extração automática**: Códigos de internação do SISREG (`-eci`)
-- **Internação inteligente**: Processo automatizado de internação (`-ip`)
-- **Identificação de duplicatas**: Detecção e tratamento de internações duplicadas (`-eid`, `-td`)
+### 🏥 Módulo de Internação
 
-## 🚪 **Módulo de Alta**
-- **Comparação de sistemas**: Análise entre SISREG e G-HOSP (`-ci`)
-- **Captura de motivos**: Extração automática de motivos de alta (`-ma`)
-- **Execução de altas**: Processamento automatizado no SISREG (`-ea`)
-- **Gestão de pendências**: Tratamento de pacientes restantes (`-ar`)
+- **Extração Automática de Códigos** (`-eci`): Coleta códigos de internação diretamente do SISREG
+- **Internação Automatizada** (`-ip`): Processa internações de pacientes de forma automatizada
+- **Detecção de Duplicatas** (`-eid`, `-td`): Identifica e trata internações duplicadas automaticamente
+- **Extração Avançada** (`-iga`): Extrai dados detalhados de pacientes internados no G-HOSP
 
-## 📊 **Módulo de Dados**
-- **Extração SISREG**: Lista completa de internados (`-eis`)
-- **Extração G-HOSP**: Lista de pacientes no sistema hospitalar (`-eig`)
-- **Códigos para alta**: Extração de códigos SISREG específicos (`-ecsa`)
-- **Solicitações devolvidas**: Processamento de devoluções (`-dev`)
+### 🚪 Módulo de Alta
 
-## 🏥 **Módulo de Produção Ambulatorial** (NOVO v9.6.6)
-- **Extração de códigos**: Coleta automática de códigos de solicitação com checkpoint (`-pra`)
-- **Extração de dados**: Captura detalhada de informações de cada solicitação (`-pad`)
-- **Processamento em lote**: Suporte para milhares de registros
-- **Sistema de checkpoint**: Retomada automática em caso de interrupção
-- **Salvamento incremental**: Gravação a cada 10 páginas processadas
+- **Comparação de Sistemas** (`-ci`): Compara listas de internados entre SISREG e G-HOSP
+- **Captura de Motivos** (`-ma`): Extrai automaticamente motivos de alta do G-HOSP
+- **Tratamento de Altas** (`-tat`): Processa e organiza motivos de alta capturados
+- **Execução de Altas** (`-ea`): Realiza altas no SISREG de forma automatizada
+- **Gestão de Pendências** (`-ar`): Atualiza e gerencia pacientes restantes
 
-## 🔄 **Workflows Inteligentes**
-- **Execução individual**: Funções específicas conforme necessidade
-- **Execução sequencial**: Múltiplas funções em ordem (`autoreg -eci -ip -eis`)
-- **Workflow completo**: Todas as funções automaticamente (`autoreg --all`)
-- **Recuperação de erros**: Parada inteligente e relatórios detalhados
+### 📊 Módulo de Dados e Relatórios
 
+- **Extração SISREG** (`-eis`): Extrai listas completas de internados do SISREG
+- **Extração G-HOSP** (`-eig`): Coleta dados de pacientes do sistema hospitalar
+- **Produção Ambulatorial** (`-pra`, `-pad`): Extrai códigos e dados detalhados de produção ambulatorial
+- **Produção GMUs** (`-pag`): Extração especializada para Gestão de Múltiplas Unidades
+- **Consulta de Status** (`-css`): Consulta status de solicitações no SISREG
 
-# 🚀 Instalação Rápida (v8.5.0)
+### 🔬 Módulo de Exames Ambulatoriais
 
-## 📋 Pré-requisitos
-- Python 3.7+
-- pip
-- Git (para clonar o repositório)
+- **Extração de Exames** (`-eae`): Extrai dados de exames a solicitar do G-HOSP
+- **Solicitação Automatizada** (`-eas`): Executa solicitações de exames no SISREG
+- **Geração de Relatórios** (`-ear`): Gera PDFs unificados de solicitações de exames
 
-## ⚡ Instalação Automática
+### 📋 Módulo de Solicitações e AIHs
 
-### 🐧 Linux / 🍎 macOS
+- **Solicitação de AIH** (`-sia`): Extrai informações de Autorização de Internação Hospitalar
+- **Processamento SISREG** (`-ssr`): Executa solicitações no sistema SISREG
+- **Tratamento de Dados** (`-std`): Ajusta e organiza dados para processamento
+- **Extração de Links** (`-spa`): Extrai links de formulários do G-HOSP
+- **Inserção de Notas** (`-snt`): Insere números de solicitação em notas de prontuário
+
+### 🔄 Workflows Agrupados
+
+- **`-interna`**: Executa rotina completa de internação
+- **`-analisa`**: Executa análise e comparação entre sistemas
+- **`-alta`**: Executa rotina completa de alta (inclui tratamento e limpeza)
+- **`-solicita`**: Executa rotina completa de solicitação
+- **`-aihs`**: Executa rotina completa de processamento de AIHs
+- **`--all`**: Executa todas as funções principais com repetição interativa
+
+### 🛠️ Utilitários
+
+- **Limpeza de Cache** (`-clc`): Limpa arquivos temporários mantendo dados importantes
+- **Processamento de Devolvidos** (`-dev`): Trata solicitações devolvidas
+- **Conversão PDF para CSV** (`-p2c`): Converte PDFs de solicitações em formato CSV
+- **Extração de Notas** (`-ghn`): Extrai notas de prontuários do G-HOSP
+- **Extração de CNS** (`-ghc`): Extrai números de CNS dos prontuários
+
+---
+
+## 🛠️ Tecnologias Utilizadas
+
+O AutoReg é construído utilizando uma stack tecnológica moderna e robusta, garantindo alta performance, confiabilidade e facilidade de manutenção:
+
+### 🐍 Linguagem e Ambiente
+
+- **Python 3.7+** (compatível até 3.13): Linguagem principal de desenvolvimento
+- **Virtual Environment (venv)**: Isolamento de dependências
+- **ConfigParser**: Gerenciamento de configurações
+
+### 🌐 Automação Web
+
+- **Selenium 4.32.0**: Framework principal para automação de navegadores
+  - Automação de interações com sistemas web
+  - Navegação e preenchimento de formulários
+  - Extração de dados de páginas dinâmicas
+- **ChromeDriver**: Driver para automação do Google Chrome
+- **BeautifulSoup4 4.13.4**: Parsing e extração de dados HTML/XML
+- **Requests 2.32.3**: Cliente HTTP para comunicação com APIs
+
+### 📊 Processamento de Dados
+
+- **Pandas 2.2.3**: Manipulação e análise de dados estruturados
+  - Leitura e escrita de arquivos CSV
+  - Transformação e limpeza de dados
+  - Operações de agregação e filtragem
+- **NumPy 2.2.5**: Computação numérica e operações matemáticas
+- **Python-dateutil 2.9.0**: Manipulação avançada de datas e horários
+- **Pytz 2025.2**: Suporte a fusos horários
+
+### 📄 Processamento de Documentos
+
+- **PyPDF2**: Manipulação de arquivos PDF
+- **pdf2image 1.17.0**: Conversão de PDFs para imagens
+- **Pillow 11.2.1**: Processamento de imagens
+- **Pytesseract 0.3.13**: OCR (Optical Character Recognition) para extração de texto de imagens
+
+### 🖥️ Interface e Interação
+
+- **Pyperclip 1.9.0**: Manipulação da área de transferência
+- **Pynput**: Controle de mouse e teclado
+- **PyScreeze 1.0.1**: Captura de telas
+- **PyRect 0.2.0**: Manipulação de coordenadas e retângulos
+- **Pytweening 1.2.0**: Animações e transições suaves
+
+### 🔐 Segurança e Comunicação
+
+- **Certifi 2025.4.26**: Certificados SSL/TLS
+- **Urllib3 2.4.0**: Cliente HTTP de baixo nível
+- **WebSocket-client 1.8.0**: Comunicação WebSocket
+- **Trio 0.30.0**: Framework assíncrono para I/O
+- **Trio-websocket 0.12.2**: WebSocket assíncrono
+
+### 🐳 Containerização e Deploy
+
+- **Docker**: Empacotamento em containers
+- **Kasm Workspaces**: Integração com ambientes VNC/noVNC para sistemas headless
+
+### 📦 Outras Dependências
+
+- **Attrs 25.3.0**: Classes de dados e validação
+- **Charset-normalizer 3.4.2**: Detecção de encoding
+- **Exceptiongroup 1.3.0**: Tratamento de exceções agrupadas
+- **Sortedcontainers 2.4.0**: Estruturas de dados ordenadas
+- **Zope.interface 7.2**: Sistema de interfaces
+
+---
+
+## 🖥️ Integração com KASM Workspaces
+
+O AutoReg oferece suporte completo para execução em ambientes **headless** através da integração com **KASM Workspaces**, permitindo que o sistema seja executado em servidores sem interface gráfica, acessível remotamente via VNC/noVNC.
+
+### 🎯 Benefícios da Integração KASM
+
+- **Execução em Servidores**: Permite rodar o AutoReg em servidores sem interface gráfica
+- **Acesso Remoto**: Interface gráfica acessível via navegador web através do noVNC
+- **Centralização**: Gerenciamento centralizado de múltiplas instâncias
+- **Isolamento**: Cada execução roda em um container isolado
+- **Escalabilidade**: Fácil escalonamento horizontal conforme demanda
+
+### 🐳 Configuração Docker + KASM
+
+O projeto inclui um Dockerfile otimizado baseado na imagem oficial do Kasm Workspaces (`kasmweb/ubuntu-jammy-desktop`), que inclui:
+
+- Ambiente gráfico completo (XFCE Desktop)
+- Servidor VNC/noVNC configurado
+- Google Chrome e ChromeDriver pré-instalados
+- Todas as dependências Python necessárias
+- Estrutura de diretórios do AutoReg configurada
+
+### 📝 Como Usar com KASM
+
+1. **Construir a Imagem Docker**:
+   ```bash
+   cd empacotar_kasmvnc
+   docker build -t autoreg-kasm:latest .
+   ```
+
+2. **Registrar no Kasm Workspaces**:
+   - Importe a imagem no painel administrativo do Kasm
+   - Configure as portas VNC/noVNC necessárias
+   - Defina recursos (CPU, memória) conforme necessário
+
+3. **Configurar Volumes**:
+   - Mapeie volumes para persistência de dados (`~/AutoReg`, `~/.autoreg`)
+   - Configure variáveis de ambiente para credenciais (usando Kasm Secrets)
+
+4. **Acessar via Interface Web**:
+   - Acesse o workspace através do painel do Kasm
+   - Interface gráfica disponível via noVNC no navegador
+   - Execute o AutoReg normalmente através do terminal
+
+### 🔒 Segurança
+
+- **Credenciais Protegidas**: Use Kasm Secrets para gerenciar credenciais sensíveis
+- **Isolamento de Rede**: Containers isolados com controle de acesso
+- **SSL/TLS**: Comunicação segura via HTTPS
+- **Auditoria**: Logs de acesso e execução disponíveis
+
+Para mais detalhes sobre a configuração, consulte a pasta `empacotar_kasmvnc/` no repositório.
+
+---
+
+## 🌐 Interface Web - Autoreg-WEB
+
+O AutoReg possui uma **interface web complementar** que oferece uma experiência visual e interativa para gerenciamento e operação do sistema através de chamadas de API.
+
+### 🔗 Autoreg-WEB
+
+**Repositório**: [github.com/mrpac6689/web-autoreg](https://github.com/mrpac6689/web-autoreg)
+
+O **Autoreg-WEB** é uma aplicação web desenvolvida para fornecer:
+
+- **Dashboard Interativo**: Visualização de estatísticas e métricas em tempo real
+- **Gerenciamento de Rotinas**: Interface gráfica para executar workflows do AutoReg
+- **Monitoramento**: Acompanhamento de execuções e logs
+- **Configuração Visual**: Interface para gerenciar credenciais e configurações
+- **Relatórios**: Geração e visualização de relatórios de produção
+- **API RESTful**: Endpoints para integração com outros sistemas
+
+### 🚀 Funcionalidades do Autoreg-WEB
+
+- Execução de rotinas via interface web
+- Visualização de logs em tempo real
+- Gerenciamento de arquivos CSV gerados
+- Configuração de credenciais de forma segura
+- Histórico de execuções
+- Estatísticas e gráficos de produção
+
+### 🔌 Integração
+
+O AutoReg pode enviar relatórios de produção para o Autoreg-WEB através da flag `-R` (registro de produção), que envia dados via API REST para registro e análise.
+
+Para mais informações e documentação completa, visite o repositório do [Autoreg-WEB](https://github.com/mrpac6689/web-autoreg).
+
+---
+
+## 🚀 Instalação
+
+### 📋 Pré-requisitos
+
+- **Python 3.7 ou superior** (testado até Python 3.13)
+- **pip** (gerenciador de pacotes Python)
+- **Git** (para clonar o repositório)
+- **Google Chrome** (navegador atualizado)
+- **Conexão à Internet** (para instalação de dependências)
+
+### Passo-a-passo:
+
 ```bash
+# Clone o repositório
 git clone https://github.com/Mrpac6689/AutoReg.git
 cd AutoReg
-./install.sh
+
+# Crie o ambiente virtual
+python3 -m venv ~/.autoreg/venv
+
+# Ative o ambiente virtual
+source ~/.autoreg/venv/bin/activate  # Linux/macOS
+# ou
+~/.autoreg/venv\Scripts\activate  # Windows
+
+# Instale as dependências
+pip install -r requirements.txt
+
+# Configure o alias (Linux/macOS)
+echo 'alias autoreg="~/.autoreg/venv/bin/python3 ~/.autoreg/autoreg.py"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
-### 🪟 Windows
-```cmd
-git clone https://github.com/Mrpac6689/AutoReg.git
-cd AutoReg
-install.bat
-```
+---
 
-### 🛠️ O que o instalador faz (v8.5.0)
-1. Identifica a pasta do usuário
-2. Move os dados da aplicação para `~/.autoreg`
-3. Cria a pasta `~/AutoReg`
-4. Cria o arquivo vazio `~/AutoReg/autoreg.log`
-5. Acessa o diretório da aplicação `~/.autoreg`
-6. Verifica a existência do Python3.x, se não houver, avisa o usuário para instalar
-7. Verifica a existência do ambiente virtual venv. Se não houver, cria em `~/.autoreg/venv`
-8. No ambiente virtual, executa `pip install -r requirements.txt`
-9. Determina o caminho absoluto de `~/.autoreg/venv/bin/python3` e de `~/.autoreg/autoreg.py`
-10. Identifica o terminal padrão, bash ou zsh
-11. Acrescenta em `~/.bashrc` ou `~/.zshrc` o alias para execução global:
-	```bash
-	alias autoreg="/caminho/absoluto/venv/bin/python3 /caminho/absoluto/.autoreg/autoreg.py"
-	```
+## 📖 Uso
 
-## 🎯 Uso Rápido
+### 🎯 Comandos Básicos
 
-Após a instalação, use o comando `autoreg` de qualquer lugar no sistema:
-
-### 📋 **Comandos Básicos**
 ```bash
 # Ver todas as opções disponíveis
 autoreg --help
@@ -555,50 +305,62 @@ autoreg --config
 autoreg --directory
 ```
 
+### 🔧 Execução de Funções Individuais
 
-### 🔧 **Execução de Funções e Workflows Agrupados**
 ```bash
-# Função individual
-autoreg -eci                    # Extrai códigos de internação
-autoreg -ip                     # Interna pacientes
-autoreg -ma                     # Captura motivos de alta
-autoreg -tat                    # Trata motivos de alta capturados
-autoreg -clc                    # Limpa cache da pasta ~/AutoReg
-autoreg -snt                    # Insere número da solicitação na nota
-autoreg -std                    # Ajusta CSV para tratamento de AIH
-autoreg -spa                    # Extrai links de formulários do GHOSP
+# Extração de códigos de internação
+autoreg -eci
 
-# Múltiplas funções em sequência
-autoreg -eci -ip                # Extrai códigos e interna
-autoreg -eis -eig -ci           # Extrai listas e compara
-autoreg -ma -tat -ecsa -ea      # Workflow de alta completo
-autoreg -spa -sia -ssr -snt     # Workflow de solicitação manual
-autoreg -iga -ign -std          # Workflow de AIHs
+# Internação de pacientes
+autoreg -ip
 
-# Workflows agrupados
-autoreg -interna                # Executa rotina de internação completa
-autoreg -analisa                # Executa rotina de análise/comparação
-autoreg -alta                   # Executa rotina de alta completa (inclui -tat e -clc)
-autoreg -solicita               # Executa rotina de solicitação completa (inclui -spa)
-autoreg -aihs                   # Executa rotina de AIHs completa (inclui -std)
+# Captura de motivos de alta
+autoreg -ma
 
-# Registro de produção na AUTOREG-API (flag -R, opcional)
-autoreg -solicita -R             # Executa solicitação e envia relatório (registros de internados_ghosp_avancado.csv)
-autoreg -interna -R             # Executa internação e envia relatório (registros de codigos_internacao.csv)
-autoreg -alta -R                 # Executa alta e envia relatório (registros de pacientes_de_alta.csv)
+# Tratamento de altas
+autoreg -tat
 
-# Workflow completo (todas as funções principais com repetição interativa)
-autoreg --all                   # Executa tudo com prompt de repetição
-
-# Função especializada
-autoreg -dev                    # Processa devolvidos (separadamente)
-
-# Extração de produção ambulatorial (NOVO v9.6.6)
-autoreg -pra                    # Extrai códigos de solicitação (com checkpoint)
-autoreg -pad                    # Extrai dados detalhados das solicitações
+# Limpeza de cache
+autoreg -clc
 ```
 
-### 💡 **Exemplos Práticos**
+### 🔄 Execução de Workflows Agrupados
+
+```bash
+# Rotina completa de internação
+autoreg -interna
+
+# Rotina de análise/comparação
+autoreg -analisa
+
+# Rotina completa de alta (inclui tratamento e limpeza)
+autoreg -alta
+
+# Rotina completa de solicitação
+autoreg -solicita
+
+# Rotina completa de AIHs
+autoreg -aihs
+
+# Executa todas as funções principais com repetição interativa
+autoreg --all
+```
+
+### 📤 Registro de Produção na API
+
+```bash
+# Executa solicitação e envia relatório para AUTOREG-API
+autoreg -solicita -R
+
+# Executa internação e envia relatório
+autoreg -interna -R
+
+# Executa alta e envia relatório
+autoreg -alta -R
+```
+
+### 💡 Exemplos Práticos
+
 ```bash
 # Rotina matinal de internação
 autoreg -interna
@@ -606,77 +368,21 @@ autoreg -interna
 # Rotina de alta de pacientes (com tratamento e limpeza)
 autoreg -alta
 
-# Rotina de análise/comparação
-autoreg -analisa
+# Sistema completo de exames ambulatoriais
+autoreg -eae    # Extrai dados de exames
+autoreg -eas    # Executa solicitações
+autoreg -ear    # Gera relatórios PDF
 
-# Extração completa de produção ambulatorial (NOVO v9.6.6)
-# 1. Primeiro extrai os códigos (pode demorar se houver muitas páginas)
-autoreg -pra
-# 2. Depois extrai os dados detalhados de cada código
-autoreg -pad
-
-# Sistema completo de exames ambulatoriais (NOVO v9.7.0)
-# 1. Extrai dados de exames do G-HOSP (procedimentos e CNS)
-autoreg -eae
-# 2. Executa solicitações no SISREG baseado no CSV gerado
-autoreg -eas
-# 3. Gera relatórios PDF das solicitações realizadas
-autoreg -ear
-
-# Se a extração for interrompida (-pra), basta executar novamente
-# O sistema retoma automaticamente de onde parou!
-autoreg -pra  # Retoma da última página processada
-
-# Rotina de processamento de AIHs (com tratamento de dados)
-autoreg -aihs
-
-# Rotina de solicitação completa (com preparação de links)
-autoreg -solicita
-
-# Processamento completo automatizado com 3 repetições
-autoreg --all
-# Quando perguntado: 3
-
-# Limpeza manual de cache
-autoreg -clc
-
-# Tratamento de dados e extração de links de AIH
-autoreg -std -spa
+# Extração de produção ambulatorial
+autoreg -pra    # Extrai códigos (com checkpoint)
+autoreg -pad    # Extrai dados detalhados
 ```
 
-## 📖 Documentação Completa
-- [**INSTALL.md**](INSTALL.md) - Guia detalhado de instalação
-- [**Histórico de Versões**](#-histórico-de-versões) - Changelog completo
-
 ---
 
-# 💻 Requisitos do Sistema
+## ⚙️ Configuração
 
-## 🖥️ **Sistemas Operacionais Suportados**
-- **Linux**: Ubuntu 20.04+, Debian 10+, CentOS 8+, Arch Linux
-- **macOS**: 10.14+ (Mojave ou superior)
-- **Windows**: 10/11 (x64)
-
-## 🐍 **Dependências Python**
-- **Python**: 3.7 ou superior (testado até 3.12.8)
-- **pip**: Gerenciador de pacotes Python
-- **venv**: Ambiente virtual (incluído no Python 3.3+)
-
-## 🌐 **Ferramentas Externas**
-- **Google Chrome**: Navegador atualizado (instalação automática do ChromeDriver)
-- **Git**: Para clonagem do repositório
-- **Conexão à Internet**: Para instalação de dependências
-
-## 🏥 **Acesso aos Sistemas**
-- **Credenciais SISREG**: Usuário e senha válidos
-- **Credenciais G-HOSP**: Usuário, senha e endereço do servidor
-- **Rede hospitalar**: Acesso aos sistemas de gestão hospitalar
-
----
-
-# ⚙️ Configuração
-
-## 📝 **Configuração de Credenciais**
+### 📝 Configuração de Credenciais
 
 Após a instalação, configure suas credenciais:
 
@@ -701,9 +407,7 @@ autoreg_api_key = sua_chave_api
 autoreg_api_relatorio_url = https://exemplo.com/api/externa/relatorio/registrar
 ```
 
-## 📁 **Estrutura de Arquivos**
-
-Após a instalação, os arquivos ficam organizados em:
+### 📁 Estrutura de Arquivos
 
 ```
 ~/.autoreg/                    # Diretório de instalação
@@ -728,153 +432,687 @@ Após a instalação, os arquivos ficam organizados em:
 ├── venv/                      # Ambiente virtual
 ├── config.ini                 # Configurações (criar após instalação)
 └── requirements.txt           # Dependências Python
+
+~/AutoReg/                     # Diretório de trabalho
+├── autoreg.log                # Arquivo de log
+├── *.csv                      # Arquivos CSV gerados
+└── *.pdf                      # Arquivos PDF gerados
 ```
 
 ---
 
-# 🔧 Solução de Problemas
+## 📜 Licença
 
-## ⚠️ **Erros Comuns**
+Este projeto é licenciado sob a **GNU General Public License v3.0 (GPL-3.0)**.
 
-### 🐍 Python não encontrado
-```bash
-# Linux (Ubuntu/Debian)
-sudo apt update && sudo apt install python3 python3-pip python3-venv
+### 📄 Termos da Licença GPL v3
 
-# Linux (CentOS/RHEL)
-sudo yum install python3 python3-pip
+A GPL é uma licença de software livre que garante aos usuários as seguintes liberdades:
 
-# macOS (com Homebrew)
-brew install python3
+- ✅ **Liberdade 0**: Executar o programa para qualquer propósito
+- ✅ **Liberdade 1**: Estudar como o programa funciona e adaptá-lo às suas necessidades
+- ✅ **Liberdade 2**: Redistribuir cópias do programa
+- ✅ **Liberdade 3**: Melhorar o programa e liberar suas melhorias ao público
 
-# Windows
-# Baixar de python.org e marcar "Add to PATH"
-```
+### ⚖️ O que isso Significa
 
-### 🌐 Erro de ChromeDriver
-```bash
-# O AutoReg baixa automaticamente a versão correta
-# Se persistir o erro, atualize o Chrome:
-# - Linux: sudo apt update && sudo apt upgrade google-chrome-stable
-# - macOS: Atualizar via Chrome ou App Store
-# - Windows: Atualizar via Chrome
-```
+- **Uso Comercial**: Permitido
+- **Modificação**: Permitida
+- **Distribuição**: Permitida
+- **Uso Privado**: Permitido
+- **Patente**: Qualquer patente deve ser licenciada para uso livre
+- **Licenciamento de Código Derivado**: Qualquer código derivado deve usar a mesma licença GPL v3
 
-### 🔑 Erro de credenciais
-```bash
-# Verificar configuração
-autoreg --config
+### 📋 Condições
 
-# Testar acesso manual aos sistemas
-# Verificar se as credenciais estão corretas
-```
+Ao usar, modificar ou distribuir este software, você concorda em:
 
-### 📁 Permissões de arquivo
-```bash
-# Linux/macOS - Corrigir permissões
-chmod +x ~/.autoreg/autoreg
-chmod -R 755 ~/.autoreg/
+1. Manter os avisos de copyright e licença
+2. Disponibilizar o código-fonte completo
+3. Licenciar trabalhos derivados sob a GPL v3
+4. Incluir uma cópia da licença GPL v3
 
-# Verificar proprietário
-chown -R $USER:$USER ~/.autoreg/
-```
+### 📖 Texto Completo da Licença
 
----
-  
-
-# 📜 Histórico de Versões
-
-## 🌌 **v8.0.0 Universe** - Julho de 2025
-### 🔄 **Refatoração Completa**
-- **Arquitetura modular**: Código dividido em módulos independentes na pasta `autoreg/`
-- **Coordenador de workflow**: `autoreg.py` como orquestrador principal com CLI avançada
-- **12 funções especializadas**: Cada módulo com responsabilidade única
-- **Sistema de instalação universal**: Scripts para Windows, macOS e Linux
-- **Comando global**: `autoreg` disponível em qualquer local do sistema
-- **Ambiente virtual isolado**: Instalação em `~/.autoreg/` sem conflitos
-- **Interface CLI intuitiva**: Flags mnêmicas e execução sequencial
-- **Documentação completa**: README, INSTALL.md e scripts de exemplo
-
-## 🐧 **v7.0.0-linux** - Maio de 2025
-- Reajustado destino do Download na Função Internhosp
-- Corrigidos destinos de arquivos temporários para concentrar na pasta ~/AutoReg
-- Testes e ajustes de empacotamento e distribuição .deb
-
-## 🔧 **v6.5.1-linux** - Maio de 2025
-- Removidos imports de bibliotecas não utilizadas
-- Removido argumento `zoomed` do ChromeOptions (incompatível com Linux)
-- Adicionado argumento `headless=new` para Chrome em modo oculto
-- Ajuste de foco para frame `f_principal` antes de chamar `configFicha`
-- Substituídos pop-ups por prints no campo de logs
-- Ajustes diversos de caminho de arquivos para ambiente Linux
-
-## 🚀 **v6.0** - 2024
-- Implementada função de internação automatizada
-- Implementada função de alta automatizada
-
-## 🔧 **v5.1.2** - 2024
-- Acrescentados motivos de saída ausentes
-- Rotina para execução autônoma do módulo de Alta
-- Reduzido tempo para captura de altas
-
-## 📊 **v5.0.1** - 2024
-- Funções `captura_cns_restos_alta()`, `motivo_alta_cns()`, `executa_saidas_cns()`
-- Estrutura de diretórios com versões anteriores
-- Interface do módulo alta redesenhada
-- Restaurada função `trazer_terminal()`
-- Atualizada para Python 3.13
-
-## 🏥 **v4.2.3** - 2023
-- Publicado em PyPI.org
-- Pop-ups concentrados em três funções
-- Convertido .ico em base64
-
-## 🎯 **v4.0** - 2023
-- **Funções de Internação**: Captura automatizada e processo completo
-- **Melhorias de Alta**: Configuração HTTP do G-HOSP
-- **Módulos independentes**: Internação e Alta separados
-- **Compilação binária**: .exe para Windows, .app beta para macOS
-
-## 📝 **v3.0** - 2022
-- Extração de códigos de internação SISREG
-- Correlação Nome, Motivo de Alta G-HOSP e Código SISREG
-- Alta automática conforme motivo capturado
-- Interface visual melhorada
-
-## 🔄 **v2.0** - 2021
-- Atualização automática do ChromeDriver
-- Interface gráfica redesenhada com Tkinter
-- Menu "Informações" com documentação integrada
+Para o texto completo da licença GNU GPL v3, consulte:
+- [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.html)
+- Arquivo `LICENSE` no repositório
 
 ---
 
-# 📄 Licença e Créditos
+## 🤝 Contribuindo
 
-## 👨‍💻 **Desenvolvimento**
-- **Autor Principal**: Michel Ribeiro Paes ([MrPaC6689](https://github.com/MrPaC6689))
-- **Contato**: michelrpaes@gmail.com
-- **Repositório**: https://github.com/Mrpac6689/AutoReg
+Contribuições são bem-vindas! Se você deseja contribuir com o projeto:
 
-## 🤖 **Suporte de IA**
+1. **Fork** o repositório
+2. Crie uma **branch** para sua feature (`git checkout -b feature/MinhaFeature`)
+3. **Commit** suas mudanças (`git commit -m 'Adiciona MinhaFeature'`)
+4. **Push** para a branch (`git push origin feature/MinhaFeature`)
+5. Abra um **Pull Request**
+
+### 📝 Diretrizes de Contribuição
+
+- Mantenha o código limpo e documentado
+- Siga os padrões de código existentes
+- Adicione testes quando apropriado
+- Atualize a documentação conforme necessário
+- Respeite a licença GPL v3
+
+---
+
+## 📞 Contato
+
+### 👨‍💻 Desenvolvedor Principal
+
+- **Nome**: Michel Ribeiro Paes
+- **GitHub**: [@Mrpac6689](https://github.com/Mrpac6689)
+- **Email**: michelrpaes@gmail.com
+
+### 🔗 Links Úteis
+
+- **Repositório**: [github.com/Mrpac6689/AutoReg](https://github.com/Mrpac6689/AutoReg)
+- **Interface Web**: [github.com/mrpac6689/web-autoreg](https://github.com/mrpac6689/web-autoreg)
+- **Issues**: [github.com/Mrpac6689/AutoReg/issues](https://github.com/Mrpac6689/AutoReg/issues)
+
+### 🤖 Desenvolvido com Suporte de IA
+
 - **ChatGPT 4.1**: Desenvolvimento e arquitetura
 - **Claude 3.7 Sonnet**: Refatoração e otimização
 
-## 📜 **Licença**
-Este projeto é desenvolvido sob **licença MIT** para fins educacionais e de automação hospitalar. 
+---
 
-### ⚖️ **Termos de Uso**
-- ✅ Uso comercial permitido
-- ✅ Modificação permitida
-- ✅ Distribuição permitida
-- ✅ Uso privado permitido
-- ❗ Sem garantia explícita
-- ❗ Responsabilidade do usuário
+## 📚 Documentação Adicional
 
-## 🏥 **Finalidade**
-O AutoReg foi desenvolvido para facilitar e automatizar processos hospitalares, contribuindo para a eficiência dos profissionais de saúde e melhor atendimento aos pacientes.
+- [CHANGELOG.md](CHANGELOG.md) - Histórico completo de versões e mudanças
+- [LICENSE](LICENSE) - Texto completo da licença GNU GPL v3
 
 ---
 
-**AutoReg v8.0.0 Universe** - *Automatização inteligente para sistemas de saúde* 🚀
+## 🎯 Finalidade
+
+O AutoReg foi desenvolvido para facilitar e automatizar processos hospitalares, contribuindo para a eficiência dos profissionais de saúde e melhor atendimento aos pacientes. Este software visa reduzir a carga de trabalho manual, minimizar erros e permitir que as equipes hospitalares se concentrem em atividades que requerem atenção humana.
+
+---
+
+**AutoReg v9.7.0 Universe** - *Automatização inteligente para sistemas de saúde* 🚀
 
 *Esperamos que o AutoReg continue facilitando sua rotina e contribuindo para processos hospitalares mais eficientes!*
+
+---
+
+---
+
+# AutoReg
+
+**Automated System Operation for Healthcare Systems - SISREG & G-HOSP**
+
+[![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-GPL%20v3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Version](https://img.shields.io/badge/Version-9.7.0-orange.svg)](https://github.com/Mrpac6689/AutoReg)
+
+---
+
+## 📋 Table of Contents
+
+- [About AutoReg](#about-autoreg)
+- [Main Features](#main-features)
+- [Technologies Used](#technologies-used)
+- [KASM Workspaces Integration](#kasm-workspaces-integration)
+- [Web Interface - Autoreg-WEB](#web-interface---autoreg-web)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [License](#license)
+- [Contributing](#contributing)
+- [Contact](#contact)
+
+---
+
+## 🌟 About AutoReg
+
+**AutoReg** is a complete automation solution specifically developed to optimize and automate operational processes in healthcare systems, focusing on integration between **SISREG** (Regulation System) and **G-HOSP** (Hospital Management System).
+
+Developed with a modular architecture and intuitive command-line interface, AutoReg allows healthcare professionals and hospital administrative teams to automate repetitive and complex tasks, significantly reducing processing time and minimizing manual errors.
+
+### 🎯 Main Objectives
+
+- **Complete Automation**: Reduce the need for manual intervention in routine processes
+- **System Integration**: Facilitate communication and synchronization between SISREG and G-HOSP
+- **Operational Efficiency**: Increase productivity of hospital teams
+- **Reliability**: Ensure accuracy and consistency in automated operations
+- **Flexibility**: Support different environments and hospital configurations
+
+---
+
+## ⚡ Main Features
+
+### 🏥 Admission Module
+
+- **Automatic Code Extraction** (`-eci`): Collects admission codes directly from SISREG
+- **Automated Admission** (`-ip`): Processes patient admissions automatically
+- **Duplicate Detection** (`-eid`, `-td`): Identifies and handles duplicate admissions automatically
+- **Advanced Extraction** (`-iga`): Extracts detailed data from patients admitted in G-HOSP
+
+### 🚪 Discharge Module
+
+- **System Comparison** (`-ci`): Compares lists of admitted patients between SISREG and G-HOSP
+- **Reason Capture** (`-ma`): Automatically extracts discharge reasons from G-HOSP
+- **Discharge Processing** (`-tat`): Processes and organizes captured discharge reasons
+- **Discharge Execution** (`-ea`): Performs discharges in SISREG automatically
+- **Pending Management** (`-ar`): Updates and manages remaining patients
+
+### 📊 Data and Reports Module
+
+- **SISREG Extraction** (`-eis`): Extracts complete lists of admitted patients from SISREG
+- **G-HOSP Extraction** (`-eig`): Collects patient data from the hospital system
+- **Outpatient Production** (`-pra`, `-pad`): Extracts codes and detailed data from outpatient production
+- **GMUs Production** (`-pag`): Specialized extraction for Multiple Units Management
+- **Status Query** (`-css`): Queries request status in SISREG
+
+### 🔬 Outpatient Exams Module
+
+- **Exam Extraction** (`-eae`): Extracts exam data to request from G-HOSP
+- **Automated Request** (`-eas`): Executes exam requests in SISREG
+- **Report Generation** (`-ear`): Generates unified PDFs of exam requests
+
+### 📋 Requests and AIHs Module
+
+- **AIH Request** (`-sia`): Extracts Hospital Admission Authorization information
+- **SISREG Processing** (`-ssr`): Executes requests in the SISREG system
+- **Data Processing** (`-std`): Adjusts and organizes data for processing
+- **Link Extraction** (`-spa`): Extracts form links from G-HOSP
+- **Note Insertion** (`-snt`): Inserts request numbers in medical record notes
+
+### 🔄 Grouped Workflows
+
+- **`-interna`**: Executes complete admission routine
+- **`-analisa`**: Executes analysis and comparison between systems
+- **`-alta`**: Executes complete discharge routine (includes processing and cleanup)
+- **`-solicita`**: Executes complete request routine
+- **`-aihs`**: Executes complete AIH processing routine
+- **`--all`**: Executes all main functions with interactive repetition
+
+### 🛠️ Utilities
+
+- **Cache Cleanup** (`-clc`): Cleans temporary files keeping important data
+- **Returned Processing** (`-dev`): Handles returned requests
+- **PDF to CSV Conversion** (`-p2c`): Converts request PDFs to CSV format
+- **Note Extraction** (`-ghn`): Extracts notes from G-HOSP medical records
+- **CNS Extraction** (`-ghc`): Extracts CNS numbers from medical records
+
+---
+
+## 🛠️ Technologies Used
+
+AutoReg is built using a modern and robust technology stack, ensuring high performance, reliability, and ease of maintenance:
+
+### 🐍 Language and Environment
+
+- **Python 3.7+** (compatible up to 3.13): Main development language
+- **Virtual Environment (venv)**: Dependency isolation
+- **ConfigParser**: Configuration management
+
+### 🌐 Web Automation
+
+- **Selenium 4.32.0**: Main framework for browser automation
+  - Automation of web system interactions
+  - Navigation and form filling
+  - Data extraction from dynamic pages
+- **ChromeDriver**: Driver for Google Chrome automation
+- **BeautifulSoup4 4.13.4**: HTML/XML parsing and data extraction
+- **Requests 2.32.3**: HTTP client for API communication
+
+### 📊 Data Processing
+
+- **Pandas 2.2.3**: Structured data manipulation and analysis
+  - CSV file reading and writing
+  - Data transformation and cleaning
+  - Aggregation and filtering operations
+- **NumPy 2.2.5**: Numerical computation and mathematical operations
+- **Python-dateutil 2.9.0**: Advanced date and time manipulation
+- **Pytz 2025.2**: Timezone support
+
+### 📄 Document Processing
+
+- **PyPDF2**: PDF file manipulation
+- **pdf2image 1.17.0**: PDF to image conversion
+- **Pillow 11.2.1**: Image processing
+- **Pytesseract 0.3.13**: OCR (Optical Character Recognition) for text extraction from images
+
+### 🖥️ Interface and Interaction
+
+- **Pyperclip 1.9.0**: Clipboard manipulation
+- **Pynput**: Mouse and keyboard control
+- **PyScreeze 1.0.1**: Screen capture
+- **PyRect 0.2.0**: Coordinate and rectangle manipulation
+- **Pytweening 1.2.0**: Smooth animations and transitions
+
+### 🔐 Security and Communication
+
+- **Certifi 2025.4.26**: SSL/TLS certificates
+- **Urllib3 2.4.0**: Low-level HTTP client
+- **WebSocket-client 1.8.0**: WebSocket communication
+- **Trio 0.30.0**: Asynchronous I/O framework
+- **Trio-websocket 0.12.2**: Asynchronous WebSocket
+
+### 🐳 Containerization and Deploy
+
+- **Docker**: Container packaging
+- **Kasm Workspaces**: Integration with VNC/noVNC environments for headless systems
+
+### 📦 Other Dependencies
+
+- **Attrs 25.3.0**: Data classes and validation
+- **Charset-normalizer 3.4.2**: Encoding detection
+- **Exceptiongroup 1.3.0**: Grouped exception handling
+- **Sortedcontainers 2.4.0**: Ordered data structures
+- **Zope.interface 7.2**: Interface system
+
+---
+
+## 🖥️ KASM Workspaces Integration
+
+AutoReg offers complete support for execution in **headless** environments through integration with **KASM Workspaces**, allowing the system to run on servers without a graphical interface, accessible remotely via VNC/noVNC.
+
+### 🎯 Benefits of KASM Integration
+
+- **Server Execution**: Allows running AutoReg on servers without a graphical interface
+- **Remote Access**: Graphical interface accessible via web browser through noVNC
+- **Centralization**: Centralized management of multiple instances
+- **Isolation**: Each execution runs in an isolated container
+- **Scalability**: Easy horizontal scaling according to demand
+
+### 🐳 Docker + KASM Configuration
+
+The project includes an optimized Dockerfile based on the official Kasm Workspaces image (`kasmweb/ubuntu-jammy-desktop`), which includes:
+
+- Complete graphical environment (XFCE Desktop)
+- Configured VNC/noVNC server
+- Pre-installed Google Chrome and ChromeDriver
+- All necessary Python dependencies
+- Configured AutoReg directory structure
+
+### 📝 How to Use with KASM
+
+1. **Build Docker Image**:
+   ```bash
+   cd empacotar_kasmvnc
+   docker build -t autoreg-kasm:latest .
+   ```
+
+2. **Register in Kasm Workspaces**:
+   - Import the image in the Kasm administrative panel
+   - Configure necessary VNC/noVNC ports
+   - Set resources (CPU, memory) as needed
+
+3. **Configure Volumes**:
+   - Map volumes for data persistence (`~/AutoReg`, `~/.autoreg`)
+   - Configure environment variables for credentials (using Kasm Secrets)
+
+4. **Access via Web Interface**:
+   - Access the workspace through the Kasm panel
+   - Graphical interface available via noVNC in the browser
+   - Run AutoReg normally through the terminal
+
+### 🔒 Security
+
+- **Protected Credentials**: Use Kasm Secrets to manage sensitive credentials
+- **Network Isolation**: Isolated containers with access control
+- **SSL/TLS**: Secure communication via HTTPS
+- **Auditing**: Access and execution logs available
+
+For more details on configuration, see the `empacotar_kasmvnc/` folder in the repository.
+
+---
+
+## 🌐 Web Interface - Autoreg-WEB
+
+AutoReg has a **complementary web interface** that provides a visual and interactive experience for system management and operation through API calls.
+
+### 🔗 Autoreg-WEB
+
+**Repository**: [github.com/mrpac6689/autoreg-web](https://github.com/mrpac6689/autoreg-web)
+
+**Autoreg-WEB** is a web application developed to provide:
+
+- **Interactive Dashboard**: Real-time statistics and metrics visualization
+- **Routine Management**: Graphical interface to execute AutoReg workflows
+- **Monitoring**: Execution and log tracking
+- **Visual Configuration**: Interface to manage credentials and settings
+- **Reports**: Production report generation and visualization
+- **RESTful API**: Endpoints for integration with other systems
+
+### 🚀 Autoreg-WEB Features
+
+- Routine execution via web interface
+- Real-time log visualization
+- CSV file management
+- Secure credential configuration
+- Execution history
+- Production statistics and charts
+
+### 🔌 Integration
+
+AutoReg can send production reports to Autoreg-WEB through the `-R` flag (production registration), which sends data via REST API for registration and analysis.
+
+For more information and complete documentation, visit the [Autoreg-WEB](https://github.com/mrpac6689/autoreg-web) repository.
+
+---
+
+## 🚀 Installation
+
+### 📋 Prerequisites
+
+- **Python 3.7 or higher** (tested up to Python 3.13)
+- **pip** (Python package manager)
+- **Git** (to clone the repository)
+- **Google Chrome** (updated browser)
+- **Internet Connection** (for dependency installation)
+
+### ⚡ Automatic Installation
+
+#### 🐧 Linux / 🍎 macOS
+
+```bash
+git clone https://github.com/Mrpac6689/AutoReg.git
+cd AutoReg
+chmod +x install.sh
+./install.sh
+```
+
+#### 🪟 Windows
+
+```cmd
+git clone https://github.com/Mrpac6689/AutoReg.git
+cd AutoReg
+install.bat
+```
+
+### 🛠️ What the Installer Does
+
+The automatic installation script performs the following operations:
+
+1. ✅ Identifies the user's home directory
+2. ✅ Moves application data to `~/.autoreg`
+3. ✅ Creates the `~/AutoReg` folder for work files
+4. ✅ Creates the log file `~/AutoReg/autoreg.log`
+5. ✅ Verifies Python 3.x existence
+6. ✅ Creates virtual environment (`venv`) in `~/.autoreg/venv`
+7. ✅ Installs all dependencies from `requirements.txt`
+8. ✅ Configures global alias for the `autoreg` command
+9. ✅ Makes the command available from any system directory
+
+### 📦 Manual Installation
+
+If you prefer to install manually:
+
+```bash
+# Clone the repository
+git clone https://github.com/Mrpac6689/AutoReg.git
+cd AutoReg
+
+# Create virtual environment
+python3 -m venv ~/.autoreg/venv
+
+# Activate virtual environment
+source ~/.autoreg/venv/bin/activate  # Linux/macOS
+# or
+~/.autoreg/venv\Scripts\activate  # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure alias (Linux/macOS)
+echo 'alias autoreg="~/.autoreg/venv/bin/python3 ~/.autoreg/autoreg.py"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+---
+
+## 📖 Usage
+
+### 🎯 Basic Commands
+
+```bash
+# View all available options
+autoreg --help
+
+# Configure access credentials
+autoreg --config
+
+# Open generated files folder
+autoreg --directory
+```
+
+### 🔧 Individual Function Execution
+
+```bash
+# Extract admission codes
+autoreg -eci
+
+# Admit patients
+autoreg -ip
+
+# Capture discharge reasons
+autoreg -ma
+
+# Process discharges
+autoreg -tat
+
+# Clean cache
+autoreg -clc
+```
+
+### 🔄 Grouped Workflow Execution
+
+```bash
+# Complete admission routine
+autoreg -interna
+
+# Analysis/comparison routine
+autoreg -analisa
+
+# Complete discharge routine (includes processing and cleanup)
+autoreg -alta
+
+# Complete request routine
+autoreg -solicita
+
+# Complete AIH routine
+autoreg -aihs
+
+# Execute all main functions with interactive repetition
+autoreg --all
+```
+
+### 📤 Production Registration in API
+
+```bash
+# Execute request and send report to AUTOREG-API
+autoreg -solicita -R
+
+# Execute admission and send report
+autoreg -interna -R
+
+# Execute discharge and send report
+autoreg -alta -R
+```
+
+### 💡 Practical Examples
+
+```bash
+# Morning admission routine
+autoreg -interna
+
+# Patient discharge routine (with processing and cleanup)
+autoreg -alta
+
+# Complete outpatient exam system
+autoreg -eae    # Extract exam data
+autoreg -eas    # Execute requests
+autoreg -ear    # Generate PDF reports
+
+# Outpatient production extraction
+autoreg -pra    # Extract codes (with checkpoint)
+autoreg -pad    # Extract detailed data
+```
+
+---
+
+## ⚙️ Configuration
+
+### 📝 Credential Configuration
+
+After installation, configure your credentials:
+
+```bash
+autoreg --config
+```
+
+Edit the `config.ini` file with your information:
+
+```ini
+[SISREG]
+usuario = your_sisreg_user
+senha = your_sisreg_password
+
+[G-HOSP]
+usuario = your_ghosp_user
+senha = your_ghosp_password
+caminho = http://10.0.0.0:4001  # Your G-HOSP server address
+
+[AUTOREG-API]   # Optional: for production registration with -R flag
+autoreg_api_key = your_api_key
+autoreg_api_relatorio_url = https://example.com/api/externa/relatorio/registrar
+```
+
+### 📁 File Structure
+
+```
+~/.autoreg/                    # Installation directory
+├── autoreg.py                 # Main coordinator
+├── autoreg/                   # System modules
+│   ├── __init__.py
+│   ├── extrai_codigos_internacao.py
+│   ├── interna_pacientes.py
+│   ├── extrai_internados_sisreg.py
+│   ├── extrai_internados_ghosp.py
+│   ├── compara_internados.py
+│   ├── motivo_alta.py
+│   ├── extrai_codigos_sisreg_alta.py
+│   ├── executa_alta.py
+│   ├── trata_restos.py
+│   ├── extrai_internacoes_duplicadas.py
+│   ├── trata_duplicados.py
+│   ├── devolvidos.py
+│   ├── ler_credenciais.py
+│   ├── chrome_options.py
+│   └── logging.py
+├── venv/                      # Virtual environment
+├── config.ini                 # Configuration (create after installation)
+└── requirements.txt           # Python dependencies
+
+~/AutoReg/                     # Work directory
+├── autoreg.log                # Log file
+├── *.csv                      # Generated CSV files
+└── *.pdf                      # Generated PDF files
+```
+
+---
+
+## 📜 License
+
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
+
+### 📄 GPL v3 License Terms
+
+GPL is a free software license that guarantees users the following freedoms:
+
+- ✅ **Freedom 0**: Run the program for any purpose
+- ✅ **Freedom 1**: Study how the program works and adapt it to your needs
+- ✅ **Freedom 2**: Redistribute copies of the program
+- ✅ **Freedom 3**: Improve the program and release your improvements to the public
+
+### ⚖️ What This Means
+
+- **Commercial Use**: Allowed
+- **Modification**: Allowed
+- **Distribution**: Allowed
+- **Private Use**: Allowed
+- **Patent**: Any patent must be licensed for free use
+- **Derivative Code Licensing**: Any derivative code must use the same GPL v3 license
+
+### 📋 Conditions
+
+By using, modifying, or distributing this software, you agree to:
+
+1. Maintain copyright and license notices
+2. Provide complete source code
+3. License derivative works under GPL v3
+4. Include a copy of the GPL v3 license
+
+### 📖 Full License Text
+
+For the full text of the GNU GPL v3 license, see:
+- [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.html)
+- `LICENSE` file in the repository
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! If you want to contribute to the project:
+
+1. **Fork** the repository
+2. Create a **branch** for your feature (`git checkout -b feature/MyFeature`)
+3. **Commit** your changes (`git commit -m 'Add MyFeature'`)
+4. **Push** to the branch (`git push origin feature/MyFeature`)
+5. Open a **Pull Request**
+
+### 📝 Contribution Guidelines
+
+- Keep code clean and documented
+- Follow existing code standards
+- Add tests when appropriate
+- Update documentation as needed
+- Respect the GPL v3 license
+
+---
+
+## 📞 Contact
+
+### 👨‍💻 Main Developer
+
+- **Name**: Michel Ribeiro Paes
+- **GitHub**: [@Mrpac6689](https://github.com/Mrpac6689)
+- **Email**: michelrpaes@gmail.com
+
+### 🔗 Useful Links
+
+- **Repository**: [github.com/Mrpac6689/AutoReg](https://github.com/Mrpac6689/AutoReg)
+- **Web Interface**: [github.com/mrpac6689/autoreg-web](https://github.com/mrpac6689/autoreg-web)
+- **Issues**: [github.com/Mrpac6689/AutoReg/issues](https://github.com/Mrpac6689/AutoReg/issues)
+
+### 🤖 Developed with AI Support
+
+- **ChatGPT 4.1**: Development and architecture
+- **Claude 3.7 Sonnet**: Refactoring and optimization
+
+---
+
+## 📚 Additional Documentation
+
+- [CHANGELOG.md](CHANGELOG.md) - Complete version history and changes
+- [LICENSE](LICENSE) - Full GNU GPL v3 license text
+
+---
+
+## 🎯 Purpose
+
+AutoReg was developed to facilitate and automate hospital processes, contributing to the efficiency of healthcare professionals and better patient care. This software aims to reduce manual workload, minimize errors, and allow hospital teams to focus on activities that require human attention.
+
+---
+
+**AutoReg v9.7.0 Universe** - *Intelligent automation for healthcare systems* 🚀
+
+*We hope AutoReg continues to facilitate your routine and contribute to more efficient hospital processes!*
