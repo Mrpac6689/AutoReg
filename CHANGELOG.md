@@ -5,6 +5,37 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [9.8.1] - 2026-02
+
+### Adicionado
+- **Função `-eac` (`exames_ambulatoriais_consulta`)**: Consulta prévia de existência de solicitação no SISREG
+  - Verifica se já existe solicitação para o mesmo paciente e exame nos últimos 7 dias
+  - Atualiza CNS do CSV com o valor retornado pelo SISREG quando diferente
+  - Extrai chave, código de solicitação e procedimentos existentes
+  - Compara procedimentos do GHOSP com os do SISREG usando sistema de similaridade
+  - Adiciona observações automáticas sobre status da solicitação
+
+### Melhorado
+- **Sistema de controle de reprocessamento em `-eas`**:
+  - Nova coluna `solicita` no CSV para forçar reprocessamento quando necessário
+  - Registros com `solicitacao` preenchida são pulados automaticamente
+  - Exceção: registros com `solicita='s'` são reprocessados (re-solicitação)
+  - Coluna `solicita` é limpa automaticamente após processamento bem-sucedido
+  - Evita reprocessamento infinito no fallback
+
+- **Suporte expandido em `-eae`**:
+  - Busca agora inclui procedimentos com "TOMOGRAFIA" ou "ANGIO"
+  - Cobre tanto tomografias quanto angiografias/angiografias por tomografia computadorizada
+  - Mensagens de log atualizadas para refletir ambos os tipos
+
+- **Correção de avisos do pandas**:
+  - Colunas `chave`, `solicitacao`, `erro` e `solicita` convertidas para tipo `object`
+  - Elimina FutureWarning ao atribuir valores string em colunas numéricas
+
+### Corrigido
+- Tratamento de tipos de dados no DataFrame para evitar incompatibilidades
+- Lógica de identificação de registros pendentes no sistema de fallback
+
 ## [9.7.0] - 2026-01
 
 ### Adicionado
@@ -361,6 +392,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+[9.8.1]: https://github.com/Mrpac6689/AutoReg/releases/tag/v9.8.1
 [9.7.0]: https://github.com/Mrpac6689/AutoReg/releases/tag/v9.7.0
 [9.6.7]: https://github.com/Mrpac6689/AutoReg/releases/tag/v9.6.7
 [9.6.6]: https://github.com/Mrpac6689/AutoReg/releases/tag/v9.6.6

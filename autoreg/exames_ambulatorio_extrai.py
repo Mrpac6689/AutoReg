@@ -168,8 +168,12 @@ def exames_ambulatorio_extrai():
                     EC.presence_of_element_located((By.CLASS_NAME, "lista_cancelamento"))
                 )
                 
-                # Localiza todas as linhas com "TOMOGRAFIA" na coluna Procedimento do atendimento específico
-                print(f"   Buscando procedimentos de tomografia para o atendimento {ra}...")
+
+                
+
+
+                # Localiza todas as linhas com "TOMOGRAFIA" ou "ANGIO" na coluna Procedimento do atendimento específico
+                print(f"   Buscando procedimentos de tomografia ou angio para o atendimento {ra}...")
                 procedimentos_lista = []
                 try:
                     # Encontra todas as linhas da tabela
@@ -198,7 +202,7 @@ def exames_ambulatorio_extrai():
                                     print(f"   ✅ Fim da seção do atendimento {ra}")
                                     break
                                 
-                                # Verifica se a linha contém TOMOGRAFIA na coluna Procedimento (4ª coluna)
+                                # Verifica se a linha contém TOMOGRAFIA ou ANGIO na coluna Procedimento (4ª coluna)
                                 try:
                                     # Primeiro verifica a data/hora (3ª coluna) se houver hora no CSV
                                     hora_coincide = True
@@ -215,7 +219,7 @@ def exames_ambulatorio_extrai():
                                         procedimento_cell = linha.find_element(By.XPATH, './td[4]')
                                         texto_procedimento = procedimento_cell.text.strip()
                                         
-                                        if texto_procedimento and "TOMOGRAFIA" in texto_procedimento.upper():
+                                        if texto_procedimento and ("TOMOGRAFIA" in texto_procedimento.upper() or "ANGIO" in texto_procedimento.upper()):
                                             # Remove espaços extras e quebras de linha, mantendo apenas um espaço
                                             texto_limpo = ' '.join(texto_procedimento.split())
                                             if texto_limpo and texto_limpo not in procedimentos_lista:
@@ -231,10 +235,10 @@ def exames_ambulatorio_extrai():
                     # Junta todos os procedimentos com separador "|"
                     if procedimentos_lista:
                         procedimento_texto = ' | '.join(procedimentos_lista)
-                        print(f"   ✅ Total de {len(procedimentos_lista)} procedimento(s) de tomografia encontrado(s)")
+                        print(f"   ✅ Total de {len(procedimentos_lista)} procedimento(s) de tomografia/angio encontrado(s)")
                         df.at[index, 'procedimento'] = procedimento_texto
                     else:
-                        print(f"   ⚠️  Nenhuma linha com 'TOMOGRAFIA' encontrada para o RA {ra}")
+                        print(f"   ⚠️  Nenhuma linha com 'TOMOGRAFIA' ou 'ANGIO' encontrada para o RA {ra}")
                         # Tenta clicar no botão "Tomografia" para carregar mais exames
                         try:
                             print(f"   🔄 Tentando clicar no botão 'Tomografia' para carregar mais exames...")
@@ -292,7 +296,7 @@ def exames_ambulatorio_extrai():
                                             print(f"   ✅ Fim da seção do atendimento {ra}")
                                             break
                                         
-                                        # Verifica se a linha contém TOMOGRAFIA na coluna Procedimento (4ª coluna)
+                                        # Verifica se a linha contém TOMOGRAFIA ou ANGIO na coluna Procedimento (4ª coluna)
                                         try:
                                             # Primeiro verifica a data/hora (3ª coluna) se houver hora no CSV
                                             hora_coincide = True
@@ -309,7 +313,7 @@ def exames_ambulatorio_extrai():
                                                 procedimento_cell = linha.find_element(By.XPATH, './td[4]')
                                                 texto_procedimento = procedimento_cell.text.strip()
                                                 
-                                                if texto_procedimento and "TOMOGRAFIA" in texto_procedimento.upper():
+                                                if texto_procedimento and ("TOMOGRAFIA" in texto_procedimento.upper() or "ANGIO" in texto_procedimento.upper()):
                                                     # Remove espaços extras e quebras de linha, mantendo apenas um espaço
                                                     texto_limpo = ' '.join(texto_procedimento.split())
                                                     if texto_limpo and texto_limpo not in procedimentos_lista:
@@ -356,10 +360,10 @@ def exames_ambulatorio_extrai():
                             # Verifica se encontrou procedimentos após clicar no botão
                             if procedimentos_lista:
                                 procedimento_texto = ' | '.join(procedimentos_lista)
-                                print(f"   ✅ Total de {len(procedimentos_lista)} procedimento(s) de tomografia encontrado(s) após clicar no botão")
+                                print(f"   ✅ Total de {len(procedimentos_lista)} procedimento(s) de tomografia/angio encontrado(s) após clicar no botão")
                                 df.at[index, 'procedimento'] = procedimento_texto
                             else:
-                                print(f"   ⚠️  Nenhuma linha com 'TOMOGRAFIA' encontrada mesmo após clicar no botão")
+                                print(f"   ⚠️  Nenhuma linha com 'TOMOGRAFIA' ou 'ANGIO' encontrada mesmo após clicar no botão")
                                 df.at[index, 'procedimento'] = ''
                                 
                         except (TimeoutException, NoSuchElementException):

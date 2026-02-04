@@ -2,7 +2,7 @@
 """
 AutoReg - Coordenador de Workflow
 Automatização de Sistemas de Saúde - SISREG & G-HOSP
-Versão 9.7.0 - Universe - Janeiro de 2026
+Versão 9.8.1 - Universe - Fevereiro de 2026
 Autor: Michel Ribeiro Paes (MrPaC6689)
 """
 
@@ -47,6 +47,7 @@ from autoreg import producao_ambulatorial_gmus  # Importa a função producao_am
 from autoreg import exames_ambulatorio_extrai  # Importa a função exames_ambulatorio_extrai
 from autoreg import exames_ambulatorio_solicita  # Importa a função exames_ambulatorio_solicita
 from autoreg import exames_ambulatorio_relatorio  # Importa a função exames_ambulatorio_relatorio
+from autoreg import exames_ambulatoriais_consulta  # Importa a função exames_ambulatoriais_consulta
 from autoreg import producao_relatorio  # Registro de produção via AUTOREG-API
 
 # Dicionário com as funções e suas descrições
@@ -182,6 +183,10 @@ FUNCOES = {
     'exames_ambulatorio_relatorio': {
         'func': exames_ambulatorio_relatorio,
         'desc': 'Extrai relatórios de exames solicitados no SISREG'
+    },
+    'exames_ambulatoriais_consulta': {
+        'func': exames_ambulatoriais_consulta,
+        'desc': 'Consulta prévia existência de solicitação no SISREG para o mesmo paciente e exame, lançada recentemente.'
     }
 }
 
@@ -241,6 +246,7 @@ FUNÇÕES DISPONÍVEIS:
         ('-eae', '--exames-ambulatorio-extrai', 'exames_ambulatorio_extrai'),
         ('-eas', '--exames-ambulatorio-solicita', 'exames_ambulatorio_solicita'),
         ('-ear', '--exames-ambulatorio-relatorio', 'exames_ambulatorio_relatorio'),
+        ('-eac', '--exames-ambulatoriais-consulta', 'exames_ambulatoriais_consulta'),
         ('-interna', '--interna', None),
         ('-analisa', '--analisa', None),
         ('-alta', '--alta', None),
@@ -534,6 +540,8 @@ Exemplos de uso:
                        help='Executa solicitações de exames no SISREG')
     parser.add_argument('-ear', '--exames-ambulatorio-relatorio', action='store_true',
                        help='Extrai relatórios de exames solicitados no SISREG')
+    parser.add_argument('-eac', '--exames-ambulatoriais-consulta', action='store_true',
+                       help='Consulta prévia existência de solicitação no SISREG para o mesmo paciente e exame, lançada recentemente.')
     # Novas funções de workflow
     parser.add_argument('-interna', '--interna', action='store_true',
                        help='Executa sequência de internação: -eci -ip')
@@ -597,7 +605,8 @@ Exemplos de uso:
         'producao_ambulatorial_gmus': 'producao_ambulatorial_gmus',
         'exames_ambulatorio_extrai': 'exames_ambulatorio_extrai',
         'exames_ambulatorio_solicita': 'exames_ambulatorio_solicita',
-        'exames_ambulatorio_relatorio': 'exames_ambulatorio_relatorio'
+        'exames_ambulatorio_relatorio': 'exames_ambulatorio_relatorio',
+        'exames_ambulatoriais_consulta': 'exames_ambulatoriais_consulta'
     }
     
     # Processa funções especiais primeiro

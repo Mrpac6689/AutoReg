@@ -35,3 +35,4 @@ from .producao_ambulatorial_gmus import producao_ambulatorial_gmus
 from .exames_ambulatorio_extrai import exames_ambulatorio_extrai
 from .exames_ambulatorio_solicita import exames_ambulatorio_solicita
 from .exames_ambulatorio_relatorio import exames_ambulatorio_relatorio
+from .exames_ambulatoriais_consulta import exames_ambulatoriais_consulta

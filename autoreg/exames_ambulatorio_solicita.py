@@ -146,8 +146,14 @@ def exames_ambulatorio_solicita():
         df['chave'] = ''
     if 'solicitacao' not in df.columns:
         df['solicitacao'] = ''
+    if 'solicita' not in df.columns:
+        df['solicita'] = ''
     if 'erro' not in df.columns:
         df['erro'] = ''
+    # Garante tipo object para colunas que recebem string (evita FutureWarning ao atribuir)
+    for col in ['chave', 'solicitacao', 'erro', 'solicita']:
+        if col in df.columns:
+            df[col] = df[col].astype(object)
     
     # Processa divisão de procedimentos múltiplos quando 'dividir' = 's'
     print("\n📋 Etapa 1.5: Verificando necessidade de divisão de procedimentos...")
@@ -198,6 +204,15 @@ def exames_ambulatorio_solicita():
             print(f"   ⚠️  Erro ao salvar CSV após divisão: {e}")
     else:
         print(f"   ✅ Nenhuma divisão necessária. Todas as linhas estão prontas para processamento.")
+    
+    # Importa as funções auxiliares do módulo compartilhado
+    from autoreg import exames_utils
+    
+    # Cria aliases locais para manter compatibilidade com o código existente
+    normalizar_texto = exames_utils.normalizar_texto
+    identificar_tipo_exame = exames_utils.identificar_tipo_exame
+    identificar_parte_corpo = exames_utils.identificar_parte_corpo
+    identificar_lateralidade = exames_utils.identificar_lateralidade
     
     # Dicionário de correlação GHOSP → SISREG
     dicionario_correlacao = {
@@ -253,187 +268,8 @@ def exames_ambulatorio_solicita():
         'TOMOGRAFIA COMPUTADORIZADA DO PESCOCO': 'TOMOGRAFIA COMPUTADORIZADA DO PESCOCO'
     }
     
-    def normalizar_texto(texto):
-        """Normaliza texto para comparação (maiúsculas, remove espaços extras)"""
-        return ' '.join(texto.upper().strip().split())
-    
-    def identificar_tipo_exame(procedimento):
-        """
-        Identifica o tipo de exame no procedimento.
-        
-        Args:
-            procedimento: Procedimento do CSV
-        
-        Returns:
-            'TOMOGRAFIA', 'ANGIO-TC', 'ANGIOTOMOGRAFIA' ou None
-        """
-        proc_normalizado = normalizar_texto(procedimento)
-        
-        if 'ANGIO-TC' in proc_normalizado or 'ANGIO TC' in proc_normalizado:
-            return 'ANGIO-TC'
-        elif 'ANGIOTOMOGRAFIA' in proc_normalizado:
-            return 'ANGIOTOMOGRAFIA'
-        elif 'TOMOGRAFIA' in proc_normalizado:
-            return 'TOMOGRAFIA'
-        
-        return None
-    
-    def identificar_parte_corpo(procedimento):
-        """
-        Identifica a parte do corpo no procedimento.
-        
-        Args:
-            procedimento: Procedimento do CSV
-        
-        Returns:
-            String com a parte do corpo identificada ou None
-        """
-        proc_normalizado = normalizar_texto(procedimento)
-        
-        # Lista de partes do corpo em ordem de especificidade (mais específicas primeiro)
-        # Cada item é uma tupla: (termo_busca, parte_identificada)
-        partes_corpo = [
-            ('AORTA TORÁCICA', 'AORTA TORÁCICA'),
-            ('AORTA TORACICA', 'AORTA TORÁCICA'),
-            ('TORAX', 'TORAX'),
-            ('TÓRAX', 'TORAX'),
-            ('ARTÉRIAS CERVICAIS', 'ARTÉRIAS CERVICAIS'),
-            ('ARTÉRIAS ILÍACAS', 'ARTÉRIAS ILÍACAS'),
-            ('ARTÉRIAS ILIACAS', 'ARTÉRIAS ILÍACAS'),
-            ('AORTA ABDOMINAL', 'AORTA ABDOMINAL'),
-            ('CEREBRAL', 'CEREBRAL'),
-            ('PELVE / BACIA / ABDOMEN INFERIOR', 'PELVE / BACIA / ABDOMEN INFERIOR'),
-            ('PELVE / BACIA / ABDOMEM INFERIOR', 'PELVE / BACIA / ABDOMEN INFERIOR'),
-            ('PELVE OU BACIA', 'PELVE / BACIA / ABDOMEN INFERIOR'),
-            ('PELVE', 'PELVE / BACIA / ABDOMEN INFERIOR'),
-            ('BACIA', 'PELVE / BACIA / ABDOMEN INFERIOR'),
-            ('ABDOMEM INFERIOR', 'ABDOMEM INFERIOR'),
-            ('ABDOMEN INFERIOR', 'ABDOMEM INFERIOR'),
-            ('ABDOMEM SUPERIOR', 'ABDOMEM SUPERIOR'),
-            ('ABDOMEN SUPERIOR', 'ABDOMEM SUPERIOR'),
-            ('COLUNA LOMBO-SACRA', 'COLUNA LOMBO-SACRA'),
-            ('COLUNA LOMBAR', 'COLUNA LOMBAR'),
-            ('COLUNA TORACICA', 'COLUNA TORACICA'),
-            ('COLUNA TORÁCICA', 'COLUNA TORACICA'),
-            ('COLUNA DORSAL', 'COLUNA DORSAL'),
-            ('COLUNA CERVICAL', 'COLUNA CERVICAL'),
-            # JOELHO/JOELHOS - termos com lateralidade primeiro (mais específicos)
-            ('JOELHO DIREITO', 'ARTICULACOES JOELHOS'),
-            ('JOELHO DIREITA', 'ARTICULACOES JOELHOS'),
-            ('JOELHO ESQUERDO', 'ARTICULACOES JOELHOS'),
-            ('JOELHO ESQUERDA', 'ARTICULACOES JOELHOS'),
-            ('JOELHOS DIREITO', 'ARTICULACOES JOELHOS'),
-            ('JOELHOS DIREITA', 'ARTICULACOES JOELHOS'),
-            ('JOELHOS ESQUERDO', 'ARTICULACOES JOELHOS'),
-            ('JOELHOS ESQUERDA', 'ARTICULACOES JOELHOS'),
-            # JOELHO/JOELHOS - termos sem lateralidade depois
-            ('ARTICULACOES JOELHOS', 'ARTICULACOES JOELHOS'),
-            ('ARTICULAÇÕES JOELHOS', 'ARTICULACOES JOELHOS'),
-            ('JOELHO', 'ARTICULACOES JOELHOS'),
-            ('JOELHOS', 'ARTICULACOES JOELHOS'),
-            ('COXA', 'COXA'),
-            ('COXA DIREITA', 'COXA'),
-            ('COXA DIREITO', 'COXA'),
-            ('COXA ESQUERDA', 'COXA'),
-            ('COXA ESQUERDO', 'COXA'),
-            ('PERNA', 'PERNA'),
-            ('PERNA DIREITA', 'PERNA'),
-            ('PERNA DIREITO', 'PERNA'),
-            ('PERNA ESQUERDA', 'PERNA'),
-            ('PERNA ESQUERDO', 'PERNA'),
-            ('MAO', 'MAO'),
-            ('MÃO', 'MAO'),
-            ('MAO DIREITA', 'MAO'),
-            ('MAO DIREITO', 'MAO'),
-            ('MÃO DIREITA', 'MAO'),
-            ('MÃO DIREITO', 'MAO'),
-            ('MAO ESQUERDA', 'MAO'),
-            ('MAO ESQUERDO', 'MAO'),
-            ('MÃO ESQUERDA', 'MAO'),
-            ('MÃO ESQUERDO', 'MAO'),
-            ('PESCOCO', 'PESCOCO'),
-            ('PESCOÇO', 'PESCOCO'),
-            ('PE', 'PE'),
-            ('PE DIREITO', 'PE'),
-            ('PE DIREITA', 'PE'),
-            ('PE ESQUERDO', 'PE'),
-            ('PE ESQUERDA', 'PE'),
-            ('OMBRO', 'OMBRO'),
-            ('OMBRO DIREITO', 'OMBRO'),
-            ('OMBRO DIREITA', 'OMBRO'),
-            ('OMBRO ESQUERDO', 'OMBRO'),
-            ('OMBRO ESQUERDA', 'OMBRO'),
-            ('PUNHO', 'PUNHO'),
-            ('PUNHO DIREITO', 'PUNHO'),
-            ('PUNHO DIREITA', 'PUNHO'),
-            ('PUNHO ESQUERDO', 'PUNHO'),
-            ('PUNHO ESQUERDA', 'PUNHO'),
-            ('TORNOZELO', 'TORNOZELO'),
-            ('TORNOZELO DIREITO', 'TORNOZELO'),
-            ('TORNOZELO DIREITA', 'TORNOZELO'),
-            ('TORNOZELO ESQUERDO', 'TORNOZELO'),
-            ('TORNOZELO ESQUERDA', 'TORNOZELO'),
-            ('COTOVELO', 'COTOVELO'),
-            ('COTOVELO DIREITO', 'COTOVELO'),
-            ('COTOVELO DIREITA', 'COTOVELO'),
-            ('COTOVELO ESQUERDO', 'COTOVELO'),
-            ('COTOVELO ESQUERDA', 'COTOVELO'),
-            ('BRACO', 'BRACO'),
-            ('BRAÇO', 'BRACO'),
-            ('BRACO DIREITO', 'BRACO'),
-            ('BRACO DIREITA', 'BRACO'),
-            ('BRAÇO DIREITO', 'BRACO'),
-            ('BRAÇO DIREITA', 'BRACO'),
-            ('BRACO ESQUERDO', 'BRACO'),
-            ('BRACO ESQUERDA', 'BRACO'),
-            ('BRAÇO ESQUERDO', 'BRACO'),
-            ('BRAÇO ESQUERDA', 'BRACO'),
-            ('ANTEBRACO', 'ANTEBRACO'),
-            ('ANTEBRAÇO', 'ANTEBRACO'),
-            ('ANTEBRACO DIREITO', 'ANTEBRACO'),
-            ('ANTEBRACO DIREITA', 'ANTEBRACO'),
-            ('ANTEBRAÇO DIREITO', 'ANTEBRACO'),
-            ('ANTEBRAÇO DIREITA', 'ANTEBRACO'),
-            ('ANTEBRACO ESQUERDO', 'ANTEBRACO'),
-            ('ANTEBRACO ESQUERDA', 'ANTEBRACO'),
-            ('ANTEBRAÇO ESQUERDO', 'ANTEBRACO'),
-            ('ANTEBRAÇO ESQUERDA', 'ANTEBRACO'),
-            ('SEIOS DA FACE', 'SEIOS DA FACE'),
-            ('SEIOS DE FACE', 'SEIOS DA FACE'),
-            ('FACE', 'FACE'),
-            ('MASTOIDES OU OUVIDOS', 'MASTOIDES OU OUVIDOS'),
-            ('MASTÓIDES OU OUVIDOS', 'MASTOIDES OU OUVIDOS'),
-            ('CRANIO', 'CRANIO'),
-            ('CRÂNIO', 'CRANIO'),
-            ('ORBITA', 'CRANIO'),
-            ('ÓRBITA', 'CRANIO')
-        ]
-        
-        for termo_busca, parte_identificada in partes_corpo:
-            # Busca o termo no texto normalizado
-            if termo_busca in proc_normalizado:
-                # Para termos de uma palavra como "TORAX", verifica se não é parte de outro termo
-                # Ex: "TORAX" não deve ser encontrado dentro de "AORTA TORÁCICA"
-                if termo_busca == 'TORAX' or termo_busca == 'TÓRAX':
-                    # Verifica se não está dentro de "AORTA TORÁCICA" (que já foi verificado antes na lista)
-                    if 'AORTA TORÁCICA' not in proc_normalizado and 'AORTA TORACICA' not in proc_normalizado:
-                        return parte_identificada
-                # Para termos de uma palavra como "JOELHO", verifica se não é parte de "JOELHOS"
-                elif termo_busca == 'JOELHO':
-                    # Verifica se não está dentro de "JOELHOS" (plural) - se estiver, continua procurando
-                    if 'JOELHOS' in proc_normalizado:
-                        continue  # Continua procurando por termos mais específicos
-                    return parte_identificada
-                # Para termos de uma palavra como "PE", verifica se não é parte de "PESCOCO"
-                elif termo_busca == 'PE':
-                    # Verifica se não está dentro de "PESCOCO" ou "PESCOÇO" - se estiver, continua procurando
-                    if 'PESCOCO' in proc_normalizado or 'PESCOÇO' in proc_normalizado:
-                        continue  # Continua procurando por termos mais específicos
-                    return parte_identificada
-                else:
-                    return parte_identificada
-        
-        return None
+    # As funções normalizar_texto, identificar_tipo_exame, identificar_parte_corpo e identificar_lateralidade
+    # agora são importadas do módulo compartilhado exames_utils (definidas acima como aliases locais)
     
     def verificar_cranio_e_orbita(procedimento):
         """
@@ -452,27 +288,6 @@ def exames_ambulatorio_solicita():
         tem_orbita = 'ORBITA' in proc_normalizado or 'ÓRBITA' in proc_normalizado
         
         return tem_cranio and tem_orbita
-    
-    def identificar_lateralidade(procedimento):
-        """
-        Identifica a lateralidade (DIREITO/ESQUERDO) no procedimento.
-        
-        Args:
-            procedimento: Procedimento do CSV
-        
-        Returns:
-            'DIREITO', 'ESQUERDO' ou None
-        """
-        proc_normalizado = normalizar_texto(procedimento)
-        
-        # Verifica se há menção a DIREITO ou DIREITA
-        if 'DIREITO' in proc_normalizado or 'DIREITA' in proc_normalizado:
-            return 'DIREITO'
-        # Verifica se há menção a ESQUERDO ou ESQUERDA
-        elif 'ESQUERDO' in proc_normalizado or 'ESQUERDA' in proc_normalizado:
-            return 'ESQUERDO'
-        
-        return None
     
     def opcao_corresponde_tipo_exame(texto_opcao, tipo_exame):
         """
@@ -915,12 +730,13 @@ def exames_ambulatorio_solicita():
     # Itera sobre os links do CSV
     for index, row in df.iterrows():
         try:
-            # Verifica se a linha já foi processada (tem conteúdo em solicitacao e chave)
-            chave = row.get('chave', '').strip() if pd.notna(row.get('chave')) else ''
-            solicitacao = row.get('solicitacao', '').strip() if pd.notna(row.get('solicitacao')) else ''
-            
-            if chave and solicitacao:
-                print(f"\n[{index + 1}/{len(df)}] ⏭️  Linha já processada (chave: {chave}, solicitação: {solicitacao}). Pulando...")
+            # Verifica se a linha já foi processada: pula quando solicitacao está preenchida E (solicita está vazio OU solicita != 'S')
+            solicitacao = str(row.get('solicitacao', '')).strip() if pd.notna(row.get('solicitacao')) else ''
+            # Normaliza solicita para maiúsculo (aceita 's' ou 'S')
+            solicita = str(row.get('solicita', '')).strip().upper() if pd.notna(row.get('solicita')) else ''
+            # Se solicitacao está preenchida E (solicita está vazio OU solicita != 'S'), não processar
+            if solicitacao and (not solicita or solicita != 'S'):
+                print(f"\n[{index + 1}/{len(df)}] ⏭️  Linha já processada (solicitação: {solicitacao}, solicita: '{solicita}'). Pulando...")
                 continue
             
             cns_val = row.get('cns', '')
@@ -1646,6 +1462,9 @@ def exames_ambulatorio_solicita():
                 # Limpa a coluna erro se a solicitação foi bem-sucedida
                 df.at[index, 'erro'] = ''
             
+            # Apaga 'solicita' após processar com sucesso para o fallback não reprocessar de novo
+            df.at[index, 'solicita'] = ''
+            
             # Salva o CSV após extrair os dados
             try:
                 df.to_csv(csv_exames, index=False)
@@ -1683,12 +1502,22 @@ def exames_ambulatorio_solicita():
                 df_atualizado['contraste'] = ''
             if 'erro' not in df_atualizado.columns:
                 df_atualizado['erro'] = ''
+            if 'solicita' not in df_atualizado.columns:
+                df_atualizado['solicita'] = ''
+            # Garante tipo object para colunas que recebem string (evita FutureWarning ao atribuir)
+            for col in ['chave', 'solicitacao', 'erro', 'solicita']:
+                if col in df_atualizado.columns:
+                    df_atualizado[col] = df_atualizado[col].astype(object)
             
-            # Identifica registros pendentes (sem chave ou sem solicitacao)
-            registros_pendentes = df_atualizado[
-                (df_atualizado['chave'].isna() | (df_atualizado['chave'].astype(str).str.strip() == '')) |
-                (df_atualizado['solicitacao'].isna() | (df_atualizado['solicitacao'].astype(str).str.strip() == ''))
-            ]
+            # Identifica registros pendentes: sem solicitacao ou com solicita='s' (re-solicitar)
+            # Não considera chave no filtro
+            col_solicitacao = df_atualizado['solicitacao'].fillna('').astype(str).str.strip()
+            # Normaliza solicita para maiúsculo (aceita 's' ou 'S')
+            col_solicita = df_atualizado['solicita'].fillna('').astype(str).str.strip().str.upper()
+            sem_solicitacao = (col_solicitacao == '')
+            quer_re_solicitar = (col_solicita == 'S')
+            # Pendentes: sem solicitacao OU com solicita='s' (re-solicitar)
+            registros_pendentes = df_atualizado[sem_solicitacao | quer_re_solicitar]
             
             if len(registros_pendentes) == 0:
                 print("\n✅ Todos os registros foram processados com sucesso!")
@@ -1702,14 +1531,15 @@ def exames_ambulatorio_solicita():
             for index, row in registros_pendentes.iterrows():
                 try:
                     # Verifica novamente se ainda está pendente (pode ter sido processado em outra tentativa)
-                    chave_val = row.get('chave', '')
-                    chave = str(chave_val).strip() if pd.notna(chave_val) and chave_val != '' else ''
-                    
                     solicitacao_val = row.get('solicitacao', '')
-                    solicitacao = str(solicitacao_val).strip() if pd.notna(solicitacao_val) and solicitacao_val != '' else ''
+                    solicitacao = str(solicitacao_val).strip() if pd.notna(solicitacao_val) and str(solicitacao_val).strip() != '' else ''
                     
-                    if chave and solicitacao:
-                        print(f"   ⏭️  Registro {index + 1} já foi processado. Pulando...")
+                    solicita_val = row.get('solicita', '')
+                    # Normaliza solicita para maiúsculo (aceita 's' ou 'S')
+                    solicita = str(solicita_val).strip().upper() if pd.notna(solicita_val) and str(solicita_val).strip() != '' else ''
+                    # Se solicitacao está preenchida E (solicita está vazio OU solicita != 'S'), não processar
+                    if solicitacao and (not solicita or solicita != 'S'):
+                        print(f"   ⏭️  Registro {index + 1} já foi processado (solicitação: {solicitacao}, solicita: '{solicita}'). Pulando...")
                         continue
                     
                     cns_val = row.get('cns', '')
@@ -2206,6 +2036,9 @@ def exames_ambulatorio_solicita():
                     else:
                         # Limpa a coluna erro se a solicitação foi bem-sucedida
                         df_atualizado.at[index, 'erro'] = ''
+                    
+                    # Apaga 'solicita' após processar com sucesso para o fallback não reprocessar de novo
+                    df_atualizado.at[index, 'solicita'] = ''
                     
                     # Salva o CSV após extrair os dados
                     try:
