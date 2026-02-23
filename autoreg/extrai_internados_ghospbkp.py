@@ -2,8 +2,6 @@
 import os
 import time
 import pandas as pd
-import traceback
-import re
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
@@ -12,12 +10,12 @@ from selenium.webdriver.chrome.options import Options
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
 from autoreg.chrome_options import get_chrome_options
+import re
 
 setup_logging()
 
 def linha_valida(linha):
-    """Verifica se a linha possui dados válidos de internação."""
-    # Verifica se a primeira coluna tem um número de 6 dígitos (Prontuário/ID)
+    # Verifica se a primeira coluna tem um número de 6 dígitos
     if re.match(r'^\d{6}$', str(linha[0])):
         # Verifica se a segunda ou a terceira coluna contém um nome válido
         if isinstance(linha[1], str) and linha[1].strip():
@@ -26,31 +24,39 @@ def linha_valida(linha):
             return 'coluna_3'
     return False
 
+
 def extrai_internados_ghosp():
     print("\n---===> EXTRAÇÃO DE INTERNADOS <===---")
-    
-    # Inicializa variáveis para garantir limpeza no finally
-    driver = None 
-    
-    try:
-        usuario_ghosp, senha_ghosp, caminho_ghosp, usuario_sisreg, senha_sisreg = ler_credenciais()
-        
-        # Caminho para salvar o novo arquivo baixado
-        user_dir = os.path.expanduser('~/AutoReg')
-        print(f"Diretório de download configurado: {user_dir}")
-        
-        # Inicializa o navegador
-        chrome_options = get_chrome_options()
-        driver = webdriver.Chrome(options=chrome_options)
-        print("Iniciando o Chromedriver...")
+    usuario_ghosp, senha_ghosp, caminho_ghosp, usuario_sisreg, senha_sisreg = ler_credenciais()
 
-        # Acesse a página de login do G-HOSP
-        driver.get(caminho_ghosp + ':4001/users/sign_in')
-        
-        # Ajustar o zoom para 50%
+    # Caminho para salvar o novo arquivo baixado
+    user_dir = os.path.expanduser('~/AutoReg')
+    usuario_ghosp, senha_ghosp, caminho_ghosp, _, _ = ler_credenciais()
+    print(f"Diretório de download configurado: {user_dir}")
+
+    #download_path = os.path.join(user_dir, 'ghosp_download.csv')
+    #print(f"Pasta de Downloads: {download_path}")
+    
+    # Captura timestamp antes do download para identificar arquivos novos
+    antes_download = time.time()
+
+    # Inicializa o navegador (Chrome neste caso) usando o serviço
+    chrome_options = get_chrome_options()
+    driver = webdriver.Chrome(options=chrome_options)
+
+    print("Iniciando o Chromedriver...")
+    
+    # Minimizando a janela após iniciar o Chrome
+    #driver.minimize_window()
+
+    # Acesse a página de login do G-HOSP
+    driver.get(caminho_ghosp + ':4001/users/sign_in')
+
+    try:
+        # Ajustar o zoom para 50% antes do login
         print("Ajustando o zoom para 50%...")
         driver.execute_script("document.body.style.zoom='50%'")
-        time.sleep(2)
+        time.sleep(2)  # Aguarda um pouco após ajustar o zoom
 
         # Realiza o login
         print("Tentando localizar o campo de e-mail...")
@@ -58,25 +64,30 @@ def extrai_internados_ghosp():
             EC.presence_of_element_located((By.ID, "email"))
         )
         email_field.send_keys(usuario_ghosp)
-        
+
         print("Tentando localizar o campo de senha...")
         senha_field = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "user_password"))
         )
         senha_field.send_keys(senha_ghosp)
-        
+
         print("Tentando localizar o botão de login...")
         login_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, "//input[@value='Entrar']"))
         )
         login_button.click()
+
         time.sleep(5)
         print("Login realizado com sucesso!")
 
         # Acessar a página de relatórios
         print("Acessando a página de relatórios...")
         driver.get(caminho_ghosp + ':4001/relatorios/rc001s')
-        time.sleep(2)
+
+        # Acessar a página de relatórios
+        print("Acessando a página de relatórios...")
+        driver.get(caminho_ghosp + ':4001/relatorios/rc001s')
+        time.sleep(2)  # Aguarda um pouco após ajustar o zoom
 
         # Selecionar todas as opções no dropdown "Setor"
         print("Selecionando todos os setores...")
@@ -84,30 +95,27 @@ def extrai_internados_ghosp():
             EC.presence_of_element_located((By.ID, "setor_id1"))
         ))
         for option in setor_select.options:
-            # print(f"Selecionando o setor: {option.text}") # Comentado para reduzir spam no log
+            print(f"Selecionando o setor: {option.text}")  # Para garantir que todos os setores estão sendo selecionados
             setor_select.select_by_value(option.get_attribute('value'))
+
         print("Todos os setores selecionados!")
 
-        # --- REMOVIDO: driver.maximize_window() ---
-        # Causa desconexão do driver em ambientes Docker/Kasm.
+        # Maximiza a janela para garantir que todos os elementos estejam visíveis
+        driver.maximize_window()
         
         # Selecionar o formato CSV
         print("Rolando até o dropdown de formato CSV...")
         formato_dropdown = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "tipo_arquivo"))
         )
-        
-        # Usa scroll via JS que é mais seguro que maximize_window
         driver.execute_script("arguments[0].scrollIntoView(true);", formato_dropdown)
         time.sleep(2)
-        
+
         print("Selecionando o formato CSV...")
         formato_select = Select(formato_dropdown)
         formato_select.select_by_value("csv")
-        print("Formato CSV selecionado!")
 
-        # --- TIMESTAMP ANTES DO CLIQUE ---
-        antes_download = time.time()
+        print("Formato CSV selecionado!")
 
         # Clicar no botão "Imprimir"
         print("Tentando clicar no botão 'IMPRIMIR'...")
@@ -115,40 +123,32 @@ def extrai_internados_ghosp():
             EC.element_to_be_clickable((By.ID, "enviar_relatorio"))
         )
         imprimir_button.click()
-        print("Relatório gerado! Aguardando download...")
-        
-        # --- REMOVIDO: driver.minimize_window() ---
-        
+
+        print("Relatório sendo gerado!")
+
+        driver.minimize_window()
+
         # Contador para timeout
         tentativas = 0
-        max_tentativas = 60  # 5 minutos
+        max_tentativas = 60  # 5 minutos (5 segundos * 60)
         arquivo_recente = None
 
         # Aguardar até que um novo arquivo CSV seja baixado
         while tentativas < max_tentativas:
+            # Procura por arquivos CSV no diretório que foram criados após o início do download
             novos_arquivos = []
-            try:
-                for arquivo in os.listdir(user_dir):
-                    caminho_completo = os.path.join(user_dir, arquivo)
-                    
-                    # Filtra apenas CSVs (ignora .crdownload)
-                    if (arquivo.lower().endswith('.csv') and 
-                        os.path.isfile(caminho_completo)):
-                        
-                        # Verifica data de modificação e tamanho
-                        if (os.path.getmtime(caminho_completo) > antes_download and
-                            os.path.getsize(caminho_completo) > 0):
-                            novos_arquivos.append(caminho_completo)
-            except OSError:
-                pass # Ignora erros momentâneos de leitura de disco
-
+            for arquivo in os.listdir(user_dir):
+                caminho_completo = os.path.join(user_dir, arquivo)
+                if (arquivo.lower().endswith('.csv') and 
+                    os.path.isfile(caminho_completo) and 
+                    os.path.getmtime(caminho_completo) > antes_download and
+                    os.path.getsize(caminho_completo) > 0):
+                    novos_arquivos.append(caminho_completo)
+            
             if novos_arquivos:
                 # Ordena pelo mais recente
                 novos_arquivos.sort(key=os.path.getmtime, reverse=True)
                 arquivo_recente = novos_arquivos[0]
-                
-                # Espera extra para garantir que o SO liberou o arquivo
-                time.sleep(2)
                 print(f"Arquivo CSV baixado encontrado: {os.path.basename(arquivo_recente)}")
                 break
             
@@ -159,49 +159,56 @@ def extrai_internados_ghosp():
         if arquivo_recente:
             # Processa o arquivo encontrado
             try:
-                print(f"Processando arquivo: {arquivo_recente}")
                 # Carregar o arquivo CSV recém-baixado
                 original_df = pd.read_csv(arquivo_recente, header=None, dtype=str)
+                # Chamar a função para extrair os nomes do CSV recém-baixado
                 
-                # Lista para armazenar os nomes extraídos
+                
+
+                    # Lista para armazenar os nomes extraídos
                 nomes_extraidos = []
                 
                 # Percorre as linhas do DataFrame original
                 for i, row in original_df.iterrows():
-                    try:
-                        coluna = linha_valida(row)
-                        if coluna == 'coluna_2':
-                            nome = row[1].strip()
-                            nomes_extraidos.append(nome)
-                        elif coluna == 'coluna_3':
-                            nome = row[2].strip()
-                            nomes_extraidos.append(nome)
-                    except Exception:
-                        continue # Pula linhas problemáticas
-
+                    coluna = linha_valida(row)
+                    if coluna == 'coluna_2':
+                        nome = row[1].strip()  # Extrai da segunda coluna
+                        nomes_extraidos.append(nome)
+                    elif coluna == 'coluna_3':
+                        nome = row[2].strip()  # Extrai da terceira coluna
+                        nomes_extraidos.append(nome)
+                    else:
+                        print(f"Linha ignorada: {row}")
+                
                 # Converte a lista de nomes extraídos para um DataFrame
                 nomes_df = pd.DataFrame(nomes_extraidos, columns=['Nome'])
                 
-                # Caminho para salvar o novo arquivo
+                '''
+                # Determina o diretório onde o executável ou o script está sendo executado
+                if getattr(sys, 'frozen', False):
+                    # Se o programa estiver rodando como executável
+                    base_dir = os.path.dirname(sys.executable)
+                else:
+                    # Se estiver rodando como um script Python
+                    base_dir = os.path.dirname(os.path.abspath(__file__))
+                '''
+                # Caminho para salvar o novo arquivo na pasta ~/AutoReg/
+                user_dir = os.path.expanduser('~/AutoReg')
                 os.makedirs(user_dir, exist_ok=True)
                 caminho_novo_arquivo = os.path.join(user_dir, 'internados_ghosp.csv')
                 nomes_df.to_csv(caminho_novo_arquivo, index=False)
-                print(f"✅ Sucesso! Nomes extraídos e salvos em {caminho_novo_arquivo}.")
+                
+                print(f"Nomes extraídos e salvos em {caminho_novo_arquivo}.")
+
+
                 
             except Exception as e:
                 print(f"Erro ao processar o arquivo CSV: {e}")
-                print(traceback.format_exc())
         else:
-            print("❌ Timeout: O arquivo não foi baixado após o tempo limite.")
+                # Defina ou importe a função extrair_nomes conforme necessário
+                print(original_df.head())
 
     except Exception as e:
-        print(f"❌ Ocorreu um erro crítico na extração: {e}")
-        print(traceback.format_exc())
-    
+        print(f"Ocorreu um erro: {e}")
     finally:
-        if driver:
-            print("Fechando navegador...")
-            driver.quit()
-
-if __name__ == "__main__":
-    extrai_internados_ghosp()
+        driver.quit()

@@ -227,15 +227,12 @@ def exames_ambulatorio_relatorio():
     # Itera sobre os links do CSV
     for index, row in df.iterrows():
         try:
-            # Verifica se a linha tem chave e solicitação preenchidos (só processa se tiver ambos)
-            chave_val = row.get('chave', '')
-            chave = str(chave_val).strip() if pd.notna(chave_val) and chave_val != '' else ''
-            
+            # Verifica se a linha tem solicitação preenchida (só processa se tiver; chave não é obrigatória)
             solicitacao_val = row.get('solicitacao', '')
-            solicitacao = str(solicitacao_val).strip() if pd.notna(solicitacao_val) and solicitacao_val != '' else ''
+            solicitacao = str(solicitacao_val).strip() if pd.notna(solicitacao_val) and str(solicitacao_val).strip() != '' else ''
             
-            if not (chave and solicitacao):
-                print(f"\n[{index + 1}/{len(df)}] ⏭️  Linha sem chave ou solicitação preenchidos. Pulando...")
+            if not solicitacao:
+                print(f"\n[{index + 1}/{len(df)}] ⏭️  Linha sem solicitação preenchida. Pulando...")
                 continue
             
             cns = row['cns']

@@ -119,29 +119,28 @@ def solicita_inf_aih():
                     procedimento_match = re.search(r'\((\d+)\)', procedimento_text)
                     procedimento = procedimento_match.group(1) if procedimento_match else ''
                     print(f"Procedimento extraído: {procedimento}")
-
-                    # Obtém o nome do médico e data
+                    
+                    
+                    # Obtém o nome do médico e data a partir do painel pac-dados-atend
                     print("Extraindo nome do médico e data...")
-                    botao = WebDriverWait(driver, 10).until(
-                        EC.element_to_be_clickable((By.XPATH, '//*[starts-with(@id, "edit_formeletronico_")]/div[2]/input'))
+                    pac_dados = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.ID, "pac-dados-atend"))
                     )
-                    botao.click()
 
-                    info_element = WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.XPATH, '//*[@id="lista-forms"]/ul/li[1]/div/span'))
-                    )
-                    info_text = info_element.text
-
-                    data_match = re.search(r'Preenchido em: (\d{2}/\d{2}/\d{4})', info_text)
-                    medico_match = re.search(r'por (.*?)\s*\(CRM', info_text)
-                    
+                    internamento_div = pac_dados.find_element(By.XPATH, './/div[label[contains(text(),"Internamento")]]')
+                    # Usa JS para ler texto de elemento oculto (display:none)
+                    internamento_text = driver.execute_script("return arguments[0].textContent;", internamento_div)
+                    data_match = re.search(r'(\d{2}/\d{2}/\d{4})', internamento_text)
                     data = data_match.group(1) if data_match else ""
-                    medico = medico_match.group(1).strip() if medico_match else ""
-                    # Trata o nome do médico removendo caracteres problemáticos
-                    medico = ' '.join(medico.split()).replace(';', ',').replace('"', "'").replace('\n', ' ').replace('\r', ' ')
-                    
-                    print(f"Médico extraído: {medico}")
                     print(f"Data extraída: {data}")
+
+                    responsavel_div = pac_dados.find_element(By.XPATH, './/div[label[contains(text(),"Responsável")]]')
+                    # Usa JS para ler texto de elemento oculto (display:none)
+                    responsavel_text = driver.execute_script("return arguments[0].textContent;", responsavel_div)
+                    medico = re.sub(r'^Responsável\s*:?\s*', '', responsavel_text).strip()
+                    medico = ' '.join(medico.split()).replace(';', ',').replace('"', "'").replace('\n', ' ').replace('\r', ' ')
+                    print(f"Médico extraído: {medico}")
+                                      
 
                 elif '/printernlaudos' in link:
                     print("Detectado padrão: printernlaudos")
@@ -162,28 +161,28 @@ def solicita_inf_aih():
 
                     # Clica no botão Editar do laudo mais recente
                     print("Clicando no botão Editar do laudo mais recente...")
-                    # Busca todas as linhas da tabela de laudos (exceto o cabeçalho)
+                    # Busca todas as linhas do tbody (thead é separado, não há linha vazia)
                     linhas_laudos = WebDriverWait(driver, 10).until(
-                        EC.presence_of_all_elements_located((By.XPATH, '//*[@id="lista_prlaudosmppes"]/tbody/tr[position() > 1]'))
+                        EC.presence_of_all_elements_located((By.XPATH, '//*[@id="lista_prlaudosmppes"]/tbody/tr'))
                     )
-                    
+
                     if not linhas_laudos:
                         print("⚠️ Nenhum laudo encontrado na tabela")
                         continue
-                    
-                    # Pega a última linha (laudo mais recente)
-                    ultima_linha_index = len(linhas_laudos) + 1  # +1 porque a primeira linha (tr[1]) está vazia
-                    
+
+                    # Pega a última linha (laudo mais recente) - XPath é 1-indexado
+                    ultima_linha_index = len(linhas_laudos)
+
                     # Primeiro, move o mouse sobre a última linha para revelar o botão Editar
                     from selenium.webdriver.common.action_chains import ActionChains
                     ultima_linha = driver.find_element(By.XPATH, f'//*[@id="lista_prlaudosmppes"]/tbody/tr[{ultima_linha_index}]')
                     ActionChains(driver).move_to_element(ultima_linha).perform()
                     print(f"Mouse posicionado sobre a linha {ultima_linha_index}")
                     time.sleep(1)  # Aguarda o botão aparecer
-                    
-                    # Clica no botão Editar da última linha
+
+                    # Clica no botão Editar da última linha (coluna de ações é a última)
                     botao_editar = WebDriverWait(driver, 10).until(
-                        EC.element_to_be_clickable((By.XPATH, f'//*[@id="lista_prlaudosmppes"]/tbody/tr[{ultima_linha_index}]/td[4]/a[@title="Editar"]'))
+                        EC.element_to_be_clickable((By.XPATH, f'//*[@id="lista_prlaudosmppes"]/tbody/tr[{ultima_linha_index}]/td[last()]/a[@title="Editar"]'))
                     )
                     botao_editar.click()
                     print(f"Botão Editar clicado (linha {ultima_linha_index})")
@@ -233,13 +232,13 @@ def solicita_inf_aih():
                     data_element = driver.find_element(By.XPATH, '//*[@id="hhlaudosaih_data_solicitacao"]')
                     data = data_element.get_attribute('value') or data_element.text
                     print(f"Data extraída: {data}")
-                    
+                                      
                     # Fecha o modal antes de clicar no paciente
                     print("Fechando modal de edição...")
                     try:
-                        # Tenta fechar o modal (pode ter um botão X ou fechar)
+                        # Botão de fechar é <button> com classe ui-dialog-titlebar-close
                         fechar_modal = WebDriverWait(driver, 5).until(
-                            EC.element_to_be_clickable((By.XPATH, '//a[@class="ui-dialog-titlebar-close ui-corner-all"]'))
+                            EC.element_to_be_clickable((By.CSS_SELECTOR, '.ui-dialog-titlebar-close'))
                         )
                         fechar_modal.click()
                         time.sleep(1)
@@ -253,12 +252,13 @@ def solicita_inf_aih():
                     print(f"⚠️ URL não corresponde aos padrões esperados: {link}")
                     continue
 
-                # Clica no elemento do paciente para extrair CNS
+                # Clica no link do nome do paciente para abrir modal com CNS
                 print("Clicando no elemento do paciente...")
                 paciente_element = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/h4/a'))
+                    EC.presence_of_element_located((By.CSS_SELECTOR, '#paciente .dados-pct h4 a[data-remote="true"]'))
                 )
-                paciente_element.click()
+                # Usa JS click para garantir disparo do evento data-remote (Rails UJS)
+                driver.execute_script("arguments[0].click();", paciente_element)
 
                 print("Extraindo CNS do paciente...")
                 # Localiza o fieldset "Documentos"
@@ -299,9 +299,9 @@ def solicita_inf_aih():
                 # Clica no botão de fechar/voltar o modal do paciente
                 print("Fechando modal do paciente...")
                 try:
-                    # Tenta fechar o modal usando o botão X
+                    # Botão de fechar é <button> com classe ui-dialog-titlebar-close
                     fechar_element = WebDriverWait(driver, 5).until(
-                        EC.element_to_be_clickable((By.XPATH, '//a[@class="ui-dialog-titlebar-close ui-corner-all"]'))
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, '.ui-dialog-titlebar-close'))
                     )
                     fechar_element.click()
                     print("Modal fechado com sucesso")
@@ -313,6 +313,8 @@ def solicita_inf_aih():
                     driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.ESCAPE)
                     time.sleep(1)
 
+               
+                
                 # Atualiza o DataFrame com as informações extraídas
                 df.at[index, 'prontuario'] = prontuario
                 df.at[index, 'informacoes'] = informacoes

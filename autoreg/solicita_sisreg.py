@@ -91,7 +91,16 @@ def solicita_sisreg():
         print("Arquivo CSV está vazio!")
         logging.error("Arquivo CSV está vazio")
         return
-        
+
+    # Remove ".0" do final dos campos numéricos lidos como float pelo pandas
+    for col in ['ra', 'cns', 'procedimento']:
+        if col in df.columns:
+            df[col] = df[col].astype(str).apply(
+                lambda x: x[:-2] if x.endswith('.0') else x
+            )
+    df.to_csv(csv_path, index=False)
+    print("CSV normalizado (removido '.0' de ra, cns e procedimento)")
+
     try:
         for index, row in df.iterrows():
             try:
@@ -254,14 +263,14 @@ def solicita_sisreg():
                 # Seleciona a opção baseada no tipo
                 if tipo_clinica in tipo_para_opcao:
                     opcao_desejada = tipo_para_opcao[tipo_clinica]
-                    print(f"Selecionando especialidade: {opcao_desejada}")
-                    select_especialidade.select_by_visible_text(opcao_desejada)
-                    print(f"Especialidade selecionada: {opcao_desejada}")
-                    logging.info(f"Especialidade selecionada: {opcao_desejada}")
                 else:
-                    print(f"Tipo de clínica não mapeado: {tipo_clinica}")
-                    logging.warning(f"Tipo de clínica não mapeado: {tipo_clinica}")
-                    return
+                    opcao_desejada = 'ESPEC - CLINICO - CLINICA GERAL'
+                    print(f"Tipo de clínica não mapeado: '{tipo_clinica}'. Usando padrão: {opcao_desejada}")
+                    logging.warning(f"Tipo de clínica não mapeado: '{tipo_clinica}'. Usando padrão: {opcao_desejada}")
+                print(f"Selecionando especialidade: {opcao_desejada}")
+                select_especialidade.select_by_visible_text(opcao_desejada)
+                print(f"Especialidade selecionada: {opcao_desejada}")
+                logging.info(f"Especialidade selecionada: {opcao_desejada}")
                     
                 time.sleep(2)  # Aguarda processamento da seleção
                 
