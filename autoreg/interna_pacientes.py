@@ -82,8 +82,8 @@ def interna_pacientes():
         print("Botão de login clicado.")
         logging.info("Botão de login clicado.")
         
-        wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_internar' and text()='internar']"))).click()
-        time.sleep(10)
+        #wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_internar' and text()='internar']"))).click()
+        #time.sleep(10)
         wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
         print("Login realizado e navegação para página de Internação...\n")
         logging.info("Login realizado e navegação para página de Internação...\n")
@@ -92,16 +92,20 @@ def interna_pacientes():
             for linha in leitor_csv:
                 ficha = linha[1]  # Captura o número da ficha da segunda coluna
                 try:
+                    navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_internar")
+                    time.sleep(1)
                     print(f"Acessando a página de Internação para a ficha {ficha}...\n")
 
                     # ABRE A FICHA A SER INTERNADA
-                    navegador.switch_to.default_content()
+                    #navegador.switch_to.default_content()
                     wait = WebDriverWait(navegador, 10)
-                    wait.until(EC.frame_to_be_available_and_switch_to_it((By.NAME, 'f_principal')))
+                    #wait.until(EC.frame_to_be_available_and_switch_to_it((By.NAME, 'f_principal')))
                     navegador.execute_script(f"configFicha('{ficha}')")
                     print(f"Executando a função configFicha para a ficha: {ficha}\n")
-                    time.sleep(1)  # Reduzi o tempo de espera para acelerar o fluxo                    
+                    time.sleep(3)  # Reduzi o tempo de espera para acelerar o fluxo                    
                     print(f"Ficha {ficha} processada com sucesso.\n")
+                    
+                    
                     # Captura a data de solicitação e formata corretamente
                     try:
                         all_trs = navegador.find_elements(By.XPATH, "//tr")
@@ -177,7 +181,7 @@ def interna_pacientes():
                     except NoSuchElementException:
                         print("✔️ Nenhum erro de sistema detectado. Internação realizada com sucesso.\n")
                         #wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_internar' and text()='internar']")))
-                        time.sleep(10)
+                        time.sleep(3)
                 except Exception as e:
                     print(f"Erro ao processar a ficha {ficha}: {e}\n")
                     logging.error(f"Erro ao processar a ficha {ficha}: {e}")

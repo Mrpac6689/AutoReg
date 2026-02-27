@@ -12,7 +12,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException,
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import Select
 from autoreg.chrome_options import get_chrome_options
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def exames_ambulatorio_solicita():
     print("Solicitação de exames ambulatoriais")
@@ -726,7 +726,218 @@ def exames_ambulatorio_solicita():
                     score *= 0.7
         
         return min(1.0, score)
-    
+
+    # ---------------------------------------------------------------------------
+    # Funções de pre-check para evitar solicitações duplicadas no SISREG
+    # ---------------------------------------------------------------------------
+
+    def _buscar_campo_ficha_solicita(rotulo_texto):
+        """
+        Busca o valor de um campo na ficha ambulatorial do SISREG pelo rótulo.
+        O valor fica na linha (tr) seguinte à linha que contém o rótulo.
+        Retorna o texto encontrado ou None.
+        """
+        try:
+            for xpath_busca in [
+                f'//*[@id="fichaAmbulatorial"]//td[contains(., "{rotulo_texto}")]',
+                f'//*[@id="fichaAmbulatorial"]//td[contains(., "{rotulo_texto.replace(":", "").strip()}")]',
+            ]:
+                try:
+                    elementos = navegador.find_elements(By.XPATH, xpath_busca)
+                    if not elementos:
+                        continue
+                    rotulo_el = elementos[0]
+                    tr_rotulo = rotulo_el.find_element(By.XPATH, './ancestor::tr')
+                    tr_valor = tr_rotulo.find_element(By.XPATH, './following-sibling::tr[1]')
+                    td_valor = tr_valor.find_element(By.XPATH, './td[1]')
+                    try:
+                        b_el = td_valor.find_element(By.XPATH, './b')
+                        texto = b_el.text.strip()
+                    except Exception:
+                        texto = td_valor.text.strip()
+                    if texto and not texto.endswith(':'):
+                        return texto
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        return None
+
+    def verificar_solicitacao_duplicada(cns_str, tipo_exame_req, parte_corpo_req, lateralidade_req):
+        """
+        Verifica se já existe solicitação no SISREG para o mesmo CNS e procedimento
+        nos últimos 7 dias. Navega para o gerenciador de solicitações, pesquisa o CNS
+        e inspeciona cada ficha recente.
+
+        Returns:
+            tuple: (chave, solicitacao) se encontrou duplicata, ou (None, None) se não encontrou.
+        """
+        try:
+            print(f"      🔍 Pre-check SISREG: verificando duplicata para CNS {cns_str}...")
+            navegador.get("https://sisregiii.saude.gov.br/cgi-bin/gerenciador_solicitacao")
+            time.sleep(2)
+
+            # Preenche o campo CNS do paciente
+            try:
+                cns_paciente_field = WebDriverWait(navegador, 10).until(
+                    EC.presence_of_element_located((By.NAME, "cns_paciente"))
+                )
+                cns_paciente_field.clear()
+                cns_paciente_field.send_keys(cns_str)
+            except TimeoutException:
+                print(f"      ⚠️  Campo 'cns_paciente' não encontrado no gerenciador. Pulando pre-check.")
+                return None, None
+
+            try:
+                btn_pesquisar_dup = WebDriverWait(navegador, 10).until(
+                    EC.element_to_be_clickable((By.NAME, "pesquisar"))
+                )
+                btn_pesquisar_dup.click()
+                time.sleep(3)
+            except TimeoutException:
+                print(f"      ⚠️  Botão 'pesquisar' não encontrado no gerenciador. Pulando pre-check.")
+                return None, None
+
+            data_atual = datetime.now()
+            data_limite = data_atual - timedelta(days=7)
+
+            linhas_tabela = navegador.find_elements(By.XPATH, "//table//tbody//tr")
+            if not linhas_tabela:
+                print(f"      ℹ️  Nenhuma solicitação anterior encontrada para CNS {cns_str}.")
+                return None, None
+
+            print(f"      📋 {len(linhas_tabela)} solicitação(ões) anterior(es) a verificar.")
+
+            for linha in linhas_tabela:
+                try:
+                    celulas = linha.find_elements(By.TAG_NAME, "td")
+                    if not celulas:
+                        continue
+
+                    # Procura uma data válida entre as células da linha
+                    texto_data = None
+                    for celula in celulas:
+                        texto_celula = celula.text.strip()
+                        if '/' in texto_celula and 8 <= len(texto_celula) <= 20:
+                            texto_data = texto_celula
+                            break
+
+                    if not texto_data:
+                        continue
+
+                    # Faz parse da data no formato DD/MM/YYYY
+                    texto_data_limpo = texto_data.split()[0] if ' ' in texto_data else texto_data
+                    data_solicitacao = None
+                    for fmt in ['%d/%m/%Y', '%d/%m/%y', '%Y-%m-%d']:
+                        try:
+                            data_solicitacao = datetime.strptime(texto_data_limpo, fmt)
+                            break
+                        except Exception:
+                            continue
+
+                    if not data_solicitacao or data_solicitacao < data_limite:
+                        continue  # Fora do prazo de 7 dias
+
+                    print(f"      📅 Registro recente ({texto_data}). Verificando procedimento...")
+
+                    # Clica na linha para abrir a ficha
+                    clicou = False
+                    try:
+                        linha.click()
+                        clicou = True
+                    except Exception:
+                        try:
+                            link_el = linha.find_element(By.TAG_NAME, "a")
+                            link_el.click()
+                            clicou = True
+                        except Exception:
+                            pass
+
+                    if not clicou:
+                        continue
+
+                    time.sleep(2)
+
+                    # Aguarda a ficha ambulatorial carregar
+                    try:
+                        WebDriverWait(navegador, 10).until(
+                            EC.presence_of_element_located((By.XPATH, '//*[@id="fichaAmbulatorial"]'))
+                        )
+                    except Exception:
+                        print(f"      ⚠️  Ficha ambulatorial não carregou. Voltando...")
+                        try:
+                            navegador.back()
+                            time.sleep(2)
+                        except Exception:
+                            pass
+                        continue
+
+                    # Inspeciona todos os tds da ficha em busca de procedimentos de tomografia/angio
+                    todos_tds = navegador.find_elements(By.XPATH, '//*[@id="fichaAmbulatorial"]//td')
+                    for td in todos_tds:
+                        try:
+                            texto_td = td.text.strip()
+                            if not texto_td or texto_td.endswith(':'):
+                                continue
+                            texto_upper = texto_td.upper()
+                            if 'TOMOGRAFIA' not in texto_upper and 'ANGIO' not in texto_upper:
+                                continue
+
+                            tipo_ficha = identificar_tipo_exame(texto_td)
+                            parte_ficha = identificar_parte_corpo(texto_td)
+                            lat_ficha = identificar_lateralidade(texto_td)
+
+                            if not tipo_ficha or not parte_ficha:
+                                continue
+
+                            mesmo_tipo = tipo_ficha == tipo_exame_req
+                            mesma_parte = parte_ficha == parte_corpo_req
+                            mesma_lat = (lat_ficha == lateralidade_req or
+                                         (not lat_ficha and not lateralidade_req))
+
+                            if mesmo_tipo and mesma_parte and mesma_lat:
+                                # Encontrou o mesmo exame! Captura chave e número da solicitação
+                                chave_dup = _buscar_campo_ficha_solicita("Chave de Confirmação:")
+                                solicitacao_dup = _buscar_campo_ficha_solicita("Código da Solicitação:")
+                                if solicitacao_dup:
+                                    print(f"      🔴 DUPLICATA: Tipo={tipo_ficha}, Parte={parte_ficha}")
+                                    print(f"         Solicitação já existente: {solicitacao_dup} | Chave: {chave_dup}")
+                                    return chave_dup or '', solicitacao_dup
+                        except Exception:
+                            continue
+
+                    # Exame diferente; volta à lista e re-pesquisa o CNS
+                    print(f"      ℹ️  Exame diferente nesta ficha. Voltando à lista...")
+                    try:
+                        navegador.back()
+                        time.sleep(2)
+                        cns_f2 = WebDriverWait(navegador, 5).until(
+                            EC.presence_of_element_located((By.NAME, "cns_paciente"))
+                        )
+                        cns_f2.clear()
+                        cns_f2.send_keys(cns_str)
+                        btn_p2 = WebDriverWait(navegador, 5).until(
+                            EC.element_to_be_clickable((By.NAME, "pesquisar"))
+                        )
+                        btn_p2.click()
+                        time.sleep(3)
+                        linhas_tabela = navegador.find_elements(By.XPATH, "//table//tbody//tr")
+                    except Exception as e_nav:
+                        print(f"      ⚠️  Erro ao restaurar lista: {e_nav}. Interrompendo pre-check.")
+                        break
+
+                except Exception:
+                    continue
+
+            print(f"      ✅ Nenhuma solicitação duplicada encontrada para CNS {cns_str}.")
+            return None, None
+
+        except Exception as e:
+            print(f"      ⚠️  Erro no pre-check de duplicata SISREG: {e}. Prosseguindo com a solicitação.")
+            return None, None
+
+    # ---------------------------------------------------------------------------
+
     # Itera sobre os links do CSV
     for index, row in df.iterrows():
         try:
@@ -756,6 +967,36 @@ def exames_ambulatorio_solicita():
                 print(f"   ❌ Erro: coluna 'cns' está vazia. Pulando registro...")
                 continue
             print(f"\n[{index + 1}/{len(df)}] Processando Solicitação para o CNS: {cns}")
+
+            # ---------------------------------------------------------------
+            # Pre-check: verifica se já existe solicitação no SISREG para
+            # este CNS + procedimento antes de abrir a tela de marcação.
+            # Bloqueia duplicidades mesmo que consulta.py não tenha rodado.
+            # ---------------------------------------------------------------
+            if procedimento:
+                primeiro_proc = procedimento.split('|')[0].strip()
+                tipo_req = identificar_tipo_exame(primeiro_proc)
+                parte_req = identificar_parte_corpo(primeiro_proc)
+                lat_req = identificar_lateralidade(primeiro_proc)
+                if tipo_req and parte_req:
+                    chave_dup, sol_dup = verificar_solicitacao_duplicada(
+                        str(cns), tipo_req, parte_req, lat_req
+                    )
+                    if sol_dup:
+                        print(f"   ⛔ DUPLICATA BLOQUEADA: Solicitação '{sol_dup}' já existe para este exame.")
+                        print(f"      Salvando solicitação existente no CSV e pulando nova solicitação.")
+                        df.at[index, 'chave'] = chave_dup
+                        df.at[index, 'solicitacao'] = sol_dup
+                        df.at[index, 'solicita'] = ''
+                        df.at[index, 'erro'] = ''
+                        try:
+                            df.to_csv(csv_exames, index=False)
+                            print(f"   💾 CSV atualizado com solicitação existente")
+                        except Exception as e_csv:
+                            print(f"   ⚠️  Erro ao salvar CSV: {e_csv}")
+                        continue
+            # ---------------------------------------------------------------
+
             navegador.get(f"https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar")
             time.sleep(2)
             
