@@ -39,6 +39,7 @@ from autoreg import solicita_nota  # Importa a função solicita_nota
 from autoreg import solicita_pre_aih  # Importa a função solicita_pre_aih
 from autoreg import consulta_solicitacao_sisreg  # Importa a função consulta_solicitacao_sisreg
 from autoreg import internados_ghosp_avancado  # Importa a função internados_ghosp_avancado
+from autoreg import extrai_internados_ghosp_avancado  # Importa a função extrai_internados_ghosp_avancado
 from autoreg import internados_ghosp_nota  # Importa a função internados_ghosp_nota
 from autoreg import solicita_trata_dados  # Importa a função solicita_trata_dados
 from autoreg import producao_ambulatorial  # Importa a função producao_ambulatorial
@@ -48,6 +49,8 @@ from autoreg import exames_ambulatorio_extrai  # Importa a função exames_ambul
 from autoreg import exames_ambulatorio_solicita  # Importa a função exames_ambulatorio_solicita
 from autoreg import exames_ambulatorio_relatorio  # Importa a função exames_ambulatorio_relatorio
 from autoreg import exames_ambulatoriais_consulta  # Importa a função exames_ambulatoriais_consulta
+from autoreg import motivo_alta_avancado  # Importa a função motivo_alta_avancado
+from autoreg import executa_alta_avancado  # Importa a função executa_alta_avancado
 from autoreg import producao_relatorio  # Registro de produção via AUTOREG-API
 
 # Dicionário com as funções e suas descrições
@@ -59,6 +62,10 @@ FUNCOES = {
     'internados_ghosp_avancado': {
         'func': internados_ghosp_avancado,
         'desc': 'Extrai pacientes internados no GHOSP com informações adicionais'
+    },
+    'extrai_internados_ghosp_avancado': {
+        'func': extrai_internados_ghosp_avancado,
+        'desc': 'Consulta permanencia de pacientes no GHOSP, que se encontram como internados no SISREG'
     },
     'internados_ghosp_nota': {
         'func': internados_ghosp_nota,
@@ -187,6 +194,14 @@ FUNCOES = {
     'exames_ambulatoriais_consulta': {
         'func': exames_ambulatoriais_consulta,
         'desc': 'Consulta prévia existência de solicitação no SISREG para o mesmo paciente e exame, lançada recentemente.'
+    },
+    'motivo_alta_avancado': {
+        'func': motivo_alta_avancado,
+        'desc': 'Verifica altas e extrai motivos'
+    },
+    'executa_alta_avancado': {
+        'func': executa_alta_avancado,
+        'desc': 'Execução de altas no SISREG - versão avançada'
     }
 }
 
@@ -219,8 +234,10 @@ FUNÇÕES DISPONÍVEIS:
         ('-eig', '--extrai-internados-ghosp', 'extrai_internados_ghosp'),
         ('-ci', '--compara-internados', 'compara_internados'),
         ('-ma', '--motivo-alta', 'motivo_alta'),
+        ('-maa', '--motivo-alta-avancado', 'motivo_alta_avancado'),
         ('-ecsa', '--extrai-codigos-sisreg-alta', 'extrai_codigos_sisreg_alta'),
         ('-ea', '--executa-alta', 'executa_alta'),
+        ('-eaa', '--executa-alta-avancado', 'executa_alta_avancado'),
         ('-ar', '--atualiza-restos', 'atualiza_restos'),
         ('-eid', '--extrai-internacoes-duplicadas', 'extrai_internacoes_duplicadas'),
         ('-td', '--trata-duplicados', 'trata_duplicados'),
@@ -231,6 +248,7 @@ FUNÇÕES DISPONÍVEIS:
         ('-ghn', '--ghosp-nota', 'ghosp_nota'),
         ('-ghc', '--ghosp-cns', 'ghosp_cns'),
         ('-iga', '--internados-ghosp-avancado', 'internados_ghosp_avancado'),
+        ('-eiga', '--extrai-internados-ghosp-avancado', 'extrai_internados_ghosp_avancado'),
         ('-ign', '--internados-ghosp-nota', 'internados_ghosp_nota'),
         ('-especial', '--especial', 'ghosp_especial'),
         ('-especial-parallel', '--especial-parallel', 'ghosp_especial_parallel'),
@@ -248,7 +266,6 @@ FUNÇÕES DISPONÍVEIS:
         ('-ear', '--exames-ambulatorio-relatorio', 'exames_ambulatorio_relatorio'),
         ('-eac', '--exames-ambulatoriais-consulta', 'exames_ambulatoriais_consulta'),
         ('-interna', '--interna', None),
-        ('-analisa', '--analisa', None),
         ('-alta', '--alta', None),
         ('-solicita', '--solicita', None),
         ('-aihs', '--aihs', None),
@@ -260,10 +277,8 @@ FUNÇÕES DISPONÍVEIS:
             desc = FUNCOES[func_name]['desc']
         elif short == '-interna':
             desc = 'Executa sequência de internação: -eci -ip'
-        elif short == '-analisa':
-            desc = 'Executa sequência de análise: -eis -eig -ci -ma'
         elif short == '-alta':
-            desc = 'Executa sequência de alta: -tat -ecsa -ea -ar -eid -td -clc'
+            desc = 'Executa sequência de alta: -eis -eiga -maa -eaa'
         elif short == '-solicita':
             desc = 'Executa rotina de Solicitação: -spa -sia -ssr -snt'
         elif short == '-aihs':
@@ -371,8 +386,8 @@ def executar_todas():
     print("╔═══════════════════════════════════════════════════════════════════════════════╗")
     print("║                    EXECUÇÃO COMPLETA DO WORKFLOW AUTOREG                      ║")
     print("╚═══════════════════════════════════════════════════════════════════════════════╝")
-    print("\nEste workflow executará sequencialmente: INTERNA → ANALISA → ALTA")
-    print("Total de 13 funções por ciclo completo\n")
+    print("\nEste workflow executará sequencialmente: INTERNA → ALTA")
+    print("Total de 6 funções por ciclo completo\n")
     
     while True:
         try:
@@ -417,22 +432,11 @@ def executar_todas():
                 print(f"❌ Parando execução devido ao erro em {func_name}")
                 return
         
-        # Sequência 2: ANALISA
+        # Sequência 2: ALTA
         print("\n" + "="*80)
-        print(f"CICLO {ciclo}/{repeticoes} - SEQUÊNCIA 2/3: ANÁLISE (-eis -eig -ci -ma)")
+        print(f"CICLO {ciclo}/{repeticoes} - SEQUÊNCIA 2/2: ALTA (-eis -eiga -maa -eaa)")
         print("="*80)
-        seq_analisa = ['extrai_internados_sisreg', 'extrai_internados_ghosp', 'compara_internados', 'motivo_alta']
-        for i, func_name in enumerate(seq_analisa, 1):
-            print(f"\n[CICLO {ciclo} | ANALISA {i}/{len(seq_analisa)}] ", end="")
-            if not executar_funcao(func_name):
-                print(f"❌ Parando execução devido ao erro em {func_name}")
-                return
-        
-        # Sequência 3: ALTA
-        print("\n" + "="*80)
-        print(f"CICLO {ciclo}/{repeticoes} - SEQUÊNCIA 3/3: ALTA (-tat -ecsa -ea -ar -eid -td -clc)")
-        print("="*80)
-        seq_alta = ['trata_altas', 'extrai_codigos_sisreg_alta', 'executa_alta', 'atualiza_restos', 'extrai_internacoes_duplicadas', 'trata_duplicados', 'limpa_cache']
+        seq_alta = ['extrai_internados_sisreg', 'extrai_internados_ghosp_avancado', 'motivo_alta_avancado', 'executa_alta_avancado']
         for i, func_name in enumerate(seq_alta, 1):
             print(f"\n[CICLO {ciclo} | ALTA {i}/{len(seq_alta)}] ", end="")
             if not executar_funcao(func_name):
@@ -451,7 +455,7 @@ def executar_todas():
     print(f"\n{'#'*80}")
     print(f"#{'WORKFLOW COMPLETO FINALIZADO':^78}#")
     print(f"{'#'*80}")
-    total_funcoes = len(seq_interna) + len(seq_analisa) + len(seq_alta)
+    total_funcoes = len(seq_interna) + len(seq_alta)
     print(f"📊 Ciclos executados: {repeticoes}")
     print(f"📊 Funções por ciclo: {total_funcoes}")
     print(f"📊 Total de funções executadas: {total_funcoes * repeticoes}")
@@ -487,10 +491,14 @@ Exemplos de uso:
                        help='Compara listas de internados entre sistemas')
     parser.add_argument('-ma', '--motivo-alta', action='store_true',
                        help='Captura motivos de alta no G-HOSP')
+    parser.add_argument('-maa', '--motivo-alta-avancado', action='store_true',
+                       help='Verifica altas e extrai motivos')
     parser.add_argument('-ecsa', '--extrai-codigos-sisreg-alta', action='store_true',
                        help='Extrai códigos SISREG para alta')
     parser.add_argument('-ea', '--executa-alta', action='store_true',
                        help='Executa altas no SISREG')
+    parser.add_argument('-eaa', '--executa-alta-avancado', action='store_true',
+                       help='Execução de altas no SISREG - versão avançada')
     parser.add_argument('-ar', '--atualiza-restos', action='store_true',
                        help='Atualiza arquivo de pacientes restantes')
     parser.add_argument('-eid', '--extrai-internacoes-duplicadas', action='store_true',
@@ -510,6 +518,8 @@ Exemplos de uso:
                        help='Extrai CNSs dos prontuários e cria lista_same_cns.csv')
     parser.add_argument('-iga', '--internados-ghosp-avancado', action='store_true',
                        help='Extrai pacientes internados no GHOSP com informações adicionais')
+    parser.add_argument('-eiga', '--extrai-internados-ghosp-avancado', action='store_true',
+                       help='Consulta permanencia de pacientes no GHOSP, que se encontram como internados no SISREG')
     parser.add_argument('-ign', '--internados-ghosp-nota', action='store_true',
                        help='Extrai o conteúdo das notas dos prontuários do GHOSP')
     parser.add_argument('-especial', '--especial', action='store_true',
@@ -545,8 +555,6 @@ Exemplos de uso:
     # Novas funções de workflow
     parser.add_argument('-interna', '--interna', action='store_true',
                        help='Executa sequência de internação: -eci -ip')
-    parser.add_argument('-analisa', '--analisa', action='store_true',
-                       help='Executa sequência de análise: -eis -eig -ci -ma')
     parser.add_argument('-alta', '--alta', action='store_true',
                        help='Executa sequência de alta: -tat -ecsa -ea -ar -eid -td -clc')
     parser.add_argument('-solicita', '--solicita', action='store_true',
@@ -579,8 +587,10 @@ Exemplos de uso:
         'extrai_internados_ghosp': 'extrai_internados_ghosp',
         'compara_internados': 'compara_internados',
         'motivo_alta': 'motivo_alta',
+        'motivo_alta_avancado': 'motivo_alta_avancado',
         'extrai_codigos_sisreg_alta': 'extrai_codigos_sisreg_alta',
         'executa_alta': 'executa_alta',
+        'executa_alta_avancado': 'executa_alta_avancado',
         'atualiza_restos': 'atualiza_restos',
         'extrai_internacoes_duplicadas': 'extrai_internacoes_duplicadas',
         'trata_duplicados': 'trata_duplicados',
@@ -593,6 +603,7 @@ Exemplos de uso:
         'ghosp_especial': 'ghosp_especial',
         'ghosp_especial_parallel': 'ghosp_especial_parallel',
         'internados_ghosp_avancado': 'internados_ghosp_avancado',
+        'extrai_internados_ghosp_avancado': 'extrai_internados_ghosp_avancado',
         'internados_ghosp_nota': 'internados_ghosp_nota',
         'solicita_inf_aih': 'solicita_inf_aih',
         'solicita_pre_aih': 'solicita_pre_aih',
@@ -625,21 +636,11 @@ Exemplos de uso:
             producao_relatorio.registrar_producao('Internar Pacientes', 'codigos_internacao.csv')
         return
 
-    if args.analisa:
-        print("🔄 Executando sequência de análise (-eis -eig -ci -ma)...")
-        seq = ['extrai_internados_sisreg', 'extrai_internados_ghosp', 'compara_internados', 'motivo_alta']
-        for i, func_name in enumerate(seq, 1):
-            print(f"\n[{i}/{len(seq)}] ", end="")
-            if not executar_funcao(func_name):
-                print(f"❌ Parando execução devido ao erro em {func_name}")
-                break
-        return
-
     if args.alta:
         if args.registro_producao:
-            producao_relatorio.registrar_producao('Altas', 'pacientes_de_alta.csv')
-        print("🔄 Executando sequência de alta (-tat -ecsa -ea -ar -eid -td -clc)...")
-        seq = ['trata_altas', 'extrai_codigos_sisreg_alta', 'executa_alta', 'atualiza_restos', 'extrai_internacoes_duplicadas', 'trata_duplicados', 'limpa_cache']
+            producao_relatorio.registrar_producao_altas('Altas', 'internados_sisreg.csv')
+        print("🔄 Executando sequência de alta (-eis -eiga -maa -eaa)...")
+        seq = ['extrai_internados_sisreg', 'extrai_internados_ghosp_avancado', 'motivo_alta_avancado', 'executa_alta_avancado']
         for i, func_name in enumerate(seq, 1):
             print(f"\n[{i}/{len(seq)}] ", end="")
             if not executar_funcao(func_name):

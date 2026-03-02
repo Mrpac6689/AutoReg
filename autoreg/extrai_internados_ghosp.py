@@ -47,9 +47,9 @@ def extrai_internados_ghosp():
         # Acesse a página de login do G-HOSP
         driver.get(caminho_ghosp + ':4001/users/sign_in')
         
-        # Ajustar o zoom para 50%
-        print("Ajustando o zoom para 50%...")
-        driver.execute_script("document.body.style.zoom='50%'")
+        # Definir tamanho da janela explicitamente (evita problemas com maximize no Docker/Kasm)
+        print("Configurando tamanho da janela para 1920x1080...")
+        driver.set_window_size(1920, 1080)
         time.sleep(2)
 
         # Realiza o login
@@ -89,8 +89,9 @@ def extrai_internados_ghosp():
         print("Todos os setores selecionados!")
 
         # --- REMOVIDO: driver.maximize_window() ---
-        # Causa desconexão do driver em ambientes Docker/Kasm.
-        
+        # No lugar do zoom ou maximize, garantimos o tamanho da janela via set_window_size acima.
+        time.sleep(1)
+
         # Selecionar o formato CSV
         print("Rolando até o dropdown de formato CSV...")
         formato_dropdown = WebDriverWait(driver, 10).until(

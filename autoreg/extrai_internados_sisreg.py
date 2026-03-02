@@ -12,13 +12,13 @@ from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
 import logging
+import re
 
 setup_logging()
 
 def extrai_internados_sisreg():
     print("\n---===> EXTRAÇÃO DE INTERNADOS <===---")
     logging.info("---===> EXTRAÇÃO DE INTERNADOS <===---")
-    nomes_fichas = []
     navegador = None
     try:
         chrome_options = get_chrome_options()
@@ -117,7 +117,7 @@ def extrai_internados_sisreg():
         time.sleep(5)
 
         # Extração de dados
-        nomes = []
+        dados = []
         while True:
             # Localiza as linhas da tabela com os dados
             linhas = navegador.find_elements(By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]")
@@ -125,7 +125,21 @@ def extrai_internados_sisreg():
             for linha in linhas:
                 # Extrai o nome do segundo <td> dentro de cada linha
                 nome = linha.find_element(By.XPATH, './td[2]').text
-                nomes.append(nome)
+                
+                # Extrai o número da solicitação do atributo onclick do botão
+                try:
+                    # O número está no onclick do botão: configFicha('xxxxxxxx')
+                    botao = linha.find_element(By.XPATH, ".//input[contains(@onclick, 'configFicha')]")
+                    onclick_txt = botao.get_attribute('onclick')
+                    match = re.search(r"configFicha\('(\d+)'\)", onclick_txt)
+                    solicitacao = match.group(1) if match else ""
+                except Exception:
+                    solicitacao = ""
+                
+                dados.append({
+                    "Nome": nome,
+                    "solicitacao_sisreg": solicitacao
+                })
 
             # Tenta localizar o botão "Próxima página"
             try:
@@ -143,8 +157,8 @@ def extrai_internados_sisreg():
                 logging.info("Não há mais páginas.")
                 break
 
-        # Cria um DataFrame com os nomes extraídos
-        df = pd.DataFrame(nomes, columns=["Nome"])
+        # Cria um DataFrame com os nomes e solicitações extraídos
+        df = pd.DataFrame(dados)
 
         # Salva os dados em uma planilha CSV
         user_dir = os.path.expanduser('~/AutoReg')
@@ -153,6 +167,54 @@ def extrai_internados_sisreg():
         df.to_csv(csv_path, index=False)
         print(f"Dados salvos em '{csv_path}'.")
         logging.info(f"Dados salvos em '{csv_path}'.")
+
+        # Segundo loop: Extrair CNS para cada solicitação
+        print("\n---===> INICIANDO EXTRAÇÃO DE CNS PARA CADA SOLICITAÇÃO <===---")
+        logging.info("---===> INICIANDO EXTRAÇÃO DE CNS PARA CADA SOLICITAÇÃO <===---")
+        
+        for i, item in enumerate(dados):
+            solicitacao = item.get('solicitacao_sisreg')
+            if not solicitacao:
+                continue
+                
+            print(f"Processando {i+1}/{len(dados)}: Solicitação {solicitacao}")
+            
+            try:
+                # Retorna à página de pesquisa e garante o foco no iframe
+                navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_saida_permanencia")
+                # É necessário trocar para o iframe novamente após o get
+                #WebDriverWait(navegador, 10).until(EC.frame_to_be_available_and_switch_to_it((By.NAME, 'f_principal')))
+                
+                # Clica em PESQUISAR para carregar o ambiente onde a função JS 'configFicha' está definida
+                pesquisar_btn = WebDriverWait(navegador, 20).until(
+                    EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']"))
+                )
+                pesquisar_btn.click()
+                
+                # Executa a função configFicha via JavaScript para abrir os detalhes da solicitação
+                navegador.execute_script(f"configFicha('{solicitacao}')")
+                
+                # Extrai o CNS
+                # O XPATH localiza o rótulo "CNS:", sobe para a linha (tr) e pega o conteúdo do único td na linha seguinte
+                cns_xpath = "//b[contains(text(), 'CNS:')]/ancestor::tr/following-sibling::tr[1]/td"
+                cns_element = WebDriverWait(navegador, 10).until(EC.presence_of_element_located((By.XPATH, cns_xpath)))
+                cns = cns_element.text.strip()
+                
+                item['cns'] = cns
+                print(f"CNS obtido: {cns}")
+                logging.info(f"CNS para solicitação {solicitacao}: {cns}")
+                
+            except Exception as e:
+                print(f"Aviso: Não foi possível obter o CNS para a solicitação {solicitacao}. Erro: {e}")
+                logging.warning(f"Erro ao extrair CNS para {solicitacao}: {e}")
+                item['cns'] = ""
+
+            # Atualiza o CSV a cada iteração para garantir que o progresso seja salvo
+            df_final = pd.DataFrame(dados)
+            df_final.to_csv(csv_path, index=False)
+
+        print(f"\nExtração finalizada com sucesso! Arquivo atualizado: '{csv_path}'")
+        logging.info("Extração de CNS concluída para todos os registros.")
         
     except TimeoutException:
         print("Erro ao tentar localizar os elementos na página. Verifique a conexão com a internet ou o estado do site.")

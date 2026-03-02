@@ -110,3 +110,32 @@ def registrar_producao(rotina, nome_arquivo_csv):
     caminho_csv = os.path.join(user_dir, nome_arquivo_csv)
     registros = contar_registros_csv(caminho_csv)
     return enviar_relatorio_producao(rotina, registros)
+
+
+def contar_altas_efetivadas(caminho_arquivo):
+    """
+    Conta o número de linhas no CSV onde a coluna 'resultado_sisreg' é 'Alta efetivada'.
+    """
+    if not os.path.isfile(caminho_arquivo):
+        return 0
+    count = 0
+    try:
+        with open(caminho_arquivo, 'r', encoding='utf-8', newline='') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row.get('resultado_sisreg') == 'Alta efetivada':
+                    count += 1
+    except Exception:
+        pass
+    return count
+
+
+def registrar_producao_altas(rotina, nome_arquivo_csv):
+    """
+    Conta as 'Altas efetivadas' no CSV em ~/AutoReg/nome_arquivo_csv e envia
+    o relatório de produção para a AUTOREG-API.
+    """
+    user_dir = os.path.join(os.path.expanduser('~'), 'AutoReg')
+    caminho_csv = os.path.join(user_dir, nome_arquivo_csv)
+    registros = contar_altas_efetivadas(caminho_csv)
+    return enviar_relatorio_producao(rotina, registros)
