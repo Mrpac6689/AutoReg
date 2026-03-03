@@ -104,6 +104,11 @@ def solicita_sisreg():
     try:
         for index, row in df.iterrows():
             try:
+                # Se a linha possuir dados na coluna solsisreg, ela deve ser ignorada no loop
+                if 'solsisreg' in df.columns and pd.notna(row['solsisreg']) and str(row['solsisreg']).strip() != '':
+                    print(f"Registro {index + 1}/{len(df)} já possui solicitação ({row['solsisreg']}). Pulando...")
+                    continue
+
                 print(f"\nProcessando registro {index + 1}/{len(df)}")
                 print(f"CNS a ser processado: {row['cns']}")
 
