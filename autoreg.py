@@ -13,7 +13,6 @@ import configparser
 import subprocess
 import time
 from pathlib import Path
-
 from autoreg import extrai_codigos_internacao
 from autoreg import interna_pacientes
 from autoreg import extrai_internados_sisreg
@@ -21,7 +20,7 @@ from autoreg import extrai_internados_ghosp
 from autoreg import compara_internados
 from autoreg import motivo_alta
 from autoreg import extrai_codigos_sisreg_alta
-from autoreg import executa_alta@exe:"docker"
+from autoreg import executa_alta
 from autoreg import atualiza_restos
 from autoreg import extrai_internacoes_duplicadas
 from autoreg import trata_duplicados

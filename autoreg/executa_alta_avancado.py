@@ -108,6 +108,11 @@ def executa_alta_avancado():
         }
 
         for index, row in altas_pendentes.iterrows():
+            # Pula se a alta já foi efetivada
+            if str(row.get('resultado_sisreg', '')).strip() == "Alta efetivada":
+                print(f"⏩ [{index+1}] Pulando solicitação {row.get('solicitacao_sisreg')}: Já efetivada.")
+                continue
+
             solicitacao = str(row['solicitacao_sisreg']).split('.')[0] # Remove .0 se houver
             motivo_ghosp = str(row['motivo_alta']).upper()
             
