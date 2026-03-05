@@ -179,35 +179,48 @@ def extrai_internados_sisreg():
                 
             print(f"Processando {i+1}/{len(dados)}: Solicitação {solicitacao}")
             
-            try:
-                # Retorna à página de pesquisa e garante o foco no iframe
-                navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_saida_permanencia")
-                # É necessário trocar para o iframe novamente após o get
-                #WebDriverWait(navegador, 10).until(EC.frame_to_be_available_and_switch_to_it((By.NAME, 'f_principal')))
-                
-                # Clica em PESQUISAR para carregar o ambiente onde a função JS 'configFicha' está definida
-                pesquisar_btn = WebDriverWait(navegador, 20).until(
-                    EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']"))
-                )
-                pesquisar_btn.click()
-                
-                # Executa a função configFicha via JavaScript para abrir os detalhes da solicitação
-                navegador.execute_script(f"configFicha('{solicitacao}')")
-                
-                # Extrai o CNS
-                # O XPATH localiza o rótulo "CNS:", sobe para a linha (tr) e pega o conteúdo do único td na linha seguinte
-                cns_xpath = "//b[contains(text(), 'CNS:')]/ancestor::tr/following-sibling::tr[1]/td"
-                cns_element = WebDriverWait(navegador, 10).until(EC.presence_of_element_located((By.XPATH, cns_xpath)))
-                cns = cns_element.text.strip()
-                
-                item['cns'] = cns
-                print(f"CNS obtido: {cns}")
-                logging.info(f"CNS para solicitação {solicitacao}: {cns}")
-                
-            except Exception as e:
-                print(f"Aviso: Não foi possível obter o CNS para a solicitação {solicitacao}. Erro: {e}")
-                logging.warning(f"Erro ao extrair CNS para {solicitacao}: {e}")
-                item['cns'] = ""
+            cns = ""
+            max_tentativas = 3
+            for tentativa in range(1, max_tentativas + 1):
+                try:
+                    # Retorna à página de pesquisa e garante o foco no iframe
+                    navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_saida_permanencia")
+
+                    # Clica em PESQUISAR para carregar o ambiente onde a função JS 'configFicha' está definida
+                    pesquisar_btn = WebDriverWait(navegador, 20).until(
+                        EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']"))
+                    )
+                    pesquisar_btn.click()
+
+                    # Aguarda a tabela de resultados carregar antes de chamar configFicha
+                    # (garante que o ambiente JS esteja pronto)
+                    WebDriverWait(navegador, 15).until(
+                        EC.presence_of_element_located((By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]"))
+                    )
+
+                    # Executa a função configFicha via JavaScript para abrir os detalhes da solicitação
+                    navegador.execute_script(f"configFicha('{solicitacao}')")
+
+                    # Extrai o CNS
+                    # O XPATH localiza o rótulo "CNS:", sobe para a linha (tr) e pega o conteúdo do único td na linha seguinte
+                    cns_xpath = "//b[contains(text(), 'CNS:')]/ancestor::tr/following-sibling::tr[1]/td"
+                    cns_element = WebDriverWait(navegador, 10).until(EC.presence_of_element_located((By.XPATH, cns_xpath)))
+                    cns = cns_element.text.strip()
+
+                    print(f"CNS obtido: {cns}")
+                    logging.info(f"CNS para solicitação {solicitacao}: {cns}")
+                    break  # Sucesso, sai do loop de tentativas
+
+                except Exception as e:
+                    logging.warning(f"Tentativa {tentativa}/{max_tentativas} - Erro ao extrair CNS para {solicitacao}: {e}")
+                    if tentativa < max_tentativas:
+                        print(f"Tentativa {tentativa} falhou. Aguardando antes de tentar novamente...")
+                        time.sleep(3 * tentativa)  # Backoff progressivo: 3s, 6s
+                    else:
+                        print(f"Aviso: Não foi possível obter o CNS para a solicitação {solicitacao} após {max_tentativas} tentativas.")
+                        logging.warning(f"CNS não obtido para {solicitacao} após {max_tentativas} tentativas.")
+
+            item['cns'] = cns
 
             # Atualiza o CSV a cada iteração para garantir que o progresso seja salvo
             df_final = pd.DataFrame(dados)

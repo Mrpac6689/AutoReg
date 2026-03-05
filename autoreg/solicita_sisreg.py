@@ -115,26 +115,29 @@ def solicita_sisreg():
                 # Navega até o menu de Internação
                 print("Acessando menu de Internação...")
                 logging.info("Tentando acessar menu de Internação")
+                navegador.get("https://sisregiii.saude.gov.br/cgi-bin/cadweb50?url=/cgi-bin/marcar_ih") 
+              
+              
+              #  # Primeiro, movemos o mouse sobre o menu "solicitar" para exibir o submenu
+              #  menu_solicitar = wait.until(
+              #      EC.presence_of_element_located((By.XPATH, "//a[contains(text(), 'solicitar')]"))
+              #  )
+              #  ActionChains(navegador).move_to_element(menu_solicitar).perform()
+              #  time.sleep(2)  # Aguarda o submenu aparecer
                 
-                # Primeiro, movemos o mouse sobre o menu "solicitar" para exibir o submenu
-                menu_solicitar = wait.until(
-                    EC.presence_of_element_located((By.XPATH, "//a[contains(text(), 'solicitar')]"))
-                )
-                ActionChains(navegador).move_to_element(menu_solicitar).perform()
-                time.sleep(2)  # Aguarda o submenu aparecer
-                
-                # Clica no link de Internação
-                print("Clicando no link de Internação...")
-                internacao_link = wait.until(
-                    EC.element_to_be_clickable((By.XPATH, "//a[@href='/cgi-bin/cadweb50?url=/cgi-bin/marcar_ih']"))
-                )
-                internacao_link.click()
-                print("Link de Internação clicado com sucesso!")
-                
-                # Aguarda carregamento da página e mudança para o frame principal
-                time.sleep(3)
-                navegador.switch_to.frame("f_principal")
-                
+              #  # Clica no link de Internação
+              #  print("Clicando no link de Internação...")
+              #  internacao_link = wait.until(
+              #      EC.element_to_be_clickable((By.XPATH, "//a[@href='/cgi-bin/cadweb50?url=/cgi-bin/marcar_ih']"))
+              #  )
+              #  internacao_link.click()
+              #  print("Link de Internação clicado com sucesso!")
+              # 
+              # Aguarda carregamento da página e mudança para o frame principal
+              #  time.sleep(3)
+              # navegador.switch_to.frame("f_principal")
+              # 
+
                 # Localiza o campo de CNS e preenche
                 print("Preenchendo CNS...")
                 campo_cns = wait.until(

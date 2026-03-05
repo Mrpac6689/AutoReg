@@ -204,6 +204,49 @@ FUNCOES = {
     }
 }
 
+# Mapeamento de flags CLI (curtas e longas) → chave em FUNCOES
+# Usado para executar funções NA ORDEM em que foram passadas na linha de comando
+FLAG_TO_FUNC = {
+    '-eci': 'extrai_codigos_internacao',        '--extrai-codigos-internacao': 'extrai_codigos_internacao',
+    '-ip':  'interna_pacientes',                '--interna-pacientes': 'interna_pacientes',
+    '-eis': 'extrai_internados_sisreg',         '--extrai-internados-sisreg': 'extrai_internados_sisreg',
+    '-eig': 'extrai_internados_ghosp',          '--extrai-internados-ghosp': 'extrai_internados_ghosp',
+    '-ci':  'compara_internados',               '--compara-internados': 'compara_internados',
+    '-ma':  'motivo_alta',                      '--motivo-alta': 'motivo_alta',
+    '-maa': 'motivo_alta_avancado',             '--motivo-alta-avancado': 'motivo_alta_avancado',
+    '-ecsa':'extrai_codigos_sisreg_alta',       '--extrai-codigos-sisreg-alta': 'extrai_codigos_sisreg_alta',
+    '-ea':  'executa_alta',                     '--executa-alta': 'executa_alta',
+    '-eaa': 'executa_alta_avancado',            '--executa-alta-avancado': 'executa_alta_avancado',
+    '-ar':  'atualiza_restos',                  '--atualiza-restos': 'atualiza_restos',
+    '-eid': 'extrai_internacoes_duplicadas',    '--extrai-internacoes-duplicadas': 'extrai_internacoes_duplicadas',
+    '-td':  'trata_duplicados',                 '--trata-duplicados': 'trata_duplicados',
+    '-tat': 'trata_altas',                      '--trata-altas': 'trata_altas',
+    '-clc': 'limpa_cache',                      '--limpa-cache': 'limpa_cache',
+    '-dev': 'devolvidos',                       '--devolvidos': 'devolvidos',
+    '-p2c': 'pdf2csv',                          '--pdf2csv': 'pdf2csv',
+    '-ghn': 'ghosp_nota',                       '--ghosp-nota': 'ghosp_nota',
+    '-ghc': 'ghosp_cns',                        '--ghosp-cns': 'ghosp_cns',
+    '-iga': 'internados_ghosp_avancado',        '--internados-ghosp-avancado': 'internados_ghosp_avancado',
+    '-eiga':'extrai_internados_ghosp_avancado', '--extrai-internados-ghosp-avancado': 'extrai_internados_ghosp_avancado',
+    '-ign': 'internados_ghosp_nota',            '--internados-ghosp-nota': 'internados_ghosp_nota',
+    '-especial':         'ghosp_especial',          '--especial': 'ghosp_especial',
+    '-especial-parallel':'ghosp_especial_parallel', '--especial-parallel': 'ghosp_especial_parallel',
+    '-sia': 'solicita_inf_aih',                 '--solicita-inf-aih': 'solicita_inf_aih',
+    '-spa': 'solicita_pre_aih',                 '--solicita-pre-aih': 'solicita_pre_aih',
+    '-ssr': 'solicita_sisreg',                  '--solicita-sisreg': 'solicita_sisreg',
+    '-snt': 'solicita_nota',                    '--solicita-nota': 'solicita_nota',
+    '-std': 'solicita_trata_dados',             '--solicita-trata-dados': 'solicita_trata_dados',
+    '-css': 'consulta_solicitacao_sisreg',       '--consulta-solicitacao-sisreg': 'consulta_solicitacao_sisreg',
+    '-pra': 'producao_ambulatorial',            '--producao-ambulatorial': 'producao_ambulatorial',
+    '-pad': 'producao_ambulatorial_dados',      '--producao-ambulatorial-dados': 'producao_ambulatorial_dados',
+    '-pag': 'producao_ambulatorial_gmus',       '--producao-ambulatorial-gmus': 'producao_ambulatorial_gmus',
+    '-eae': 'exames_ambulatorio_extrai',        '--exames-ambulatorio-extrai': 'exames_ambulatorio_extrai',
+    '-eas': 'exames_ambulatorio_solicita',      '--exames-ambulatorio-solicita': 'exames_ambulatorio_solicita',
+    '-ear': 'exames_ambulatorio_relatorio',     '--exames-ambulatorio-relatorio': 'exames_ambulatorio_relatorio',
+    '-eac': 'exames_ambulatoriais_consulta',    '--exames-ambulatoriais-consulta': 'exames_ambulatoriais_consulta',
+}
+
+
 def mostrar_informacoes():
     """Exibe informações do programa"""
     print("""
@@ -578,48 +621,7 @@ Exemplos de uso:
         mostrar_informacoes()
         return
     
-    # Mapeamento de argumentos para funções
-    arg_to_func = {
-        'extrai_codigos_internacao': 'extrai_codigos_internacao',
-        'interna_pacientes': 'interna_pacientes',
-        'extrai_internados_sisreg': 'extrai_internados_sisreg',
-        'extrai_internados_ghosp': 'extrai_internados_ghosp',
-        'compara_internados': 'compara_internados',
-        'motivo_alta': 'motivo_alta',
-        'motivo_alta_avancado': 'motivo_alta_avancado',
-        'extrai_codigos_sisreg_alta': 'extrai_codigos_sisreg_alta',
-        'executa_alta': 'executa_alta',
-        'executa_alta_avancado': 'executa_alta_avancado',
-        'atualiza_restos': 'atualiza_restos',
-        'extrai_internacoes_duplicadas': 'extrai_internacoes_duplicadas',
-        'trata_duplicados': 'trata_duplicados',
-        'trata_altas': 'trata_altas',
-        'limpa_cache': 'limpa_cache',
-        'devolvidos': 'devolvidos',
-        'pdf2csv': 'pdf2csv',
-        'ghosp_nota': 'ghosp_nota',
-        'ghosp_cns': 'ghosp_cns',
-        'ghosp_especial': 'ghosp_especial',
-        'ghosp_especial_parallel': 'ghosp_especial_parallel',
-        'internados_ghosp_avancado': 'internados_ghosp_avancado',
-        'extrai_internados_ghosp_avancado': 'extrai_internados_ghosp_avancado',
-        'internados_ghosp_nota': 'internados_ghosp_nota',
-        'solicita_inf_aih': 'solicita_inf_aih',
-        'solicita_pre_aih': 'solicita_pre_aih',
-        'solicita_sisreg': 'solicita_sisreg',
-        'solicita_nota': 'solicita_nota',
-        'solicita_trata_dados': 'solicita_trata_dados',
-        'consulta_solicitacao_sisreg': 'consulta_solicitacao_sisreg',
-        'producao_ambulatorial': 'producao_ambulatorial',
-        'producao_ambulatorial_dados': 'producao_ambulatorial_dados',
-        'producao_ambulatorial_gmus': 'producao_ambulatorial_gmus',
-        'exames_ambulatorio_extrai': 'exames_ambulatorio_extrai',
-        'exames_ambulatorio_solicita': 'exames_ambulatorio_solicita',
-        'exames_ambulatorio_relatorio': 'exames_ambulatorio_relatorio',
-        'exames_ambulatoriais_consulta': 'exames_ambulatoriais_consulta'
-    }
-    
-    # Processa funções especiais primeiro
+    # Processa funções especiais (workflows compostos) primeiro
     if args.all:
         executar_todas()
         return
@@ -657,7 +659,6 @@ Exemplos de uso:
             if not executar_funcao(func_name):
                 print(f"❌ Parando execução devido ao erro em {func_name}")
                 break
-            # Adiciona pausa de 1 segundo entre funções, exceto após a última
             if i < len(seq):
                 time.sleep(1)
         return
@@ -675,32 +676,41 @@ Exemplos de uso:
     if args.config:
         editar_config()
         return
-        
+
     if args.directory:
         abrir_diretorio()
         return
-    
-    # Executa funções regulares em sequência
+
+    # -----------------------------------------------------------------------
+    # Executa funções individuais na ORDEM EXATA em que foram passadas
+    # na linha de comando (percorre sys.argv, não um dict de ordem fixa)
+    # Exemplo: "autoreg.py -eid -td" executa eid ANTES de td
+    # -----------------------------------------------------------------------
     funcoes_para_executar = []
-    for arg, func_name in arg_to_func.items():
-        # pdf2csv recebe argumento de caminho
-        if arg == 'pdf2csv' and getattr(args, 'pdf2csv'):
-            funcoes_para_executar.append((func_name, getattr(args, 'pdf2csv')))
-        else:
-            # Corrige o nome do atributo para a função especial
-            if arg == 'ghosp_especial':
-                arg_name = 'especial'
-            elif arg == 'ghosp_especial_parallel':
-                arg_name = 'especial_parallel'
+    argv_tokens = sys.argv[1:]
+    skip_next = False
+    for idx, token in enumerate(argv_tokens):
+        if skip_next:
+            skip_next = False
+            continue
+        if token in FLAG_TO_FUNC:
+            func_name = FLAG_TO_FUNC[token]
+            if func_name == 'pdf2csv':
+                # -p2c pode receber um caminho opcional como próximo token
+                next_token = argv_tokens[idx + 1] if idx + 1 < len(argv_tokens) else None
+                if next_token and not next_token.startswith('-'):
+                    funcoes_para_executar.append((func_name, next_token))
+                    skip_next = True
+                else:
+                    funcoes_para_executar.append((func_name, None))
             else:
-                arg_name = arg.replace('-', '_')
-            if hasattr(args, arg_name) and getattr(args, arg_name):
                 funcoes_para_executar.append((func_name, None))
 
     if funcoes_para_executar:
-        print(f"🔄 Executando {len(funcoes_para_executar)} função(ões) em sequência...")
+        total = len(funcoes_para_executar)
+        print(f"🔄 Executando {total} função(ões) em sequência...")
         for i, (func_name, extra_arg) in enumerate(funcoes_para_executar, 1):
-            print(f"\n[{i}/{len(funcoes_para_executar)}] ", end="")
+            print(f"\n[{i}/{total}] ", end="")
             if func_name == 'pdf2csv' and extra_arg:
                 try:
                     FUNCOES[func_name]['func'](extra_arg)

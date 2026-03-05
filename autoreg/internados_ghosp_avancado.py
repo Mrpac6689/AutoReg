@@ -53,10 +53,22 @@ def internados_ghosp_avancado():
     driver.get(caminho_ghosp + ':4001/users/sign_in')
 
     try:
-        # Ajustar o zoom para 50% antes do login
-        print("Ajustando o zoom para 50%...")
-        driver.execute_script("document.body.style.zoom='50%'")
-        time.sleep(2)  # Aguarda um pouco após ajustar o zoom
+       # Caminho para salvar o novo arquivo baixado
+        user_dir = os.path.expanduser('~/AutoReg')
+        print(f"Diretório de download configurado: {user_dir}")
+        
+        # Inicializa o navegador
+        chrome_options = get_chrome_options()
+        driver = webdriver.Chrome(options=chrome_options)
+        print("Iniciando o Chromedriver...")
+
+        # Acesse a página de login do G-HOSP
+        driver.get(caminho_ghosp + ':4001/users/sign_in')
+        
+        # Definir tamanho da janela explicitamente (evita problemas com maximize no Docker/Kasm)
+        print("Configurando tamanho da janela para 1920x1080...")
+        driver.set_window_size(1920, 1080)
+        time.sleep(2)
 
         # Realiza o login
         print("Tentando localizar o campo de e-mail...")
@@ -64,30 +76,25 @@ def internados_ghosp_avancado():
             EC.presence_of_element_located((By.ID, "email"))
         )
         email_field.send_keys(usuario_ghosp)
-
+        
         print("Tentando localizar o campo de senha...")
         senha_field = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "user_password"))
         )
         senha_field.send_keys(senha_ghosp)
-
+        
         print("Tentando localizar o botão de login...")
         login_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, "//input[@value='Entrar']"))
         )
         login_button.click()
-
         time.sleep(5)
         print("Login realizado com sucesso!")
 
         # Acessar a página de relatórios
         print("Acessando a página de relatórios...")
         driver.get(caminho_ghosp + ':4001/relatorios/rc001s')
-
-        # Acessar a página de relatórios
-        print("Acessando a página de relatórios...")
-        driver.get(caminho_ghosp + ':4001/relatorios/rc001s')
-        time.sleep(2)  # Aguarda um pouco após ajustar o zoom
+        time.sleep(2)
 
         # Selecionar todas as opções no dropdown "Setor"
         print("Selecionando todos os setores...")
@@ -95,27 +102,31 @@ def internados_ghosp_avancado():
             EC.presence_of_element_located((By.ID, "setor_id1"))
         ))
         for option in setor_select.options:
-            print(f"Selecionando o setor: {option.text}")  # Para garantir que todos os setores estão sendo selecionados
+            # print(f"Selecionando o setor: {option.text}") # Comentado para reduzir spam no log
             setor_select.select_by_value(option.get_attribute('value'))
-
         print("Todos os setores selecionados!")
 
-        # Maximiza a janela para garantir que todos os elementos estejam visíveis
-        driver.maximize_window()
-        
+        # --- REMOVIDO: driver.maximize_window() ---
+        # No lugar do zoom ou maximize, garantimos o tamanho da janela via set_window_size acima.
+        time.sleep(1)
+
         # Selecionar o formato CSV
         print("Rolando até o dropdown de formato CSV...")
         formato_dropdown = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "tipo_arquivo"))
         )
+        
+        # Usa scroll via JS que é mais seguro que maximize_window
         driver.execute_script("arguments[0].scrollIntoView(true);", formato_dropdown)
         time.sleep(2)
-
+        
         print("Selecionando o formato CSV...")
         formato_select = Select(formato_dropdown)
         formato_select.select_by_value("csv")
-
         print("Formato CSV selecionado!")
+
+        # --- TIMESTAMP ANTES DO CLIQUE ---
+        antes_download = time.time()
 
         # Clicar no botão "Imprimir"
         print("Tentando clicar no botão 'IMPRIMIR'...")
@@ -123,38 +134,49 @@ def internados_ghosp_avancado():
             EC.element_to_be_clickable((By.ID, "enviar_relatorio"))
         )
         imprimir_button.click()
-
-        print("Relatório sendo gerado!")
-
-        driver.minimize_window()
-
+        print("Relatório gerado! Aguardando download...")
+        
+        # --- REMOVIDO: driver.minimize_window() ---
+        
         # Contador para timeout
         tentativas = 0
-        max_tentativas = 60  # 5 minutos (5 segundos * 60)
+        max_tentativas = 60  # 5 minutos
         arquivo_recente = None
 
         # Aguardar até que um novo arquivo CSV seja baixado
         while tentativas < max_tentativas:
-            # Procura por arquivos CSV no diretório que foram criados após o início do download
             novos_arquivos = []
-            for arquivo in os.listdir(user_dir):
-                caminho_completo = os.path.join(user_dir, arquivo)
-                if (arquivo.lower().endswith('.csv') and 
-                    os.path.isfile(caminho_completo) and 
-                    os.path.getmtime(caminho_completo) > antes_download and
-                    os.path.getsize(caminho_completo) > 0):
-                    novos_arquivos.append(caminho_completo)
-            
+            try:
+                for arquivo in os.listdir(user_dir):
+                    caminho_completo = os.path.join(user_dir, arquivo)
+                    
+                    # Filtra apenas CSVs cujo nome começa com "_home_inovadora"
+                    # (padrão do relatório G-HOSP), ignorando .crdownload e outros CSVs
+                    if (arquivo.lower().endswith('.csv') and
+                        arquivo.startswith('_home_inovadora') and
+                        os.path.isfile(caminho_completo)):
+                        
+                        # Verifica data de modificação e tamanho
+                        if (os.path.getmtime(caminho_completo) > antes_download and
+                            os.path.getsize(caminho_completo) > 0):
+                            novos_arquivos.append(caminho_completo)
+            except OSError:
+                pass # Ignora erros momentâneos de leitura de disco
+
             if novos_arquivos:
                 # Ordena pelo mais recente
                 novos_arquivos.sort(key=os.path.getmtime, reverse=True)
                 arquivo_recente = novos_arquivos[0]
+                
+                # Espera extra para garantir que o SO liberou o arquivo
+                time.sleep(2)
                 print(f"Arquivo CSV baixado encontrado: {os.path.basename(arquivo_recente)}")
                 break
             
             print(f"Aguardando o download do arquivo CSV... (tentativa {tentativas+1}/{max_tentativas})")
             tentativas += 1
             time.sleep(5)
+
 
         if arquivo_recente:
             # Processa o arquivo encontrado
