@@ -3,6 +3,7 @@ from .ler_credenciais import ler_credenciais
 from .chrome_options import get_chrome_options
 from .interna_pacientes import interna_pacientes
 from .logging import setup_logging
+from .detecta_capchta import detecta_captcha
 from .extrai_internados_sisreg import extrai_internados_sisreg
 from .extrai_internados_ghosp import extrai_internados_ghosp
 from .compara_internados import compara_internados

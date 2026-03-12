@@ -16,6 +16,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.chrome_options import get_chrome_options
 from autoreg.logging import setup_logging
+from autoreg.detecta_capchta import detecta_captcha
 
 setup_logging()
 
@@ -89,6 +90,12 @@ def alta_duplicados(duplicadas_path):
         logging.info("Login SISREG realizado.")
 
         for index, paciente in df.iterrows():
+            # Verifica se há CAPTCHA antes de processar
+            if not detecta_captcha(navegador):
+                print("CAPTCHA não resolvido. Abortando processamento.")
+                logging.error("Processamento abortado por CAPTCHA não resolvido")
+                break
+
             if not (pd.notna(paciente.get('CODIGO')) and str(paciente.get('CODIGO')).strip()):
                 continue
 
@@ -202,6 +209,12 @@ def cod_inter_duplicado(duplicadas_path):
         nomes_restantes = set(n.upper() for n in nomes_duplicados)
 
         while nomes_restantes:
+            # Verifica se há CAPTCHA antes de processar
+            if not detecta_captcha(navegador):
+                print("CAPTCHA não resolvido. Abortando processamento.")
+                logging.error("Processamento abortado por CAPTCHA não resolvido")
+                break
+
             linhas = navegador.find_elements(By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]")
             for linha in linhas:
                 try:
@@ -305,6 +318,12 @@ def interna_duplicados(duplicadas_path):
         wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
 
         for index, row in df.iterrows():
+            # Verifica se há CAPTCHA antes de processar
+            if not detecta_captcha(navegador):
+                print("CAPTCHA não resolvido. Abortando processamento.")
+                logging.error("Processamento abortado por CAPTCHA não resolvido")
+                break
+
             ficha = str(row.get('CODINTERNA', '')).strip()
             if not ficha or ficha == 'nan':
                 continue

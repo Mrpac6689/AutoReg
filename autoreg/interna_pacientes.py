@@ -10,6 +10,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from autoreg.chrome_options import get_chrome_options  # ajuste aqui
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
+from autoreg.detecta_capchta import detecta_captcha
 import logging
 import datetime
 from datetime import datetime, timedelta
@@ -90,6 +91,12 @@ def interna_pacientes():
 
         try:
             for linha in leitor_csv:
+                # Verifica se há CAPTCHA antes de cada internação
+                if not detecta_captcha(navegador):
+                    print("CAPTCHA não resolvido. Abortando internações.")
+                    logging.error("Internações abortadas por CAPTCHA não resolvido")
+                    break
+
                 ficha = linha[1]  # Captura o número da ficha da segunda coluna
                 try:
                     navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_internar")

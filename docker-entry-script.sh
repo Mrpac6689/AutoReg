@@ -87,30 +87,18 @@ gravar_relatorio() {
 }
 
 # ----------------------------------------
-# 1. Executar: -eci (Extrair Códigos de Internação)
+# 1. Executar: -interna
 # ----------------------------------------
-execute_and_log "eci"
-if [ $? -ne 0 ]; then
-    send_whatsapp_log # Envia o log parcial de erro
-    exit 1
-fi
-
-# Contar registros em codigos_internacao.csv e gravar no relatório
-gravar_relatorio "Internar Pacientes" "$WORKDIR/codigos_internacao.csv"
-
-# ----------------------------------------
-# 2. Executar: -ip (Internar Pacientes)
-# ----------------------------------------
-execute_and_log "ip"
+execute_and_log "interna"
 if [ $? -ne 0 ]; then
     send_whatsapp_log # Envia o log parcial de erro
     exit 1
 fi
 
 # ----------------------------------------
-# 3. Executar: -analisa
+# 2. Executar: -alta
 # ----------------------------------------
-execute_and_log "analisa"
+execute_and_log "alta"
 if [ $? -ne 0 ]; then
     send_whatsapp_log # Envia o log parcial de erro
     exit 1
@@ -118,15 +106,6 @@ fi
 
 # Contar registros em pacientes_de_alta.csv e gravar no relatório
 gravar_relatorio "Altas" "$WORKDIR/pacientes_de_alta.csv"
-
-# ----------------------------------------
-# 4. Executar: -alta
-# ----------------------------------------
-execute_and_log "alta"
-if [ $? -ne 0 ]; then
-    send_whatsapp_log # Envia o log parcial de erro
-    exit 1
-fi
 
 # --- Fim da Execução ---
 echo "--- Fim da Execução Automatizada: $(date) ---" >> $LOG_FILE

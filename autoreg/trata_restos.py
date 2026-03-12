@@ -10,6 +10,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException,
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
+from autoreg.detecta_capchta import detecta_captcha
 import logging
 
 setup_logging()
@@ -94,6 +95,12 @@ def atualiza_restos():
         
         for _, paciente in pacientes_atualizados_df.iterrows():
             try:
+                # Verifica se há CAPTCHA antes de processar
+                if not detecta_captcha(navegador):
+                    print("CAPTCHA não resolvido. Abortando processamento.")
+                    logging.error("Processamento abortado por CAPTCHA não resolvido")
+                    break
+
                 nome_paciente = paciente.get('Nome', None)
                 motivo_alta = paciente.get('Motivo da Alta', None) # Já deve ser 'ENCERRAMENTO ADMINISTRATIVO'
                 ficha = paciente.get('Número da Ficha', None)

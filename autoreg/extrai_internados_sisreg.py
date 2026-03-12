@@ -11,6 +11,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
+from autoreg.detecta_capchta import detecta_captcha
 import logging
 import re
 
@@ -119,6 +120,12 @@ def extrai_internados_sisreg():
         # Extração de dados
         dados = []
         while True:
+            # Verifica se há CAPTCHA antes de extrair dados
+            if not detecta_captcha(navegador):
+                print("CAPTCHA não resolvido. Abortando extração.")
+                logging.error("Extração abortada por CAPTCHA não resolvido")
+                break
+
             # Localiza as linhas da tabela com os dados
             linhas = navegador.find_elements(By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]")
 

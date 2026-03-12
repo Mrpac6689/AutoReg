@@ -12,6 +12,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import Select
 from autoreg.chrome_options import get_chrome_options
 from autoreg.logging import setup_logging
+from autoreg.detecta_capchta import detecta_captcha
 import logging
 import random
 from datetime import datetime
@@ -104,6 +105,12 @@ def solicita_sisreg():
     try:
         for index, row in df.iterrows():
             try:
+                # Verifica se há CAPTCHA antes de cada solicitação
+                if not detecta_captcha(navegador):
+                    print("CAPTCHA não resolvido. Abortando solicitações.")
+                    logging.error("Solicitações abortadas por CAPTCHA não resolvido")
+                    break
+
                 # Se a linha possuir dados na coluna solsisreg, ela deve ser ignorada no loop
                 if 'solsisreg' in df.columns and pd.notna(row['solsisreg']) and str(row['solsisreg']).strip() != '':
                     print(f"Registro {index + 1}/{len(df)} já possui solicitação ({row['solsisreg']}). Pulando...")

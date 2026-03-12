@@ -10,6 +10,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from autoreg.chrome_options import get_chrome_options  # ajuste aqui
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
+from autoreg.detecta_capchta import detecta_captcha
 import logging
 
 setup_logging()
@@ -79,6 +80,12 @@ def extrai_codigos_internacao():
 
         # Localiza e extrai os dados dos pacientes
         while True:
+            # Verifica se há CAPTCHA antes de processar
+            if not detecta_captcha(navegador):
+                print("CAPTCHA não resolvido. Abortando extração.")
+                logging.error("Extração abortada por CAPTCHA não resolvido")
+                break
+
             linhas_pacientes = navegador.find_elements(By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]")
             for linha in linhas_pacientes:
                 nome_paciente = linha.find_element(By.XPATH, "./td[2]").text

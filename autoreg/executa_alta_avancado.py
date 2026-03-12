@@ -11,6 +11,7 @@ from selenium.webdriver.chrome.options import Options
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
 from autoreg.chrome_options import get_chrome_options
+from autoreg.detecta_capchta import detecta_captcha
 from datetime import datetime
 import logging
 
@@ -108,6 +109,12 @@ def executa_alta_avancado():
         }
 
         for index, row in altas_pendentes.iterrows():
+            # Verifica se há CAPTCHA antes de cada alta
+            if not detecta_captcha(navegador):
+                print("CAPTCHA não resolvido. Abortando altas.")
+                logging.error("Altas abortadas por CAPTCHA não resolvido")
+                break
+
             # Pula se a alta já foi efetivada
             if str(row.get('resultado_sisreg', '')).strip() == "Alta efetivada":
                 print(f"⏩ [{index+1}] Pulando solicitação {row.get('solicitacao_sisreg')}: Já efetivada.")

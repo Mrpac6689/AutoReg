@@ -12,6 +12,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import Select
 from autoreg.chrome_options import get_chrome_options
 from autoreg.logging import setup_logging
+from autoreg.detecta_capchta import detecta_captcha
 import logging
 import random
 from datetime import datetime
@@ -95,6 +96,12 @@ def consulta_solicitacao_sisreg():
     try:
         for index, row in df.iterrows():
             try:
+                # Verifica se há CAPTCHA antes de processar
+                if not detecta_captcha(navegador):
+                    print("CAPTCHA não resolvido. Abortando processamento.")
+                    logging.error("Processamento abortado por CAPTCHA não resolvido")
+                    break
+
                 print(f"\nProcessando registro {index + 1}/{len(df)}")
                 print(f"Solicitação a ser processada: {row['solicitacao']}")
 

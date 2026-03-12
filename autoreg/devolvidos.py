@@ -89,6 +89,7 @@ import csv
 import time
 from selenium.common.exceptions import NoSuchElementException
 from dateutil.relativedelta import relativedelta
+from autoreg.detecta_capchta import detecta_captcha
 
 def devolvidos():
     # Função para ler as credenciais do arquivo config.ini
@@ -158,9 +159,14 @@ def devolvidos():
             
             # Função para extrair dados da tabela e salvar no CSV
             while True:
+                # Verifica se há CAPTCHA antes de processar
+                if not detecta_captcha(navegador):
+                    print("CAPTCHA não resolvido. Abortando processamento.")
+                    break
+
                 # Pega todas as linhas da tabela
                 linhas = navegador.find_elements(By.CSS_SELECTOR, "tr.linha_selecionavel")
-                
+
                 # Captura nome e número da ficha de cada linha
                 for linha in linhas:
                     nome = linha.find_elements(By.TAG_NAME, "td")[1].text  # Nome está na segunda coluna
@@ -210,6 +216,11 @@ def devolvidos():
             linhas_atualizadas.append(cabecalho)
 
             for linha in leitor_csv:
+                # Verifica se há CAPTCHA antes de processar
+                if not detecta_captcha(navegador):
+                    print("CAPTCHA não resolvido. Abortando processamento.")
+                    break
+
                 # Antes de cada iteração, navega de volta à página "Solicitações Devolvidas"
                 try:
                     navegador.switch_to.default_content()  # Garante que estamos no contexto principal
@@ -411,9 +422,14 @@ def devolvidos():
         
         # Itera sobre as linhas do CSV a partir da segunda linha (ignora o cabeçalho)
         for i, row in df_fichas.iloc[1:].iterrows():
+            # Verifica se há CAPTCHA antes de processar
+            if not detecta_captcha(navegador):
+                print("CAPTCHA não resolvido. Abortando processamento.")
+                break
+
             motivo = row[3]  # Motivo de alta está na quarta coluna
             ficha = str(row[1])  # Número da ficha está na segunda coluna
-            
+
             # Verifica se o motivo de alta é válido antes de proceder
             if not motivo or motivo ==  "" or motivo == "Motivo da alta não encontrado":
                 print(f"Motivo de alta inválido para ficha {ficha}. Pulando...\n")

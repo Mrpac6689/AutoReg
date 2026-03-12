@@ -14,6 +14,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException,
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import Select
 from autoreg.chrome_options import get_chrome_options
+from autoreg.detecta_capchta import detecta_captcha
 from datetime import datetime, timedelta
 
 def buscar_valor_por_rotulo(navegador, wait, rotulo_texto, timeout=10):
@@ -424,6 +425,10 @@ def exames_ambulatoriais_consulta():
     print(f"\n📋 Etapa 3: Processando {len(df)} registro(s) do CSV...")
     for index, row in df.iterrows():
         try:
+            # Verifica se há CAPTCHA antes de processar
+            if not detecta_captcha(navegador):
+                print("CAPTCHA não resolvido. Abortando processamento.")
+                break
             # Obtém o CNS do CSV
             cns_csv = row.get('cns', '')
             

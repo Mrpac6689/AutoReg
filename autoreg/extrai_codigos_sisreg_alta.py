@@ -22,8 +22,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from autoreg.ler_credenciais import ler_credenciais
-from autoreg.logging import setup_logging   
+from autoreg.logging import setup_logging
 from autoreg.chrome_options import get_chrome_options
+from autoreg.detecta_capchta import detecta_captcha
 import logging
 import pandas as pd
 
@@ -96,6 +97,12 @@ def extrai_codigos_sisreg_alta():
 
         # Extrai dados das tabelas
         while True:
+            # Verifica se há CAPTCHA antes de extrair dados
+            if not detecta_captcha(navegador):
+                print("CAPTCHA não resolvido. Abortando extração.")
+                logging.error("Extração abortada por CAPTCHA não resolvido")
+                break
+
             linhas_pacientes = navegador.find_elements(By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]")
             for linha in linhas_pacientes:
                 nome_paciente = linha.find_element(By.XPATH, "./td[2]").text

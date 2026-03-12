@@ -12,6 +12,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException,
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import Select
 from autoreg.chrome_options import get_chrome_options
+from autoreg.detecta_capchta import detecta_captcha
 from datetime import datetime, timedelta
 
 def exames_ambulatorio_solicita():
@@ -941,6 +942,10 @@ def exames_ambulatorio_solicita():
     # Itera sobre os links do CSV
     for index, row in df.iterrows():
         try:
+            # Verifica se há CAPTCHA antes de processar
+            if not detecta_captcha(navegador):
+                print("CAPTCHA não resolvido. Abortando processamento.")
+                break
             # Verifica se a linha já foi processada: pula quando solicitacao está preenchida E (solicita está vazio OU solicita != 'S')
             solicitacao = str(row.get('solicitacao', '')).strip() if pd.notna(row.get('solicitacao')) else ''
             # Normaliza solicita para maiúsculo (aceita 's' ou 'S')
@@ -1732,6 +1737,11 @@ def exames_ambulatorio_solicita():
     tentativa = 0
     
     while tentativa < max_tentativas:
+        # Verifica se há CAPTCHA antes de processar
+        if not detecta_captcha(navegador):
+            print("CAPTCHA não resolvido. Abortando processamento.")
+            break
+
         # Recarrega o CSV para verificar registros pendentes
         try:
             df_atualizado = pd.read_csv(csv_exames)
@@ -1771,6 +1781,10 @@ def exames_ambulatorio_solicita():
             # Processa apenas os registros pendentes
             for index, row in registros_pendentes.iterrows():
                 try:
+                    # Verifica se há CAPTCHA antes de processar
+                    if not detecta_captcha(navegador):
+                        print("CAPTCHA não resolvido. Abortando processamento.")
+                        break
                     # Verifica novamente se ainda está pendente (pode ter sido processado em outra tentativa)
                     solicitacao_val = row.get('solicitacao', '')
                     solicitacao = str(solicitacao_val).strip() if pd.notna(solicitacao_val) and str(solicitacao_val).strip() != '' else ''

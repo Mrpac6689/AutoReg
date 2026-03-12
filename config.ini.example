@@ -43,6 +43,12 @@ evolution_api_number =
 
 [AUTOREG-API]
 
-autoreg_api_key = 
-autoreg_api_relatorio_url = 
+autoreg_api_key =
+autoreg_api_relatorio_url =
+
+[KASM]
+
+# URL do visualizador KASM (usado quando rodando no Docker/KASM para resolver CAPTCHAs)
+# Exemplo: https://seu-servidor.com:6901 ou http://10.16.9.43:6901
+viewer_url =
 
