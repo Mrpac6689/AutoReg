@@ -92,10 +92,30 @@ def executa_alta():
         for _, paciente in pacientes_atualizados_df.iterrows():
             try:
                 # Verifica se há CAPTCHA antes de processar
-                if not detecta_captcha(navegador):
-                    print("CAPTCHA não resolvido. Abortando processamento.")
-                    logging.error("Processamento abortado por CAPTCHA não resolvido")
+                captcha_status = detecta_captcha(navegador)
+
+                if captcha_status == 'timeout':
+                    print("CAPTCHA não resolvido (timeout). Abortando processamento.")
+                    logging.error("Processamento abortado por CAPTCHA não resolvido (timeout)")
                     break
+                elif captcha_status == 'relogin':
+                    print("Sessão expirou após resolver CAPTCHA. Realizando novo login...")
+                    logging.info("Realizando novo login após expiração de sessão")
+
+                    # Reiniciar navegador e fazer login novamente
+                    try:
+                        navegador.quit()
+                    except:
+                        pass
+
+                    navegador, wait = iniciar_navegador()
+                    if not realizar_login(navegador, wait):
+                        print("Falha ao realizar novo login. Abortando processamento.")
+                        logging.error("Falha ao realizar novo login após resolver CAPTCHA")
+                        return
+
+                    print("Novo login realizado com sucesso. Retomando processamento...")
+                    logging.info("Novo login realizado com sucesso após resolver CAPTCHA")
 
                 nome_paciente = paciente.get('Nome', None)
                 motivo_alta = paciente.get('Motivo da Alta', None)

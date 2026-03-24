@@ -21,29 +21,44 @@ def detecta_captcha(driver, timeout=300):
         timeout: Tempo maximo em segundos para aguardar resolucao (padrao: 5 minutos)
 
     Returns:
-        bool: True se nao havia CAPTCHA ou se foi resolvido, False se timeout
+        str: 'ok' se nao havia CAPTCHA ou foi resolvido,
+             'timeout' se excedeu o tempo limite,
+             'relogin' se precisa fazer login novamente apos resolver CAPTCHA
     """
 
     # Texto exato que identifica o CAPTCHA
     CAPTCHA_TEXT = "Devido a grande quantidade de requisições (> 500) realizadas na ultima hora pelo seu operador, será realizado um teste automatizado para diferenciação entre computadores e humanos (CAPTCHA):"
 
     try:
-        # Busca rapida pelo texto de CAPTCHA na pagina
-        captcha_elements = driver.find_elements(By.XPATH, f"//*[contains(text(), 'CAPTCHA')]")
+        # Busca mais abrangente pelo CAPTCHA - verifica todo o body da pagina
+        page_source = driver.page_source
 
-        # Se nao encontrou, retorna imediatamente
-        if not captcha_elements:
-            return True
-
-        # Verifica se e realmente o texto completo do CAPTCHA do SISREG
+        # Verifica multiplas formas de detectar o CAPTCHA
         captcha_detectado = False
+
+        # Metodo 1: Busca por elementos com texto "CAPTCHA"
+        captcha_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'CAPTCHA')]")
         for element in captcha_elements:
-            if "grande quantidade de requisições" in element.text:
+            if "grande quantidade de requisições" in element.text or "requisições" in element.text.lower():
                 captcha_detectado = True
+                logging.info(f"CAPTCHA detectado via elemento XPATH: {element.text[:100]}")
                 break
 
+        # Metodo 2: Busca no page_source completo (para casos onde o texto esta fragmentado)
         if not captcha_detectado:
-            return True
+            if "CAPTCHA" in page_source and ("grande quantidade" in page_source or "requisições" in page_source or "requisicoes" in page_source):
+                captcha_detectado = True
+                logging.info("CAPTCHA detectado via page_source")
+
+        # Metodo 3: Busca por iframe de CAPTCHA comum (reCAPTCHA, hCaptcha, etc)
+        if not captcha_detectado:
+            captcha_iframes = driver.find_elements(By.XPATH, "//iframe[contains(@src, 'captcha') or contains(@title, 'captcha')]")
+            if captcha_iframes:
+                captcha_detectado = True
+                logging.info("CAPTCHA detectado via iframe")
+
+        if not captcha_detectado:
+            return 'ok'
 
         # CAPTCHA detectado - pausar processamento
         logging.warning("CAPTCHA DETECTADO no SISREG!")
@@ -97,7 +112,7 @@ def detecta_captcha(driver, timeout=300):
                 logging.error(f"Timeout: CAPTCHA nao foi resolvido em {timeout} segundos")
                 print(f"\nTIMEOUT! CAPTCHA nao resolvido em {timeout//60} minutos.")
                 print("   Abortando processamento...\n")
-                return False
+                return 'timeout'
 
             # Aguarda antes de verificar novamente
             time.sleep(5)
@@ -108,35 +123,92 @@ def detecta_captcha(driver, timeout=300):
                 minutos_restantes = (timeout - tempo_decorrido) // 60
                 print(f"Ainda aguardando... ({int(tempo_decorrido//60)}min decorridos, ~{int(minutos_restantes)}min restantes)")
 
-            # Verifica se o CAPTCHA ainda esta presente
+            # Verifica se o CAPTCHA ainda esta presente (usando mesma logica de deteccao)
             try:
-                captcha_elements = driver.find_elements(By.XPATH, f"//*[contains(text(), 'CAPTCHA')]")
-
-                # Se nao encontrou mais o texto, CAPTCHA foi resolvido
+                page_source_check = driver.page_source
                 captcha_presente = False
+
+                # Metodo 1: Verifica elementos
+                captcha_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'CAPTCHA')]")
                 for element in captcha_elements:
-                    if "grande quantidade de requisições" in element.text:
+                    if "grande quantidade de requisições" in element.text or "requisições" in element.text.lower():
                         captcha_presente = True
                         break
+
+                # Metodo 2: Verifica page_source
+                if not captcha_presente:
+                    if "CAPTCHA" in page_source_check and ("grande quantidade" in page_source_check or "requisições" in page_source_check or "requisicoes" in page_source_check):
+                        captcha_presente = True
+
+                # Metodo 3: Verifica iframes de CAPTCHA
+                if not captcha_presente:
+                    captcha_iframes = driver.find_elements(By.XPATH, "//iframe[contains(@src, 'captcha') or contains(@title, 'captcha')]")
+                    if captcha_iframes:
+                        captcha_presente = True
 
                 if not captcha_presente:
                     tempo_total = int(time.time() - tempo_inicio)
                     print(f"\nCAPTCHA RESOLVIDO! (tempo: {tempo_total}s)")
-                    print("Retomando processamento...\n")
                     logging.info(f"CAPTCHA resolvido apos {tempo_total} segundos")
-                    return True
+
+                    # Verifica se a sessao expirou apos resolver o CAPTCHA
+                    if _verifica_sessao_invalida(driver):
+                        print("Sessao expirou apos resolver CAPTCHA. Sera necessario fazer login novamente.")
+                        logging.warning("Sessao expirou apos resolver CAPTCHA - relogin necessario")
+                        return 'relogin'
+
+                    print("Retomando processamento...\n")
+                    return 'ok'
 
             except Exception as e:
                 # Qualquer erro na verificacao assume que foi resolvido
                 logging.warning(f"Erro ao verificar CAPTCHA (assumindo resolvido): {e}")
-                return True
+
+                # Ainda verifica se precisa relogin
+                if _verifica_sessao_invalida(driver):
+                    return 'relogin'
+                return 'ok'
 
     except Exception as e:
         # Em caso de erro na deteccao, loga mas continua processamento
         logging.error(f"Erro na funcao detecta_captcha: {e}")
         print(f"Erro na deteccao de CAPTCHA: {e}")
         print("   Continuando processamento...\n")
-        return True
+        return 'ok'
+
+
+def _verifica_sessao_invalida(driver):
+    """
+    Verifica se a sessao do SISREG expirou apos resolver o CAPTCHA.
+
+    Args:
+        driver: Instancia do webdriver Selenium
+
+    Returns:
+        bool: True se a sessao esta invalida, False caso contrario
+    """
+    try:
+        page_source = driver.page_source
+
+        # Texto exato que indica sessao invalida
+        mensagens_sessao_invalida = [
+            "A sessão deste operador esta invalida",
+            "A sessão deste operador está invalida",
+            "Sua sessão foi finalizada pelo servidor",
+            "Efetue o logon novamente",
+            "Erro de Sistema"
+        ]
+
+        for mensagem in mensagens_sessao_invalida:
+            if mensagem in page_source:
+                logging.info(f"Sessao invalida detectada: '{mensagem}'")
+                return True
+
+        return False
+
+    except Exception as e:
+        logging.warning(f"Erro ao verificar sessao invalida: {e}")
+        return False
 
 
 def _ler_kasm_url():
