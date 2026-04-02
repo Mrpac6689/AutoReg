@@ -97,9 +97,10 @@ def consulta_solicitacao_sisreg():
         for index, row in df.iterrows():
             try:
                 # Verifica se há CAPTCHA antes de processar
-                if not detecta_captcha(navegador):
-                    print("CAPTCHA não resolvido. Abortando processamento.")
-                    logging.error("Processamento abortado por CAPTCHA não resolvido")
+                resultado_captcha = detecta_captcha(navegador)
+                if resultado_captcha != 'ok':
+                    print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando processamento.")
+                    logging.error(f"Processamento abortado por CAPTCHA não resolvido: {resultado_captcha}")
                     break
 
                 print(f"\nProcessando registro {index + 1}/{len(df)}")

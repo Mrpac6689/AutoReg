@@ -92,9 +92,10 @@ def interna_pacientes():
         try:
             for linha in leitor_csv:
                 # Verifica se há CAPTCHA antes de cada internação
-                if not detecta_captcha(navegador):
-                    print("CAPTCHA não resolvido. Abortando internações.")
-                    logging.error("Internações abortadas por CAPTCHA não resolvido")
+                resultado_captcha = detecta_captcha(navegador)
+                if resultado_captcha != 'ok':
+                    print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando internações.")
+                    logging.error(f"Internações abortadas por CAPTCHA não resolvido: {resultado_captcha}")
                     break
 
                 ficha = linha[1]  # Captura o número da ficha da segunda coluna

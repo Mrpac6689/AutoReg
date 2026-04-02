@@ -52,3 +52,14 @@ autoreg_api_relatorio_url =
 # Exemplo: https://seu-servidor.com:6901 ou http://10.16.9.43:6901
 viewer_url =
 
+[2CAPTCHA]
+
+# Habilitar resolucao automatica de CAPTCHA usando servico 2Captcha
+# Valores: true ou false
+# Se false, o sistema pausa e aguarda resolucao manual
+enabled = false
+
+# Chave de API do 2Captcha (obtenha em https://2captcha.com)
+# Necessaria apenas se enabled = true
+api_key =
+

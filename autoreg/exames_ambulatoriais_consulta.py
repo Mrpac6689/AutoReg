@@ -426,8 +426,9 @@ def exames_ambulatoriais_consulta():
     for index, row in df.iterrows():
         try:
             # Verifica se há CAPTCHA antes de processar
-            if not detecta_captcha(navegador):
-                print("CAPTCHA não resolvido. Abortando processamento.")
+            resultado_captcha = detecta_captcha(navegador)
+            if resultado_captcha != 'ok':
+                print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando processamento.")
                 break
             # Obtém o CNS do CSV
             cns_csv = row.get('cns', '')

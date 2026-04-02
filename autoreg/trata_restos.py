@@ -66,12 +66,13 @@ def atualiza_restos():
         print("Tentando localizar o botão de login...")
         login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
         login_button.click()
-        
-        wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_saida_permanencia' and text()='saída/permanência']"))).click()
+        time.sleep(3)
+
+        # Navega diretamente para a página de Saída/Permanência (elimina navegação por iframe)
+        navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_saida_permanencia")
         print("Login realizado e navegação para página de Saída/Permanência concluída!")
-        
-        wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
-        
+        time.sleep(2)
+
         try:
             botao_pesquisar_saida = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']")))
             botao_pesquisar_saida.click()
@@ -96,9 +97,10 @@ def atualiza_restos():
         for _, paciente in pacientes_atualizados_df.iterrows():
             try:
                 # Verifica se há CAPTCHA antes de processar
-                if not detecta_captcha(navegador):
-                    print("CAPTCHA não resolvido. Abortando processamento.")
-                    logging.error("Processamento abortado por CAPTCHA não resolvido")
+                resultado_captcha = detecta_captcha(navegador)
+                if resultado_captcha != 'ok':
+                    print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando processamento.")
+                    logging.error(f"Processamento abortado por CAPTCHA não resolvido: {resultado_captcha}")
                     break
 
                 nome_paciente = paciente.get('Nome', None)

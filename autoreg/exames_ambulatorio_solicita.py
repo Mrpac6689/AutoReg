@@ -943,8 +943,9 @@ def exames_ambulatorio_solicita():
     for index, row in df.iterrows():
         try:
             # Verifica se há CAPTCHA antes de processar
-            if not detecta_captcha(navegador):
-                print("CAPTCHA não resolvido. Abortando processamento.")
+            resultado_captcha = detecta_captcha(navegador)
+            if resultado_captcha != 'ok':
+                print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando processamento.")
                 break
             # Verifica se a linha já foi processada: pula quando solicitacao está preenchida E (solicita está vazio OU solicita != 'S')
             solicitacao = str(row.get('solicitacao', '')).strip() if pd.notna(row.get('solicitacao')) else ''
@@ -1738,8 +1739,9 @@ def exames_ambulatorio_solicita():
     
     while tentativa < max_tentativas:
         # Verifica se há CAPTCHA antes de processar
-        if not detecta_captcha(navegador):
-            print("CAPTCHA não resolvido. Abortando processamento.")
+        resultado_captcha = detecta_captcha(navegador)
+        if resultado_captcha != 'ok':
+            print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando processamento.")
             break
 
         # Recarrega o CSV para verificar registros pendentes
@@ -1782,8 +1784,9 @@ def exames_ambulatorio_solicita():
             for index, row in registros_pendentes.iterrows():
                 try:
                     # Verifica se há CAPTCHA antes de processar
-                    if not detecta_captcha(navegador):
-                        print("CAPTCHA não resolvido. Abortando processamento.")
+                    resultado_captcha = detecta_captcha(navegador)
+                    if resultado_captcha != 'ok':
+                        print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando processamento.")
                         break
                     # Verifica novamente se ainda está pendente (pode ter sido processado em outra tentativa)
                     solicitacao_val = row.get('solicitacao', '')

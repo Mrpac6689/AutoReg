@@ -12,6 +12,14 @@ import configparser
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 
+# Importa o resolvedor automatico de CAPTCHA
+try:
+    from .resolvedor_captcha import resolver_captcha_automatico
+    RESOLVEDOR_DISPONIVEL = True
+except ImportError:
+    RESOLVEDOR_DISPONIVEL = False
+    logging.warning("Modulo resolvedor_captcha nao disponivel")
+
 def detecta_captcha(driver, timeout=300):
     """
     Detecta a presenca de CAPTCHA na pagina do SISREG e aguarda resolucao manual.
@@ -29,47 +37,119 @@ def detecta_captcha(driver, timeout=300):
     # Texto exato que identifica o CAPTCHA
     CAPTCHA_TEXT = "Devido a grande quantidade de requisições (> 500) realizadas na ultima hora pelo seu operador, será realizado um teste automatizado para diferenciação entre computadores e humanos (CAPTCHA):"
 
+    logging.debug("=== INICIANDO DETECCAO DE CAPTCHA ===")
+    logging.debug(f"URL atual: {driver.current_url}")
+
     try:
-        # Busca mais abrangente pelo CAPTCHA - verifica todo o body da pagina
-        page_source = driver.page_source
+        # Garante verificacao no contexto correto.
+        # Se o driver estiver dentro de um frame invalido (frame destruido por navegacao
+        # top-level para a pagina de CAPTCHA), page_source lanca excecao.
+        # Nesse caso, muda para default_content antes de verificar.
+        try:
+            page_source = driver.page_source.lower()
+        except Exception as e_ctx:
+            logging.warning(f"page_source falhou no contexto atual ({e_ctx}) - tentando default_content")
+            try:
+                driver.switch_to.default_content()
+                page_source = driver.page_source.lower()
+            except Exception as e2:
+                logging.error(f"Impossivel obter page_source mesmo em default_content: {e2}")
+                return 'ok'
 
-        # Verifica multiplas formas de detectar o CAPTCHA
+        logging.debug(f"Verificando CAPTCHA na URL: {driver.current_url}")
+
         captcha_detectado = False
+        metodo_deteccao = ""
 
-        # Metodo 1: Busca por elementos com texto "CAPTCHA"
-        captcha_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'CAPTCHA')]")
-        for element in captcha_elements:
-            if "grande quantidade de requisições" in element.text or "requisições" in element.text.lower():
+        # Padroes de texto que identificam CAPTCHA do SISREG
+        # Prefixos curtos cobrem variantes de encoding dos caracteres acentuados
+        padroes_sisreg = [
+            "grande quantidade de requ",       # cobre "requisições", "requisicoes" e variantes de encoding
+            "teste automatizado para difer",   # cobre "diferenciação", "diferenciacao" e variantes
+            "computadores e humanos",          # sempre presente na mensagem de CAPTCHA do SISREG
+            "500) realizadas na ultima hora",  # trecho ASCII da mensagem do SISREG
+            "pelo seu operador, ser",          # outro trecho ASCII unico da mensagem
+        ]
+
+        # Metodo 1: Busca por texto especifico do SISREG no page_source
+        for padrao in padroes_sisreg:
+            if padrao in page_source:
                 captcha_detectado = True
-                logging.info(f"CAPTCHA detectado via elemento XPATH: {element.text[:100]}")
+                metodo_deteccao = f"texto SISREG: '{padrao}'"
+                logging.info(f"CAPTCHA detectado via {metodo_deteccao}")
                 break
 
-        # Metodo 2: Busca no page_source completo (para casos onde o texto esta fragmentado)
+        # Metodo 2: Detecta widget reCAPTCHA/hCaptcha via data-sitekey no HTML
+        # (cobre o caso em que o JS ainda nao criou o iframe mas o widget ja esta no DOM)
         if not captcha_detectado:
-            if "CAPTCHA" in page_source and ("grande quantidade" in page_source or "requisições" in page_source or "requisicoes" in page_source):
+            if 'data-sitekey' in page_source and ('g-recaptcha' in page_source or 'h-captcha' in page_source):
                 captcha_detectado = True
-                logging.info("CAPTCHA detectado via page_source")
+                metodo_deteccao = "widget reCAPTCHA/hCaptcha (data-sitekey)"
+                logging.info(f"CAPTCHA detectado via {metodo_deteccao}")
 
-        # Metodo 3: Busca por iframe de CAPTCHA comum (reCAPTCHA, hCaptcha, etc)
+        # Metodo 3: Busca por iframes de CAPTCHA ja criados pelo JS (reCAPTCHA, hCaptcha)
         if not captcha_detectado:
-            captcha_iframes = driver.find_elements(By.XPATH, "//iframe[contains(@src, 'captcha') or contains(@title, 'captcha')]")
-            if captcha_iframes:
-                captcha_detectado = True
-                logging.info("CAPTCHA detectado via iframe")
+            try:
+                captcha_iframes = driver.find_elements(By.XPATH,
+                    "//iframe[contains(@src, 'captcha') or contains(@src, 'recaptcha') or contains(@src, 'hcaptcha')]")
+                if captcha_iframes:
+                    captcha_detectado = True
+                    metodo_deteccao = "iframe reCAPTCHA/hCaptcha"
+                    logging.info(f"CAPTCHA detectado via {metodo_deteccao}")
+            except Exception as e:
+                logging.debug(f"Erro ao buscar iframes de CAPTCHA: {e}")
 
         if not captcha_detectado:
+            logging.debug("=== NENHUM CAPTCHA DETECTADO - retornando 'ok' ===")
             return 'ok'
 
         # CAPTCHA detectado - pausar processamento
-        logging.warning("CAPTCHA DETECTADO no SISREG!")
+        logging.warning(f"CAPTCHA DETECTADO no SISREG! (Metodo: {metodo_deteccao})")
         print("\n" + "="*80)
-        print("CAPTCHA DETECTADO!")
+        print(f"CAPTCHA DETECTADO! (Metodo: {metodo_deteccao})")
         print("="*80)
 
         # Captura URL atual
         url_atual = driver.current_url
         print(f"\nURL da pagina com CAPTCHA: {url_atual}")
         logging.info(f"URL da pagina com CAPTCHA: {url_atual}")
+
+        # Verifica se resolucao automatica esta habilitada
+        config_2captcha = _ler_config_2captcha()
+        if config_2captcha['enabled'] and RESOLVEDOR_DISPONIVEL:
+            print("\n[RESOLUCAO AUTOMATICA] 2Captcha habilitado")
+            logging.info("Tentando resolucao automatica com 2Captcha...")
+
+            resultado = resolver_captcha_automatico(
+                driver=driver,
+                api_key=config_2captcha['api_key'],
+                timeout=timeout
+            )
+
+            if resultado['sucesso']:
+                print(f"\n[SUCESSO] CAPTCHA resolvido automaticamente em {resultado['tempo']}s!")
+                logging.info(f"CAPTCHA resolvido automaticamente: {resultado['mensagem']}")
+
+                # Verifica se a sessao continua valida
+                if _verifica_sessao_invalida(driver):
+                    print("Sessao expirou apos resolver CAPTCHA. Sera necessario fazer login novamente.")
+                    logging.warning("Sessao expirou apos resolver CAPTCHA - relogin necessario")
+                    return 'relogin'
+
+                print("Retomando processamento...\n")
+                return 'ok'
+            else:
+                print(f"\n[FALHA] Nao foi possivel resolver automaticamente: {resultado['mensagem']}")
+                logging.warning(f"Falha na resolucao automatica: {resultado['mensagem']}")
+                print("Alternando para modo manual...")
+                # Continua para resolucao manual abaixo
+        elif config_2captcha['enabled'] and not RESOLVEDOR_DISPONIVEL:
+            print("\n[AVISO] 2Captcha habilitado mas biblioteca nao instalada")
+            print("        Execute: pip install 2captcha-python")
+            logging.warning("2Captcha habilitado mas biblioteca nao disponivel")
+        else:
+            print("\n[MODO MANUAL] Resolucao automatica desabilitada no config.ini")
+            logging.info("Resolucao automatica desabilitada - aguardando resolucao manual")
 
         # Detecta o ambiente (local vs Docker/KASM)
         display_env = os.environ.get('DISPLAY', '')
@@ -123,28 +203,44 @@ def detecta_captcha(driver, timeout=300):
                 minutos_restantes = (timeout - tempo_decorrido) // 60
                 print(f"Ainda aguardando... ({int(tempo_decorrido//60)}min decorridos, ~{int(minutos_restantes)}min restantes)")
 
-            # Verifica se o CAPTCHA ainda esta presente (usando mesma logica de deteccao)
+            # Verifica se o CAPTCHA ainda esta presente
             try:
-                page_source_check = driver.page_source
+                try:
+                    page_source_check = driver.page_source.lower()
+                except Exception:
+                    driver.switch_to.default_content()
+                    page_source_check = driver.page_source.lower()
                 captcha_presente = False
 
-                # Metodo 1: Verifica elementos
-                captcha_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'CAPTCHA')]")
-                for element in captcha_elements:
-                    if "grande quantidade de requisições" in element.text or "requisições" in element.text.lower():
+                # Padroes de texto que identificam CAPTCHA do SISREG (mesma lista da deteccao inicial)
+                padroes_verificacao = [
+                    "grande quantidade de requ",
+                    "teste automatizado para difer",
+                    "computadores e humanos",
+                    "500) realizadas na ultima hora",
+                    "pelo seu operador, ser",
+                ]
+
+                # Verifica texto do SISREG
+                for padrao in padroes_verificacao:
+                    if padrao in page_source_check:
                         captcha_presente = True
                         break
 
-                # Metodo 2: Verifica page_source
+                # Verifica widget reCAPTCHA via data-sitekey
                 if not captcha_presente:
-                    if "CAPTCHA" in page_source_check and ("grande quantidade" in page_source_check or "requisições" in page_source_check or "requisicoes" in page_source_check):
+                    if 'data-sitekey' in page_source_check and ('g-recaptcha' in page_source_check or 'h-captcha' in page_source_check):
                         captcha_presente = True
 
-                # Metodo 3: Verifica iframes de CAPTCHA
+                # Verifica iframes de reCAPTCHA/hCaptcha ja criados pelo JS
                 if not captcha_presente:
-                    captcha_iframes = driver.find_elements(By.XPATH, "//iframe[contains(@src, 'captcha') or contains(@title, 'captcha')]")
-                    if captcha_iframes:
-                        captcha_presente = True
+                    try:
+                        captcha_iframes = driver.find_elements(By.XPATH,
+                            "//iframe[contains(@src, 'captcha') or contains(@src, 'recaptcha') or contains(@src, 'hcaptcha')]")
+                        if captcha_iframes:
+                            captcha_presente = True
+                    except:
+                        pass
 
                 if not captcha_presente:
                     tempo_total = int(time.time() - tempo_inicio)
@@ -237,3 +333,47 @@ def _ler_kasm_url():
     except Exception as e:
         logging.warning(f"Erro ao ler URL do KASM do config.ini: {e}")
         return None
+
+
+def _ler_config_2captcha():
+    """
+    Le as configuracoes do 2Captcha do arquivo config.ini
+
+    Returns:
+        dict: {'enabled': bool, 'api_key': str}
+    """
+    try:
+        config = configparser.ConfigParser()
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(base_dir, '..', 'config.ini')
+
+        # Valores padrao
+        resultado = {
+            'enabled': False,
+            'api_key': ''
+        }
+
+        if not os.path.exists(config_path):
+            logging.warning("Arquivo config.ini nao encontrado")
+            return resultado
+
+        config.read(config_path)
+
+        if '2CAPTCHA' not in config:
+            logging.info("Secao [2CAPTCHA] nao encontrada no config.ini")
+            return resultado
+
+        # Le o enabled
+        if 'enabled' in config['2CAPTCHA']:
+            enabled_str = config['2CAPTCHA']['enabled'].strip().lower()
+            resultado['enabled'] = enabled_str in ('true', '1', 'yes', 'sim')
+
+        # Le a API key
+        if 'api_key' in config['2CAPTCHA']:
+            resultado['api_key'] = config['2CAPTCHA']['api_key'].strip()
+
+        return resultado
+
+    except Exception as e:
+        logging.error(f"Erro ao ler configuracoes do 2Captcha: {e}")
+        return {'enabled': False, 'api_key': ''}

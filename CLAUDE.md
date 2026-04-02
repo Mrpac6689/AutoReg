@@ -43,18 +43,30 @@ No build step, no test suite, no linter configuration exists in this project.
 **Data flow:** CSV files in `~/AutoReg/` are the inter-module data store — each step's output CSV is the next step's input.
 
 **Shared infrastructure (`autoreg/`):**
-- `ler_credenciais.py` — reads `config.ini` sections: `[SISREG]`, `[G-HOSP]`, `[SISREG-REG]`, `[G-HOSP-REG]`, `[EVOLUTION-API]`, `[AUTOREG-API]`
+- `ler_credenciais.py` — reads `config.ini` sections:
+  - `[SISREG]` / `[SISREG-REG]` — primary and regulatory SISREG accounts
+  - `[G-HOSP]` / `[G-HOSP-REG]` — primary and regulatory G-HOSP accounts
+  - `[EVOLUTION-API]` — WhatsApp notification integration
+  - `[AUTOREG-API]` — production tracking API (used by `-R` flag via `producao_relatorio.py`)
+  - `[2CAPTCHA]` / `[KASM]` — CAPTCHA solving and remote desktop viewer
 - `chrome_options.py` — shared Chrome/Selenium config
 - `logging.py` — logs to `~/AutoReg/autoreg.log` and stdout
+- `detecta_capchta.py` — centralizes CAPTCHA detection for all SISREG modules, supports automatic resolution via 2Captcha
+- `resolvedor_captcha.py` — handles automatic CAPTCHA solving using 2Captcha API (reCAPTCHA v2/v3, hCaptcha, image captchas)
+
+**Legacy backup files** — `autoreg/*bkp.py` (e.g. `executa_altabkp.py`, `trata_restosbkp.py`, `trata_duplicadosbkp.py`) are old versions kept for reference. They are not imported or active — prefer the non-`bkp` versions.
 
 ## Key Workflows and Their Flags
 
-| Workflow | Flags in sequence |
-|----------|------------------|
-| Admission | `-eci` → `-ip` |
-| Discharge | `-eis` `-eiga` `-maa` `-eaa` |
-| AIH Solicitation | `-spa` `-sia` `-ssr` `-snt` |
-| AIH Pre-processing | `-iga` `-ign` `-std` |
+| Shortcut | Flags in sequence | Description |
+|----------|------------------|-------------|
+| `-interna` | `-eci` → `-ip` | Full admission cycle |
+| `-alta` | `-eis` → `-eiga` → `-maa` → `-eaa` | Full discharge cycle |
+| `-solicita` | `-spa` → `-sia` → `-ssr` → `-snt` | AIH solicitation |
+| `-aihs` | `-iga` → `-ign` → `-std` | AIH pre-processing (GHOSP notes → SISREG data) |
+| `--all` | `-interna` then `-alta` | Complete workflow (prompts for repetition count) |
+
+Append `-R` to any shortcut to register production results in AUTOREG-API after completion (e.g. `python autoreg.py -solicita -R`).
 
 Individual flags follow the pattern: short flag (e.g. `-ip`) = `--interna-pacientes`. Run `python autoreg.py` with no args to see all functions with descriptions.
 
@@ -62,12 +74,26 @@ Individual flags follow the pattern: short flag (e.g. `-ip`) = `--interna-pacien
 
 Runs locally or inside a **Docker/KASM container** (KasmVNC remote desktop). The `cron-autoreg-docker.sh` script is the cron-facing entry: it copies `docker-entry-script.sh` into the running container and executes it with `DISPLAY=:1` for the Xvnc virtual display.
 
+## CAPTCHA Handling
+
+AutoReg includes automatic CAPTCHA detection and resolution:
+
+- **Detection**: All SISREG modules call `detecta_captcha(driver)` which monitors for CAPTCHA challenges
+- **Automatic Resolution**: When `[2CAPTCHA] enabled = true` in config.ini, uses 2Captcha API to solve automatically
+- **Manual Fallback**: If automatic fails or disabled, pauses and waits for manual resolution (local or KASM viewer)
+- **Supported Types**: reCAPTCHA v2/v3, hCaptcha, simple image CAPTCHAs
+- **Documentation**: See `CAPTCHA_2CAPTCHA.md` and `INSTALACAO_2CAPTCHA.md`
+- **Testing**: Run `python test_2captcha_integration.py` to verify setup
+
 ## Important Files
 
 | File | Purpose |
 |------|---------|
 | `config.ini` | Runtime credentials — **gitignored**, never commit |
-| `config.ini.example` | Template for `config.ini` |
+| `config.ini.example` | Template for `config.ini` (includes `[2CAPTCHA]` section) |
 | `autoreg/__init__.py` | Exports all public functions (source of truth for available API) |
 | `~/AutoReg/*.csv` | Runtime data files (inter-module exchange, not in repo) |
 | `~/AutoReg/autoreg.log` | Runtime log file |
+| `CAPTCHA_2CAPTCHA.md` | Complete 2Captcha integration documentation |
+| `INSTALACAO_2CAPTCHA.md` | Step-by-step installation guide for 2Captcha |
+| `test_2captcha_integration.py` | Test script to validate 2Captcha setup |

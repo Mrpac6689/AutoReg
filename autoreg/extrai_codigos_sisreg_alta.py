@@ -79,16 +79,11 @@ def extrai_codigos_sisreg_alta():
         print("Login realizado com sucesso!")
         logging.info("Login realizado com sucesso no SISREG")
 
-        # Clica no link "Saída/Permanência"
-        saida_permanencia_link = wait.until(
-            EC.element_to_be_clickable((By.XPATH, "//a[@href='/cgi-bin/config_saida_permanencia' and text()='saída/permanência']"))
-        )
-        saida_permanencia_link.click()
+        # Navega diretamente para a página de Saída/Permanência (elimina navegação por iframe)
+        navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_saida_permanencia")
+        time.sleep(2)
 
-        time.sleep(5)  # Aguarda o carregamento da nova página
-        wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
-
-        # Localiza e clica no botão PESQUISAR dentro do iframe
+        # Localiza e clica no botão PESQUISAR
         botao_pesquisar_saida = wait.until(
             EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']"))
         )
@@ -98,9 +93,10 @@ def extrai_codigos_sisreg_alta():
         # Extrai dados das tabelas
         while True:
             # Verifica se há CAPTCHA antes de extrair dados
-            if not detecta_captcha(navegador):
-                print("CAPTCHA não resolvido. Abortando extração.")
-                logging.error("Extração abortada por CAPTCHA não resolvido")
+            resultado_captcha = detecta_captcha(navegador)
+            if resultado_captcha != 'ok':
+                print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando extração.")
+                logging.error(f"Extração abortada por CAPTCHA não resolvido: {resultado_captcha}")
                 break
 
             linhas_pacientes = navegador.find_elements(By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]")

@@ -71,19 +71,21 @@ def extrai_codigos_internacao():
         login_button.click()
         print("Botão de login clicado.")
         logging.info("Botão de login clicado.")
-        
-        wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_internar' and text()='internar']"))).click()
-        time.sleep(10)
-        wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
+        time.sleep(5)
+
+        # Navega diretamente para a página de Internação (elimina navegação por iframe)
+        navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_internar")
         print("Login realizado e navegação para página de Internação...\n")
         logging.info("Login realizado e navegação para página de Internação...\n")
+        time.sleep(2)
 
         # Localiza e extrai os dados dos pacientes
         while True:
             # Verifica se há CAPTCHA antes de processar
-            if not detecta_captcha(navegador):
-                print("CAPTCHA não resolvido. Abortando extração.")
-                logging.error("Extração abortada por CAPTCHA não resolvido")
+            resultado_captcha = detecta_captcha(navegador)
+            if resultado_captcha != 'ok':
+                print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando extração.")
+                logging.error(f"Extração abortada por CAPTCHA não resolvido: {resultado_captcha}")
                 break
 
             linhas_pacientes = navegador.find_elements(By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]")

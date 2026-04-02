@@ -106,9 +106,10 @@ def solicita_sisreg():
         for index, row in df.iterrows():
             try:
                 # Verifica se há CAPTCHA antes de cada solicitação
-                if not detecta_captcha(navegador):
-                    print("CAPTCHA não resolvido. Abortando solicitações.")
-                    logging.error("Solicitações abortadas por CAPTCHA não resolvido")
+                resultado_captcha = detecta_captcha(navegador)
+                if resultado_captcha != 'ok':
+                    print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando solicitações.")
+                    logging.error(f"Solicitações abortadas por CAPTCHA não resolvido: {resultado_captcha}")
                     break
 
                 # Se a linha possuir dados na coluna solsisreg, ela deve ser ignorada no loop

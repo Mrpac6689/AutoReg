@@ -91,9 +91,10 @@ def alta_duplicados(duplicadas_path):
 
         for index, paciente in df.iterrows():
             # Verifica se há CAPTCHA antes de processar
-            if not detecta_captcha(navegador):
-                print("CAPTCHA não resolvido. Abortando processamento.")
-                logging.error("Processamento abortado por CAPTCHA não resolvido")
+            resultado_captcha = detecta_captcha(navegador)
+            if resultado_captcha != 'ok':
+                print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando processamento.")
+                logging.error(f"Processamento abortado por CAPTCHA não resolvido: {resultado_captcha}")
                 break
 
             if not (pd.notna(paciente.get('CODIGO')) and str(paciente.get('CODIGO')).strip()):
@@ -202,17 +203,19 @@ def cod_inter_duplicado(duplicadas_path):
         time.sleep(5)
         print("Login realizado com sucesso!")
 
-        wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_internar' and text()='internar']"))).click()
-        wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
+        # Navega diretamente para a página de Internação (elimina navegação por iframe)
+        navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_internar")
         print("Página de Internação acessada.")
+        time.sleep(2)
 
         nomes_restantes = set(n.upper() for n in nomes_duplicados)
 
         while nomes_restantes:
             # Verifica se há CAPTCHA antes de processar
-            if not detecta_captcha(navegador):
-                print("CAPTCHA não resolvido. Abortando processamento.")
-                logging.error("Processamento abortado por CAPTCHA não resolvido")
+            resultado_captcha = detecta_captcha(navegador)
+            if resultado_captcha != 'ok':
+                print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando processamento.")
+                logging.error(f"Processamento abortado por CAPTCHA não resolvido: {resultado_captcha}")
                 break
 
             linhas = navegador.find_elements(By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]")
@@ -314,14 +317,16 @@ def interna_duplicados(duplicadas_path):
         time.sleep(5)
         print("Login realizado com sucesso!")
 
-        wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_internar' and text()='internar']"))).click()
-        wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
+        # Navega diretamente para a página de Internação (elimina navegação por iframe)
+        navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_internar")
+        time.sleep(2)
 
         for index, row in df.iterrows():
             # Verifica se há CAPTCHA antes de processar
-            if not detecta_captcha(navegador):
-                print("CAPTCHA não resolvido. Abortando processamento.")
-                logging.error("Processamento abortado por CAPTCHA não resolvido")
+            resultado_captcha = detecta_captcha(navegador)
+            if resultado_captcha != 'ok':
+                print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando processamento.")
+                logging.error(f"Processamento abortado por CAPTCHA não resolvido: {resultado_captcha}")
                 break
 
             ficha = str(row.get('CODINTERNA', '')).strip()

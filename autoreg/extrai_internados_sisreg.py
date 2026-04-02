@@ -24,7 +24,7 @@ def extrai_internados_sisreg():
     try:
         chrome_options = get_chrome_options()
         navegador = webdriver.Chrome(options=chrome_options)
-        wait = WebDriverWait(navegador, 20)
+        wait = WebDriverWait(navegador, 5)
         print("Acessando a página de Internação...\n")
         logging.info("Acessando a página de Internação...\n")
         navegador.get("https://sisregiii.saude.gov.br")
@@ -80,6 +80,7 @@ def extrai_internados_sisreg():
         print("Login realizado com sucesso!")
         logging.info("Login realizado com sucesso!")
 
+        '''
         # Agora, clica no link "Saída/Permanência"
         print("Tentando localizar o link 'Saída/Permanência'...")
         logging.info("Tentando localizar o link 'Saída/Permanência'...")
@@ -105,26 +106,55 @@ def extrai_internados_sisreg():
         # Clica no botão "PESQUISAR"
         print("Tentando localizar o botão PESQUISAR dentro do iframe...")
         logging.info("Tentando localizar o botão PESQUISAR dentro do iframe...")
-        pesquisar_button = WebDriverWait(navegador, 20).until(
-            EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']"))
-        )
+        '''
         
-        print("Botão PESQUISAR encontrado!")
-        logging.info("Botão PESQUISAR encontrado!")
-        pesquisar_button.click()
-        print("Botão PESQUISAR clicado!")
-        logging.info("Botão PESQUISAR clicado!")
+        URL_SAIDA = "https://sisregiii.saude.gov.br/cgi-bin/config_saida_permanencia"
 
-        time.sleep(5)
+        def navegar_e_pesquisar():
+            """Navega para a pagina de saida/permanencia e clica em PESQUISAR."""
+            navegador.get(URL_SAIDA)
+            time.sleep(2)
+            resultado_captcha = detecta_captcha(navegador)
+            if resultado_captcha != 'ok':
+                return False
+            # Apos CAPTCHA o SISREG volta para pagina inicial - re-navega se necessario
+            if URL_SAIDA not in navegador.current_url:
+                logging.info("Redirecionado apos CAPTCHA - re-navegando para config_saida_permanencia")
+                navegador.get(URL_SAIDA)
+                time.sleep(2)
+            btn = WebDriverWait(navegador, 20).until(
+                EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']"))
+            )
+            print("Botão PESQUISAR encontrado!")
+            logging.info("Botão PESQUISAR encontrado!")
+            btn.click()
+            print("Botão PESQUISAR clicado!")
+            logging.info("Botão PESQUISAR clicado!")
+            time.sleep(5)
+            return True
+
+        if not navegar_e_pesquisar():
+            print("CAPTCHA não resolvido. Abortando extração.")
+            logging.error("Extração abortada por CAPTCHA não resolvido na navegação inicial")
+            return
 
         # Extração de dados
         dados = []
+        solicitacoes_vistas = set()  # evita duplicatas se precisar reiniciar apos CAPTCHA
         while True:
             # Verifica se há CAPTCHA antes de extrair dados
-            if not detecta_captcha(navegador):
-                print("CAPTCHA não resolvido. Abortando extração.")
-                logging.error("Extração abortada por CAPTCHA não resolvido")
+            resultado_captcha = detecta_captcha(navegador)
+            if resultado_captcha != 'ok':
+                print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando extração.")
+                logging.error(f"Extração abortada por CAPTCHA não resolvido: {resultado_captcha}")
                 break
+
+            # Apos CAPTCHA mid-loop, o SISREG volta para pagina inicial - reinicia pesquisa
+            if URL_SAIDA not in navegador.current_url:
+                logging.info("Pagina mudou apos CAPTCHA no loop - reiniciando pesquisa")
+                if not navegar_e_pesquisar():
+                    break
+                continue
 
             # Localiza as linhas da tabela com os dados
             linhas = navegador.find_elements(By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]")
@@ -143,6 +173,10 @@ def extrai_internados_sisreg():
                 except Exception:
                     solicitacao = ""
                 
+                if solicitacao and solicitacao in solicitacoes_vistas:
+                    continue
+                if solicitacao:
+                    solicitacoes_vistas.add(solicitacao)
                 dados.append({
                     "Nome": nome,
                     "solicitacao_sisreg": solicitacao

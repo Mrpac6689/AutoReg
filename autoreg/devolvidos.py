@@ -160,8 +160,9 @@ def devolvidos():
             # Função para extrair dados da tabela e salvar no CSV
             while True:
                 # Verifica se há CAPTCHA antes de processar
-                if not detecta_captcha(navegador):
-                    print("CAPTCHA não resolvido. Abortando processamento.")
+                resultado_captcha = detecta_captcha(navegador)
+                if resultado_captcha != 'ok':
+                    print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando processamento.")
                     break
 
                 # Pega todas as linhas da tabela
@@ -217,8 +218,9 @@ def devolvidos():
 
             for linha in leitor_csv:
                 # Verifica se há CAPTCHA antes de processar
-                if not detecta_captcha(navegador):
-                    print("CAPTCHA não resolvido. Abortando processamento.")
+                resultado_captcha = detecta_captcha(navegador)
+                if resultado_captcha != 'ok':
+                    print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando processamento.")
                     break
 
                 # Antes de cada iteração, navega de volta à página "Solicitações Devolvidas"
@@ -423,8 +425,9 @@ def devolvidos():
         # Itera sobre as linhas do CSV a partir da segunda linha (ignora o cabeçalho)
         for i, row in df_fichas.iloc[1:].iterrows():
             # Verifica se há CAPTCHA antes de processar
-            if not detecta_captcha(navegador):
-                print("CAPTCHA não resolvido. Abortando processamento.")
+            resultado_captcha = detecta_captcha(navegador)
+            if resultado_captcha != 'ok':
+                print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando processamento.")
                 break
 
             motivo = row[3]  # Motivo de alta está na quarta coluna

@@ -110,9 +110,10 @@ def executa_alta_avancado():
 
         for index, row in altas_pendentes.iterrows():
             # Verifica se há CAPTCHA antes de cada alta
-            if not detecta_captcha(navegador):
-                print("CAPTCHA não resolvido. Abortando altas.")
-                logging.error("Altas abortadas por CAPTCHA não resolvido")
+            resultado_captcha = detecta_captcha(navegador)
+            if resultado_captcha != 'ok':
+                print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando altas.")
+                logging.error(f"Altas abortadas por CAPTCHA não resolvido: {resultado_captcha}")
                 break
 
             # Pula se a alta já foi efetivada

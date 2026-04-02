@@ -50,3 +50,4 @@ dependencies:
       - zope.interface==7.2
       - pynput
       - pypdf2
+      - 2captcha-python==2.0.5

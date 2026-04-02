@@ -58,12 +58,11 @@ def sisreg_internados():
         print("Login realizado com sucesso!")
         logging.info("Login SISREG realizado.")
 
-        wait.until(EC.element_to_be_clickable((By.XPATH, "//a[@href='/cgi-bin/config_saida_permanencia' and text()='saída/permanência']"))).click()
-        time.sleep(5)
+        # Navega diretamente para a página de Saída/Permanência (elimina navegação por iframe)
+        navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_saida_permanencia")
         print("Página de Saída/Permanência acessada.")
         logging.info("Página de Saída/Permanência acessada.")
-
-        WebDriverWait(navegador, 10).until(EC.frame_to_be_available_and_switch_to_it((By.NAME, 'f_principal')))
+        time.sleep(2)
 
         WebDriverWait(navegador, 20).until(
             EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']"))
@@ -148,13 +147,11 @@ def sisreg_a_internar():
         print("Login realizado com sucesso!")
         logging.info("Login SISREG realizado.")
 
-        wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='/cgi-bin/config_internar' and text()='internar']"))).click()
-        time.sleep(10)
-        wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
+        # Navega diretamente para a página de Internação (elimina navegação por iframe)
+        navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_internar")
         print("Página de Internação acessada.")
         logging.info("Página de Internação acessada.")
-
-        time.sleep(5)
+        time.sleep(2)
 
         while True:
             linhas = navegador.find_elements(By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]")
@@ -287,17 +284,9 @@ def codigo_duplicados():
         print("Login realizado com sucesso!")
         logging.info("Login SISREG realizado.")
 
-        wait.until(EC.element_to_be_clickable((By.XPATH, "//a[@href='/cgi-bin/config_saida_permanencia' and text()='saída/permanência']"))).click()
-        time.sleep(5)
-
-        try:
-            navegador.switch_to.default_content()
-            wait.until(EC.frame_to_be_available_and_switch_to_it((By.NAME, 'f_principal')))
-        except Exception:
-            try:
-                wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'f_main')))
-            except Exception:
-                pass
+        # Navega diretamente para a página de Saída/Permanência (elimina navegação por iframe)
+        navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_saida_permanencia")
+        time.sleep(2)
 
         wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']"))).click()
         time.sleep(5)
