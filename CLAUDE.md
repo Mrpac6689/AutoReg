@@ -56,6 +56,8 @@ No build step, no test suite, no linter configuration exists in this project.
 
 **Legacy backup files** — `autoreg/*bkp.py` (e.g. `executa_altabkp.py`, `trata_restosbkp.py`, `trata_duplicadosbkp.py`) are old versions kept for reference. They are not imported or active — prefer the non-`bkp` versions.
 
+**Filename typo** — `autoreg/detecta_capchta.py` (note "capchta", not "captcha") is the canonical file. All imports use this spelling; do not rename it.
+
 ## Key Workflows and Their Flags
 
 | Shortcut | Flags in sequence | Description |
@@ -65,6 +67,8 @@ No build step, no test suite, no linter configuration exists in this project.
 | `-solicita` | `-spa` → `-sia` → `-ssr` → `-snt` | AIH solicitation |
 | `-aihs` | `-iga` → `-ign` → `-std` | AIH pre-processing (GHOSP notes → SISREG data) |
 | `--all` | `-interna` then `-alta` | Complete workflow (prompts for repetition count) |
+| *(no shortcut)* | `-eac` → `-eae` → `-eas` → `-ear` | Ambulatorial exam solicitation cycle (consult → extract → solicit → report) |
+| *(no shortcut)* | `-pra` / `-pad` / `-pag` | Ambulatorial production extraction (SISREG); run individually as needed |
 
 Append `-R` to any shortcut to register production results in AUTOREG-API after completion (e.g. `python autoreg.py -solicita -R`).
 
@@ -84,6 +88,13 @@ AutoReg includes automatic CAPTCHA detection and resolution:
 - **Supported Types**: reCAPTCHA v2/v3, hCaptcha, simple image CAPTCHAs
 - **Documentation**: See `CAPTCHA_2CAPTCHA.md` and `INSTALACAO_2CAPTCHA.md`
 - **Testing**: Run `python test_2captcha_integration.py` to verify setup
+
+## Non-obvious Behaviors
+
+- **G-HOSP 500 auto-recovery** (`extrai_internados_ghosp_avancado.py`): if a Rails error-500 page is detected mid-session, the module silently performs a full re-login and retries the navigation. This is transparent to the caller.
+- **`-p2c` optional argument**: `-p2c` / `--pdf2csv` is the only flag that accepts an optional positional argument (path to a PDF file). All other flags are boolean.
+- **`-R` timing**: for `-alta`, production is registered *before* the sequence runs; for `-interna` and `-solicita` it is also registered before the sequence. This is a pre-registration pattern, not a post-registration one.
+- **Exam deduplication (`-eas`)**: records with a non-empty `solicitacao` column are skipped unless `solicita='s'` is set. The `solicita` column is cleared after successful processing.
 
 ## Important Files
 

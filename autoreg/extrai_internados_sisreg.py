@@ -227,6 +227,12 @@ def extrai_internados_sisreg():
                     # Retorna à página de pesquisa e garante o foco no iframe
                     navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_saida_permanencia")
 
+                    resultado_captcha = detecta_captcha(navegador)
+                    if resultado_captcha != 'ok':
+                        print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando extração de CNS.")
+                        logging.error(f"Extração de CNS abortada por CAPTCHA não resolvido: {resultado_captcha}")
+                        return
+
                     # Clica em PESQUISAR para carregar o ambiente onde a função JS 'configFicha' está definida
                     pesquisar_btn = WebDriverWait(navegador, 20).until(
                         EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']"))

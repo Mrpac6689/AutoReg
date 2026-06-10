@@ -14,6 +14,51 @@ from autoreg.chrome_options import get_chrome_options
 from datetime import datetime
 import logging
 
+def _verifica_erro_500(driver):
+    """Verifica se a página atual é a página de erro 500 do G-HOSP (Rails)."""
+    try:
+        src = driver.page_source
+        return 'rails-default-error-page' in src or 'ocorreu um problema inesperado (500)' in src.lower()
+    except Exception:
+        return False
+
+
+def _refaz_login_ghosp(driver, caminho_ghosp, usuario_ghosp, senha_ghosp):
+    """Refaz o login no G-HOSP a partir da tela de usuário e senha."""
+    print("Erro 500 detectado. Refazendo login no G-HOSP...")
+    logging.warning("Erro 500 detectado no G-HOSP. Refazendo login...")
+    driver.get(caminho_ghosp + ':4002/users/sign_in')
+    time.sleep(2)
+    email_field = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.ID, "email"))
+    )
+    email_field.clear()
+    email_field.send_keys(usuario_ghosp)
+    senha_field = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.XPATH, '//*[@id="password"]'))
+    )
+    senha_field.clear()
+    senha_field.send_keys(senha_ghosp)
+    login_button = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.XPATH, '//*[@id="new_user"]/div/input'))
+    )
+    login_button.click()
+    time.sleep(5)
+    print("Re-login realizado com sucesso!")
+    logging.info("Re-login no G-HOSP realizado com sucesso após erro 500.")
+
+
+def _navega_prontuarios(driver, caminho_ghosp, usuario_ghosp, senha_ghosp):
+    """Navega para /prontuarios, refazendo login se encontrar erro 500."""
+    url = caminho_ghosp + ':4002/prontuarios'
+    driver.get(url)
+    time.sleep(2)
+    if _verifica_erro_500(driver):
+        _refaz_login_ghosp(driver, caminho_ghosp, usuario_ghosp, senha_ghosp)
+        driver.get(url)
+        time.sleep(2)
+
+
 def extrai_internados_ghosp_avancado():
     print("\n---===> CONSULTA PERMANENCIA DE INTERNADOS NO GHOSP <===---")
     
@@ -91,8 +136,8 @@ def extrai_internados_ghosp_avancado():
                 # 1. Tentar busca por CNS
                 if cns_csv:
                     print(f"Buscando por CNS: {cns_csv}")
-                    driver.get(caminho_ghosp + ':4002/prontuarios')
-                    
+                    _navega_prontuarios(driver, caminho_ghosp, usuario_ghosp, senha_ghosp)
+
                     cns_input = WebDriverWait(driver, 10).until(
                         EC.presence_of_element_located((By.ID, "cns"))
                     )
@@ -103,7 +148,11 @@ def extrai_internados_ghosp_avancado():
                     botao_procurar = driver.find_element(By.XPATH, '//input[@type="submit" and @value="Procurar"]')
                     botao_procurar.click()
                     time.sleep(3)
-                    
+
+                    if _verifica_erro_500(driver):
+                        _refaz_login_ghosp(driver, caminho_ghosp, usuario_ghosp, senha_ghosp)
+                        raise Exception("Erro 500 após busca por CNS - abortando tentativa atual")
+
                     # Verifica se abriu a div "paciente"
                     paciente_divs = driver.find_elements(By.ID, "paciente")
                     if paciente_divs:
@@ -111,21 +160,25 @@ def extrai_internados_ghosp_avancado():
                         if nome_csv in nome_ghosp or nome_ghosp in nome_csv: # Comparação flexível para nomes
                             found = True
                             print(f"Sucesso: Paciente localizado por CNS ({nome_ghosp})")
-                
+
                 # 2. Tentar busca por Nome se não encontrou por CNS
                 if not found:
                     print(f"Tentando busca por Nome: {nome_csv}")
-                    driver.get(caminho_ghosp + ':4002/prontuarios')
-                    
+                    _navega_prontuarios(driver, caminho_ghosp, usuario_ghosp, senha_ghosp)
+
                     nome_input = WebDriverWait(driver, 10).until(
                         EC.presence_of_element_located((By.ID, "nome"))
                     )
                     nome_input.clear()
                     nome_input.send_keys(nome_csv)
-                    
+
                     botao_procurar = driver.find_element(By.XPATH, '//input[@type="submit" and @value="Procurar"]')
                     botao_procurar.click()
                     time.sleep(3)
+
+                    if _verifica_erro_500(driver):
+                        _refaz_login_ghosp(driver, caminho_ghosp, usuario_ghosp, senha_ghosp)
+                        raise Exception("Erro 500 após busca por Nome - abortando tentativa atual")
                     
                     paciente_divs = driver.find_elements(By.ID, "paciente")
                     if paciente_divs:

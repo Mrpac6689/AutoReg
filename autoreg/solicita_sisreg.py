@@ -276,8 +276,25 @@ def solicita_sisreg():
                 )
                 select_especialidade = Select(segundo_dropdown)
                 
+                # Tipos que podem representar cirurgia ortopédica
+                tipos_cirurgico_ortopedico = {
+                    'CLÍNICA CIRÚRGICA', 'CLINICA CIRURGICA', 'CIRURGIA GERAL',
+                    'ORTOPEDIA', 'TRAUMATORTOPEDIA', 'CLÍNICA ORTOPÉDICA', 'CLINICA ORTOPEDICA',
+                    'ORTOPEDIA E TRAUMATOLOGIA', 'TRAUMATOLOGIA'
+                }
+
                 # Seleciona a opção baseada no tipo
-                if tipo_clinica in tipo_para_opcao:
+                # Prioridade 1: procedimento específico de Saúde Mental (independe do tipo)
+                if procedimento == '0303170131':
+                    opcao_desejada = 'ESPEC - CLINICO - SAUDE MENTAL'
+                    print(f"Procedimento de Saúde Mental detectado ({procedimento}). Clínica: {opcao_desejada}")
+                    logging.info(f"Procedimento de Saúde Mental detectado ({procedimento}). Clínica: {opcao_desejada}")
+                # Prioridade 2: se tipo é cirúrgico/ortopédico E procedimento inicia em 0408, usa ortopedia
+                elif tipo_clinica in tipos_cirurgico_ortopedico and procedimento.startswith('0408'):
+                    opcao_desejada = 'ESPEC - CIRURGICO - ORTOPEDIATRAUMATOLOGIA'
+                    print(f"Procedimento ortopédico detectado ({procedimento}). Clínica: {opcao_desejada}")
+                    logging.info(f"Procedimento ortopédico detectado ({procedimento}). Clínica: {opcao_desejada}")
+                elif tipo_clinica in tipo_para_opcao:
                     opcao_desejada = tipo_para_opcao[tipo_clinica]
                 else:
                     opcao_desejada = 'ESPEC - CLINICO - CLINICA GERAL'
