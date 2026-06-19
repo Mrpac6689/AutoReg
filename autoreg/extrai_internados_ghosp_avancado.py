@@ -203,6 +203,10 @@ def extrai_internados_ghosp_avancado():
                         
                         for item in ra_items:
                             try:
+                                # Filtra somente RAs da unidade HUERB
+                                if 'HUERB' not in item.text.upper():
+                                    continue
+
                                 # Extrai o número do RA do valor do checkbox
                                 ra_checkbox = item.find_element(By.CLASS_NAME, "ra")
                                 ra_numero = ra_checkbox.get_attribute("value")
@@ -233,7 +237,7 @@ def extrai_internados_ghosp_avancado():
                             df.at[index, 'RA'] = ra_recente
                             print(f"RA mais recente identificado: {ra_recente} ({ras_encontradas[0]['data']})")
                         else:
-                            print("Aviso: Nenhuma RA válida encontrada na lista.")
+                            print("Aviso: Nenhuma RA da unidade HUERB encontrada na lista.")
                             
                     except Exception as e:
                         print(f"Aviso: Falha ao extrair dados de RA: {str(e)}")
