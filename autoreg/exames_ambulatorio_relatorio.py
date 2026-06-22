@@ -6,7 +6,7 @@ import base64
 import glob
 import pandas as pd
 import configparser
-from pypdf import PdfMerger
+from pypdf import PdfWriter
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -363,18 +363,18 @@ def exames_ambulatorio_relatorio():
                 # Se houver mais de um PDF, faz o merge
                 print(f"   ✅ Encontrados {len(pdfs_gerados)} PDF(s) para juntar")
                 
-                # Cria o merger e adiciona os PDFs em ordem
-                merger = PdfMerger()
+                # Cria o writer e adiciona os PDFs em ordem
+                writer = PdfWriter()
                 for pdf_path in pdfs_gerados:
                     try:
-                        merger.append(pdf_path)
+                        writer.append(pdf_path)
                         print(f"   ✅ Adicionado: {os.path.basename(pdf_path)}")
                     except Exception as e:
                         print(f"   ⚠️  Erro ao adicionar {os.path.basename(pdf_path)}: {e}")
-                
+
                 # Salva o PDF unificado
-                merger.write(pdf_unificado)
-                merger.close()
+                writer.write(pdf_unificado)
+                writer.close()
                 print(f"   ✅ PDF unificado salvo: {pdf_unificado}")
                 
                 # Remove os PDFs individuais
