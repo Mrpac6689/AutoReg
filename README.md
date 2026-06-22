@@ -4,7 +4,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-GPL%20v3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/Version-9.7.0-orange.svg)](https://github.com/Mrpac6689/AutoReg)
+[![Version](https://img.shields.io/badge/Version-9.8.2-orange.svg)](https://github.com/Mrpac6689/AutoReg)
 
 ---
 
@@ -86,6 +86,7 @@ Desenvolvido com uma arquitetura modular e interface de linha de comando intuiti
 - **`-alta`**: Executa rotina completa de alta (inclui tratamento e limpeza)
 - **`-solicita`**: Executa rotina completa de solicitação
 - **`-aihs`**: Executa rotina completa de processamento de AIHs
+- **`-duplicados`**: Executa rotina completa de tratamento de duplicados: `-eid` → `-td`
 - **`--all`**: Executa todas as funções principais com repetição interativa
 
 ### 🛠️ Utilitários
@@ -342,6 +343,9 @@ autoreg -solicita
 # Rotina completa de AIHs
 autoreg -aihs
 
+# Tratamento completo de internações duplicadas
+autoreg -duplicados
+
 # Executa todas as funções principais com repetição interativa
 autoreg --all
 ```
@@ -534,7 +538,7 @@ O AutoReg foi desenvolvido para facilitar e automatizar processos hospitalares, 
 
 ---
 
-**AutoReg v9.7.0 Universe** - *Automatização inteligente para sistemas de saúde* 🚀
+**AutoReg v9.8.2 Universe** - *Automatização inteligente para sistemas de saúde* 🚀
 
 *Esperamos que o AutoReg continue facilitando sua rotina e contribuindo para processos hospitalares mais eficientes!*
 
@@ -548,7 +552,7 @@ O AutoReg foi desenvolvido para facilitar e automatizar processos hospitalares, 
 
 [![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-GPL%20v3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/Version-9.7.0-orange.svg)](https://github.com/Mrpac6689/AutoReg)
+[![Version](https://img.shields.io/badge/Version-9.8.2-orange.svg)](https://github.com/Mrpac6689/AutoReg)
 
 ---
 
@@ -630,6 +634,7 @@ Developed with a modular architecture and intuitive command-line interface, Auto
 - **`-alta`**: Executes complete discharge routine (includes processing and cleanup)
 - **`-solicita`**: Executes complete request routine
 - **`-aihs`**: Executes complete AIH processing routine
+- **`-duplicados`**: Executes complete duplicate admission handling routine: `-eid` → `-td`
 - **`--all`**: Executes all main functions with interactive repetition
 
 ### 🛠️ Utilities
@@ -921,6 +926,9 @@ autoreg -solicita
 # Complete AIH routine
 autoreg -aihs
 
+# Complete duplicate admission handling
+autoreg -duplicados
+
 # Execute all main functions with interactive repetition
 autoreg --all
 ```
@@ -1113,6 +1121,6 @@ AutoReg was developed to facilitate and automate hospital processes, contributin
 
 ---
 
-**AutoReg v9.7.0 Universe** - *Intelligent automation for healthcare systems* 🚀
+**AutoReg v9.8.2 Universe** - *Intelligent automation for healthcare systems* 🚀
 
 *We hope AutoReg continues to facilitate your routine and contribute to more efficient hospital processes!*

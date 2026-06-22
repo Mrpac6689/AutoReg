@@ -337,11 +337,10 @@ def interna_duplicados(duplicadas_path):
             logging.info(f"Internando ficha: {ficha}")
 
             try:
-                navegador.switch_to.default_content()
-                wait.until(EC.frame_to_be_available_and_switch_to_it((By.NAME, 'f_principal')))
-
+                navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_internar")
+                time.sleep(1)
                 navegador.execute_script(f"configFicha('{ficha}')")
-                time.sleep(2)
+                time.sleep(3)
 
                 data_hoje = datetime.now().strftime("%d/%m/%Y")
                 data_field = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@type='text' and contains(@id, 'dp')]")))
@@ -363,6 +362,15 @@ def interna_duplicados(duplicadas_path):
                         alert.accept()
                         time.sleep(1)
                 except:
+                    pass
+
+                try:
+                    navegador.find_element(By.XPATH, "//div[contains(text(), 'Erro de Sistema')]")
+                    print(f"   ⚠️ Erro de Sistema detectado para {ficha}.")
+                    df.at[index, 'resultado_internacao'] = 'Erro de Sistema'
+                    df.to_csv(duplicadas_path, index=False)
+                    continue
+                except NoSuchElementException:
                     pass
 
                 df.at[index, 'resultado_internacao'] = 'Internado'

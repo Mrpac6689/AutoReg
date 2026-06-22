@@ -311,6 +311,7 @@ FUNÇÕES DISPONÍVEIS:
         ('-alta', '--alta', None),
         ('-solicita', '--solicita', None),
         ('-aihs', '--aihs', None),
+        ('-duplicados', '--duplicados', None),
         ('-R', '--registro-producao', None)
     ]
     
@@ -325,6 +326,8 @@ FUNÇÕES DISPONÍVEIS:
             desc = 'Executa rotina de Solicitação: -spa -sia -ssr -snt'
         elif short == '-aihs':
             desc = 'Executa rotina de notas: -iga -ign -std'
+        elif short == '-duplicados':
+            desc = 'Executa rotina de duplicados: -eid -td'
         elif short == '-R':
             desc = 'Registra produção na AUTOREG-API (use com -solicita, -interna ou -alta)'
         else:
@@ -603,6 +606,8 @@ Exemplos de uso:
                        help='Executa rotina de Solicitação: -spa -sia -ssr -snt')
     parser.add_argument('-aihs', '--aihs', action='store_true',
                        help='Executa rotina de notas: -iga -ign -std')
+    parser.add_argument('-duplicados', '--duplicados', action='store_true',
+                       help='Executa rotina de duplicados: -eid -td')
     parser.add_argument('-R', '--registro-producao', action='store_true',
                        help='Registra produção na AUTOREG-API (válido com -solicita, -interna ou -alta)')
     
@@ -666,6 +671,16 @@ Exemplos de uso:
     if args.aihs:
         print("🔄 Executando rotina de AIHS (-iga -ign -std)...")
         seq = ['internados_ghosp_avancado', 'internados_ghosp_nota', 'solicita_trata_dados']
+        for i, func_name in enumerate(seq, 1):
+            print(f"\n[{i}/{len(seq)}] ", end="")
+            if not executar_funcao(func_name):
+                print(f"❌ Parando execução devido ao erro em {func_name}")
+                break
+        return
+
+    if args.duplicados:
+        print("🔄 Executando rotina de duplicados (-eid -td)...")
+        seq = ['extrai_internacoes_duplicadas', 'trata_duplicados']
         for i, func_name in enumerate(seq, 1):
             print(f"\n[{i}/{len(seq)}] ", end="")
             if not executar_funcao(func_name):

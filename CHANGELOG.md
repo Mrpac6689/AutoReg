@@ -5,6 +5,17 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [9.8.2] - 2026-06
+
+### Adicionado
+- **Atalho `-duplicados` em `autoreg.py`**: Executa em sequência `-eid` (extrai_internacoes_duplicadas) → `-td` (trata_duplicados), seguindo o mesmo padrão dos demais atalhos compostos (`-interna`, `-alta`, `-solicita`, `-aihs`)
+
+### Corrigido
+- **`interna_duplicados()` em `trata_duplicados.py`**: Corrigida falha na fase final do fluxo de duplicados
+  - Removida chamada obsoleta `switch_to.frame('f_principal')` que causava `TimeoutException` a partir da primeira iteração, pois o frame não existe na página `config_internar` após a navegação via `navegador.get()`
+  - Adicionada re-navegação para `config_internar` dentro do loop (mesmo padrão funcional de `interna_pacientes.py`), garantindo contexto de página limpo para cada ficha
+  - Adicionada verificação de "Erro de Sistema" após a internação, em paridade com `interna_pacientes.py`
+
 ## [9.8.1] - 2026-02
 
 ### Adicionado
@@ -392,6 +403,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+[9.8.2]: https://github.com/Mrpac6689/AutoReg/releases/tag/v9.8.2
 [9.8.1]: https://github.com/Mrpac6689/AutoReg/releases/tag/v9.8.1
 [9.7.0]: https://github.com/Mrpac6689/AutoReg/releases/tag/v9.7.0
 [9.6.7]: https://github.com/Mrpac6689/AutoReg/releases/tag/v9.6.7
