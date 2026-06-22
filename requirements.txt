@@ -22,7 +22,7 @@ pandas==2.2.3
 pdf2image==1.17.0
 pillow==12.2.0
 pynput==1.8.1
-PyPDF2==3.0.1
+pypdf==6.14.0
 pyperclip==1.9.0
 PyRect==0.2.0
 PyScreeze==1.0.1
