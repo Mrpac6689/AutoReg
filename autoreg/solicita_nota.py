@@ -21,31 +21,62 @@ def solicita_nota():
 
     # Acesse a página de login do G-HOSP na porta 4002
     url_login = f"{caminho_ghosp}:4002/users/sign_in"
-    driver.get(url_login)
 
     try:
-        # Localiza e preenche o campo de e-mail
-        print("Localizando campo de e-mail...")
-        email_field = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "email"))
-        )
-        email_field.send_keys(usuario_ghosp)
+        # Efetua login com verificação. O problema observado ocorre no momento do
+        # login (que às vezes não se conclui). Se o login não for confirmado por
+        # qualquer motivo, fecha o navegador, reabre e tenta novamente.
+        max_tentativas_login = 3
+        logado = False
+        for tentativa_login in range(1, max_tentativas_login + 1):
+            try:
+                print(f"Tentativa de login {tentativa_login}/{max_tentativas_login}...")
+                driver.get(url_login)
 
-        # Localiza e preenche o campo de senha (//*[@id="password"])
-        print("Localizando campo de senha...")
-        senha_field = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, '//*[@id="password"]'))
-        )
-        senha_field.send_keys(senha_ghosp)
+                # Localiza e preenche o campo de e-mail
+                print("Localizando campo de e-mail...")
+                email_field = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.ID, "email"))
+                )
+                email_field.send_keys(usuario_ghosp)
 
-        # Localiza e clica no botão de login (//*[@id="new_user"]/div/input)
-        print("Localizando botão de login...")
-        login_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, '//*[@id="new_user"]/div/input'))
-        )
-        login_button.click()
+                # Localiza e preenche o campo de senha (//*[@id="password"])
+                print("Localizando campo de senha...")
+                senha_field = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, '//*[@id="password"]'))
+                )
+                senha_field.send_keys(senha_ghosp)
 
-        print("Login realizado com sucesso!")
+                # Localiza e clica no botão de login (//*[@id="new_user"]/div/input)
+                print("Localizando botão de login...")
+                login_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, '//*[@id="new_user"]/div/input'))
+                )
+                login_button.click()
+
+                # Verifica se o login foi bem-sucedido: ao logar, o G-HOSP sai da
+                # página /users/sign_in. Se continuar nela, o login falhou.
+                WebDriverWait(driver, 10).until(
+                    lambda d: "/users/sign_in" not in d.current_url
+                )
+                logado = True
+                print("Login realizado com sucesso!")
+                break
+            except Exception as e:
+                print(f"⚠️  Falha no login (tentativa {tentativa_login}/{max_tentativas_login}): {e}")
+                # Fecha o navegador e reabre para uma nova tentativa de login
+                if tentativa_login < max_tentativas_login:
+                    print("Reiniciando o navegador para nova tentativa de login...")
+                    try:
+                        driver.quit()
+                    except Exception:
+                        pass
+                    driver = webdriver.Chrome(options=chrome_options)
+
+        if not logado:
+            print("❌ Não foi possível efetuar login no G-HOSP após várias tentativas. Abortando.")
+            return
+
         # Localiza o menu dropdown e passa o mouse para abrir
         from selenium.webdriver.common.action_chains import ActionChains
 
@@ -78,6 +109,11 @@ def solicita_nota():
             # Filtra apenas linhas válidas para processamento
             df_valido = df[~df[colunas_necessarias].isna().any(axis=1)]
             print(f"📄 Processando {len(df_valido)} registros válidos...")
+
+            # Rastreia os índices cuja nota foi efetivamente gravada no GHOSP.
+            # Somente esses serão removidos do CSV na limpeza final.
+            indices_sucesso = []
+
             for idx, row in df_valido.iterrows():
                 ra = str(row['ra'])  # usando coluna 'ra'
                 # Remove ".0" no final se existir
@@ -89,7 +125,7 @@ def solicita_nota():
 
                 # Acessa diretamente a URL do formulário eletrônico usando intern_id
                 driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
-                
+
                 # Aguarda a página carregar
                 time.sleep(1)
 
@@ -155,12 +191,12 @@ def solicita_nota():
 
                     # Trata o número da solicitação para remover o '.0' caso exista
                     solsisreg = str(row['solsisreg']).rstrip('.0')
-                    
+
                     # Verifica se solsisreg tem 9 dígitos, se não tiver adiciona 0 ao final
                     if len(solsisreg) != 9:
                         solsisreg = solsisreg + '0'
                         print(f"⚠️  Número da solicitação ajustado para 9 dígitos: {solsisreg}")
-                    
+
                     # Monta o texto do lembrete com as informações das colunas
                     texto_lembrete = f"{row['data']} - {solsisreg} - {row['tipo']}"
                     print(f"Inserindo lembrete: {texto_lembrete}")
@@ -173,25 +209,30 @@ def solicita_nota():
                     )
                     botao_salvar.click()
                     print("Lembrete salvo com sucesso!")
-                    
+
                     # Aguarda um momento para garantir que o lembrete foi salvo
                     time.sleep(1)
 
+                    # Nota gravada com sucesso: marca para remoção do CSV na limpeza final
+                    indices_sucesso.append(idx)
+
                 except Exception as e:
                     print(f"Erro ao adicionar lembrete para RA {ra}: {e}")
+                    # Mantém o registro no CSV (preserva o solsisreg) e marca o erro,
+                    # sem mexer em 'revisar' para não impedir a regravação posterior via -snt.
+                    if 'erro' not in df.columns:
+                        df['erro'] = ''
+                    df.at[idx, 'erro'] = 'Falha ao gravar nota no GHOSP'
 
-            # Após processar todos os registros, mantém apenas as linhas com 'revisar' = 'sim'
-            print("\n🧹 Limpando registros processados com sucesso...")
-            df_revisar = df[df['revisar'].str.lower() == 'sim']
-            
-            if len(df_revisar) > 0:
-                df_revisar.to_csv(csv_path, index=False)
-                print(f"✅ CSV atualizado. {len(df_revisar)} linha(s) marcada(s) para revisão mantida(s).")
-            else:
-                # Se não há linhas para revisar, cria um CSV vazio com apenas os cabeçalhos
-                df_vazio = pd.DataFrame(columns=df.columns)
-                df_vazio.to_csv(csv_path, index=False)
-                print("✅ Todos os registros foram processados com sucesso! CSV limpo.")
+            # Após processar todos os registros, remove APENAS as linhas cuja nota foi
+            # gravada com sucesso no GHOSP. As demais permanecem: linhas com dados
+            # inválidos (revisar='sim') e linhas cuja gravação da nota falhou — estas
+            # preservam o solsisreg e podem ser regravadas rodando o -snt isolado.
+            print("\n🧹 Limpando apenas registros com nota gravada com sucesso...")
+            df_restante = df.drop(index=indices_sucesso)
+            df_restante.to_csv(csv_path, index=False)
+            print(f"✅ {len(indices_sucesso)} registro(s) gravado(s) e removido(s). "
+                  f"{len(df_restante)} mantido(s) (falhas de nota / revisão).")
             
             # Verificação adicional: processa linhas com CNS vazio
             print("\n🔍 Verificando linhas com CNS vazio...")

@@ -5,6 +5,14 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [9.8.3] - 2026-06
+
+### Corrigido
+- **`solicita_nota()` em `solicita_nota.py` (rotina `-snt`)**: Corrigida perda de registros e re-solicitações indevidas no fluxo `-solicita`
+  - **Verificação de login no G-HOSP**: o login agora roda em loop de até 3 tentativas e valida o sucesso checando que a página saiu de `/users/sign_in`. Se o login não se confirmar (causa raiz do problema), o navegador é fechado, reaberto e o login é refeito; após esgotar as tentativas, a rotina aborta com mensagem clara
+  - **Retenção de registros não gravados**: a limpeza final do CSV passou a remover **apenas** as linhas cuja nota foi efetivamente gravada no G-HOSP (`df.drop(index=indices_sucesso)`), em vez de manter só `revisar='sim'`. Linhas cuja gravação falhou permanecem no `solicita_inf_aih.csv` preservando o `solsisreg`, evitando que a solicitação já criada no SISREG seja re-solicitada ("paciente já possui uma solicitação")
+  - **Marcação de falha**: linhas retidas por falha de gravação recebem `erro='Falha ao gravar nota no GHOSP'`, sem alterar `revisar`, permitindo regravação posterior via `python autoreg.py -snt` isolado
+
 ## [9.8.2] - 2026-06
 
 ### Adicionado
