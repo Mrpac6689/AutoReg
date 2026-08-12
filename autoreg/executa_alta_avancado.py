@@ -12,6 +12,12 @@ from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
 from autoreg.chrome_options import get_chrome_options
 from autoreg.detecta_capchta import detecta_captcha
+from autoreg.sessao_sisreg import (
+    login_sisreg,
+    garantir_sessao_sisreg,
+    ControleSessao,
+    SessaoSisregAbortada,
+)
 from datetime import datetime
 import logging
 
@@ -23,57 +29,22 @@ def executa_alta_avancado():
         chrome_options = get_chrome_options()
         navegador = webdriver.Chrome(options=chrome_options)
         wait = WebDriverWait(navegador, 20)
-        print("Acessando a página de Internação...\n")
-        logging.info("Acessando a página de Internação...\n")
-        navegador.get("https://sisregiii.saude.gov.br")
-        
-        # Realiza o login
-        print("Localizando campo de usuário...")
-        logging.info("Localizando campo de usuário...")
-        usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
-        print("Campo de usuário localizado.")
-        logging.info("Campo de usuário localizado.")
 
-        print("Localizando campo de senha...")
-        logging.info("Localizando campo de senha...")
-        senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
-        print("Campo de senha localizado.")
-        logging.info("Campo de senha localizado.")
-
+        # Le as credenciais SISREG desta rotina (conta principal [SISREG])
+        # ANTES do loop, para que o re-login use a credencial correta.
         print("Lendo credenciais do SISREG...")
         logging.info("Lendo credenciais do SISREG...")
         usuario_ghosp, senha_ghosp, caminho_ghosp, usuario_sisreg, senha_sisreg = ler_credenciais()
-        print("Credenciais lidas.")
-        logging.info("Credenciais lidas.")
 
-        print("Preenchendo usuário...")
-        logging.info("Preenchendo usuário...")
-        usuario_field.send_keys(usuario_sisreg)
-        print("Usuário preenchido.")
-        logging.info("Usuário preenchido.")
+        print("Realizando login no SISREG...")
+        logging.info("Realizando login no SISREG...")
+        login_sisreg(navegador, usuario_sisreg, senha_sisreg)
+        print("Login realizado com sucesso!")
+        logging.info("Login realizado com sucesso!")
 
-        print("Preenchendo senha...")
-        logging.info("Preenchendo senha...")
-        senha_field.send_keys(senha_sisreg)
-        print("Senha preenchida.")
-        logging.info("Senha preenchida.")
+        # Controle global de re-logins desta rotina (aborta ao passar do teto)
+        controle = ControleSessao()
 
-        print("Aguardando antes de clicar no botão de login...")
-        logging.info("Aguardando antes de clicar no botão de login...")
-        time.sleep(10)
-
-        print("Localizando botão de login...")
-        logging.info("Localizando botão de login...")
-        login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
-        print("Botão de login localizado.")
-        logging.info("Botão de login localizado.")
-
-        print("Clicando no botão de login...")
-        logging.info("Clicando no botão de login...")
-        login_button.click()
-        print("Botão de login clicado.")
-        logging.info("Botão de login clicado.")
-        
         # Navegação para a página de controle de saída
         print("Iniciando loop de processamento de altas...")
         csv_path = os.path.expanduser('~/AutoReg/internados_sisreg.csv')
@@ -105,7 +76,7 @@ def executa_alta_avancado():
             "EVASAO": "42",
             "TRANSFERIDO": "53",
             "OBITO": "54",
-            "ADMINISTRATIVO": "57"
+            "ADMINISTRATIVO": "38"
         }
 
         for index, row in altas_pendentes.iterrows():
@@ -128,10 +99,15 @@ def executa_alta_avancado():
             
             try:
                 # 1. Navega para a página de Saída de Permanência
-                navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_saida_permanencia")
+                url_saida = "https://sisregiii.saude.gov.br/cgi-bin/config_saida_permanencia"
+                navegador.get(url_saida)
                 time.sleep(2)
 
-                        
+                # Se a sessão foi finalizada pelo servidor, refaz o login e
+                # re-navega para esta mesma página antes de processar o item.
+                while garantir_sessao_sisreg(navegador, url_saida, usuario_sisreg, senha_sisreg, controle):
+                    pass
+
                 # Clica no botão "PESQUISAR"
                 print("Tentando localizar o botão PESQUISAR dentro do iframe...")
                 logging.info("Tentando localizar o botão PESQUISAR dentro do iframe...")
@@ -151,7 +127,7 @@ def executa_alta_avancado():
                 time.sleep(3)
                 
                 # 3. Seleciona o motivo baseado no texto do GHOSP
-                valor_motivo = "57" # Default: ENCERRAMENTO ADMINISTRATIVO
+                valor_motivo = "38" # Default: ALTA MELHORADO
                 
                 for chave, codigo in mapa_motivos.items():
                     if chave in motivo_ghosp:
@@ -199,6 +175,9 @@ def executa_alta_avancado():
 
         print("\n🏁 Processamento de altas finalizado.")
 
+    except SessaoSisregAbortada as e:
+        print(f"⛔ Rotina de alta abortada: {e}")
+        logging.error(f"Rotina de alta abortada por conflito de sessao: {e}")
     except Exception as e:
         print(f"❌ Erro geral no loop de alta: {str(e)}")
         traceback.print_exc()

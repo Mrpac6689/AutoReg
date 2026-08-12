@@ -12,6 +12,12 @@ from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
 from autoreg.detecta_capchta import detecta_captcha
+from autoreg.sessao_sisreg import (
+    login_sisreg,
+    garantir_sessao_sisreg,
+    ControleSessao,
+    SessaoSisregAbortada,
+)
 import logging
 import re
 
@@ -25,60 +31,21 @@ def extrai_internados_sisreg():
         chrome_options = get_chrome_options()
         navegador = webdriver.Chrome(options=chrome_options)
         wait = WebDriverWait(navegador, 5)
-        print("Acessando a página de Internação...\n")
-        logging.info("Acessando a página de Internação...\n")
-        navegador.get("https://sisregiii.saude.gov.br")
-        
-        # Realiza o login
-        print("Localizando campo de usuário...")
-        logging.info("Localizando campo de usuário...")
-        usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
-        print("Campo de usuário localizado.")
-        logging.info("Campo de usuário localizado.")
 
-        print("Localizando campo de senha...")
-        logging.info("Localizando campo de senha...")
-        senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
-        print("Campo de senha localizado.")
-        logging.info("Campo de senha localizado.")
-
+        # Le as credenciais SISREG desta rotina (conta principal [SISREG])
+        # ANTES do loop, para que o re-login use a credencial correta.
         print("Lendo credenciais do SISREG...")
         logging.info("Lendo credenciais do SISREG...")
         usuario_ghosp, senha_ghosp, caminho_ghosp, usuario_sisreg, senha_sisreg = ler_credenciais()
-        print("Credenciais lidas.")
-        logging.info("Credenciais lidas.")
 
-        print("Preenchendo usuário...")
-        logging.info("Preenchendo usuário...")
-        usuario_field.send_keys(usuario_sisreg)
-        print("Usuário preenchido.")
-        logging.info("Usuário preenchido.")
-
-        print("Preenchendo senha...")
-        logging.info("Preenchendo senha...")
-        senha_field.send_keys(senha_sisreg)
-        print("Senha preenchida.")
-        logging.info("Senha preenchida.")
-
-        print("Aguardando antes de clicar no botão de login...")
-        logging.info("Aguardando antes de clicar no botão de login...")
-        time.sleep(10)
-
-        print("Localizando botão de login...")
-        logging.info("Localizando botão de login...")
-        login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
-        print("Botão de login localizado.")
-        logging.info("Botão de login localizado.")
-
-        print("Clicando no botão de login...")
-        logging.info("Clicando no botão de login...")
-        login_button.click()
-        print("Botão de login clicado.")
-        logging.info("Botão de login clicado.")
-        
-        time.sleep(5)
+        print("Realizando login no SISREG...")
+        logging.info("Realizando login no SISREG...")
+        login_sisreg(navegador, usuario_sisreg, senha_sisreg)
         print("Login realizado com sucesso!")
         logging.info("Login realizado com sucesso!")
+
+        # Controle global de re-logins desta rotina (aborta ao passar do teto)
+        controle = ControleSessao()
 
         '''
         # Agora, clica no link "Saída/Permanência"
@@ -114,6 +81,9 @@ def extrai_internados_sisreg():
             """Navega para a pagina de saida/permanencia e clica em PESQUISAR."""
             navegador.get(URL_SAIDA)
             time.sleep(2)
+            # Se a sessão foi finalizada pelo servidor, refaz login e re-navega.
+            while garantir_sessao_sisreg(navegador, URL_SAIDA, usuario_sisreg, senha_sisreg, controle):
+                pass
             resultado_captcha = detecta_captcha(navegador)
             if resultado_captcha != 'ok':
                 return False
@@ -225,7 +195,12 @@ def extrai_internados_sisreg():
             for tentativa in range(1, max_tentativas + 1):
                 try:
                     # Retorna à página de pesquisa e garante o foco no iframe
-                    navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_saida_permanencia")
+                    url_pesquisa = "https://sisregiii.saude.gov.br/cgi-bin/config_saida_permanencia"
+                    navegador.get(url_pesquisa)
+
+                    # Se a sessão foi finalizada pelo servidor, refaz login e re-navega.
+                    while garantir_sessao_sisreg(navegador, url_pesquisa, usuario_sisreg, senha_sisreg, controle):
+                        pass
 
                     resultado_captcha = detecta_captcha(navegador)
                     if resultado_captcha != 'ok':
@@ -276,6 +251,9 @@ def extrai_internados_sisreg():
         print(f"\nExtração finalizada com sucesso! Arquivo atualizado: '{csv_path}'")
         logging.info("Extração de CNS concluída para todos os registros.")
         
+    except SessaoSisregAbortada as e:
+        print(f"⛔ Extração abortada: {e}")
+        logging.error(f"Extração de internados abortada por conflito de sessao: {e}")
     except TimeoutException:
         print("Erro ao tentar localizar os elementos na página. Verifique a conexão com a internet ou o estado do site.")
         logging.error("Erro ao tentar localizar os elementos na página. Verifique a conexão com a internet ou o estado do site.")
