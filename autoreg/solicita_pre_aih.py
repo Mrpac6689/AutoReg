@@ -4,12 +4,52 @@ import pandas as pd
 from selenium import webdriver
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
+from autoreg.justificativa_ghosp import tratar_justificativa_acesso
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from autoreg.logging import setup_logging
 import logging
+
+
+def _ler_comando_terminal(prompt):
+    """Lê um comando do terminal.
+
+    Em um terminal interativo (TTY), detecta a tecla 's' ou 'p' imediatamente,
+    sem exigir ENTER (modo não-canônico). Demais teclas são ignoradas.
+    Em ambientes sem TTY (cron/pipe) ou sem termios, faz fallback para
+    input() (exige ENTER).
+    """
+    import sys
+    if not sys.stdin.isatty():
+        return input(prompt).strip().lower()
+    try:
+        import termios, tty
+    except ImportError:
+        return input(prompt).strip().lower()
+
+    sys.stdout.write(prompt)
+    sys.stdout.flush()
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    try:
+        tty.setcbreak(fd)
+        while True:
+            ch = sys.stdin.read(1)
+            if ch == '\x03':              # Ctrl+C
+                raise KeyboardInterrupt
+            cmd = ch.lower()
+            if cmd in ('s', 'p'):
+                sys.stdout.write(cmd)     # eco da tecla detectada
+                sys.stdout.flush()
+                return cmd
+            # qualquer outra tecla é ignorada; continua aguardando 's' ou 'p'
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+        sys.stdout.write('\n')
+        sys.stdout.flush()
+
 
 def solicita_pre_aih():
     
@@ -173,7 +213,12 @@ def solicita_pre_aih():
                 print(f"Processando registro {i + 1}/{total_registros}: {ra}")
                 time.sleep(1)
                 driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
-                
+
+                # Paciente em alta: trata a justificativa de acesso e re-navega.
+                if tratar_justificativa_acesso(driver):
+                    driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
+                    time.sleep(1)
+
                 # Entra em loop aguardando grava.flag ou pula.flag
                 while os.path.exists(PAUSE_FLAG):
                     time.sleep(1)  # Aguarda 1 segundo e verifica de novo
@@ -249,16 +294,21 @@ def solicita_pre_aih():
                 print(f"\nProcessando registro {i + 1}/{total_registros}: {ra}")
                 time.sleep(1)
                 driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
-                
+
+                # Paciente em alta: trata a justificativa de acesso e re-navega.
+                if tratar_justificativa_acesso(driver):
+                    driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
+                    time.sleep(1)
+
                 print(f"⏳ Aguardando interação do usuário para o registro {ra}...")
                 print("   O usuário deve clicar no link desejado, fazer as alterações necessárias.")
                 print("   💡 Comandos disponíveis:")
-                print("      Digite 's' e pressione Enter - Salvar URL atual e avançar")
-                print("      Digite 'p' e pressione Enter - Pular (remover linha) e avançar")
+                print("      Pressione 's' - Salvar URL atual e avançar")
+                print("      Pressione 'p' - Pular (remover linha) e avançar")
                 
                 try:
                     # Aguarda input do usuário
-                    comando = input("   👉 Digite o comando (s/p): ").strip().lower()
+                    comando = _ler_comando_terminal("   👉 Pressione 's' ou 'p': ")
                     
                     if comando == 's':
                         # Salvar URL atual

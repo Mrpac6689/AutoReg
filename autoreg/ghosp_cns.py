@@ -3,6 +3,7 @@ import time
 from selenium import webdriver
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
+from autoreg.justificativa_ghosp import tratar_justificativa_acesso
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -70,31 +71,23 @@ def ghosp_cns():
         codigo = str(row[1])  # segunda coluna
         print(f"[{idx+1}/{len(df)}] Buscando CNS para código: {codigo}")
         try:
-            campo_codigo = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, '//*[@id="intern_id"]'))
-            )
-            campo_codigo.clear()
-            campo_codigo.send_keys(codigo)
+            # Acesso direto ao prontuário do internado (evita a busca em
+            # /prontuarios, que para paciente em alta redireciona para
+            # /historicopacs). Trata a justificativa de acesso e re-navega.
+            driver.get(f"{caminho_ghosp}:4002/pr/interns/{codigo}")
+            time.sleep(1)
+            if tratar_justificativa_acesso(driver):
+                driver.get(f"{caminho_ghosp}:4002/pr/interns/{codigo}")
+                time.sleep(1)
 
-            botao_busca = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, '//*[@id="cabecalho"]/form/fieldset/div[10]/div/input'))
-            )
-            botao_busca.click()
-
-            link_cns = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/p/a'))
-            )
-            href_cns = link_cns.get_attribute('href')
-            if not href_cns.startswith('http'):
-                href_cns = f"{caminho_ghosp}:4002{link_cns.get_attribute('href')}"
-            print(f"Abrindo link de prescrição: {href_cns}")
-            driver.get(href_cns)
-
+            # Já estamos no prontuário do internado (/pr/interns): abre direto a
+            # aba de informações do paciente. Esse link não tem id próprio, então
+            # é ancorado no id da div #paciente (mesmo botão usado em ghosp_especial).
             link_h4 = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/h4/a'))
             )
             link_h4.click()
-            print("Clique no link h4/a realizado com sucesso!")
+            print("Aba de informações do paciente aberta.")
 
             cns_elem = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, '/html/body/div[6]/div[2]/small/fieldset[1]/div[2]'))
@@ -105,9 +98,6 @@ def ghosp_cns():
         except Exception as e:
             print(f"Não foi possível clicar ou extrair CNS para código {codigo}: {e}")
             df.at[idx, 'CNS'] = ''
-
-        # Volta para página de internação para o próximo código
-        driver.get(f"{caminho_ghosp}:4002/prontuarios")
 
     # Salva o novo arquivo com CNS
     csv_cns_path = os.path.join(user_dir, 'lista_same_cns.csv')

@@ -11,6 +11,7 @@ from selenium.webdriver.chrome.options import Options
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
 from autoreg.chrome_options import get_chrome_options
+from autoreg.justificativa_ghosp import tratar_justificativa_acesso
 from datetime import datetime
 import logging
 
@@ -119,6 +120,53 @@ def extrai_internados_ghosp_avancado():
         if 'RA' not in df.columns:
             df['RA'] = ""
 
+        def _buscar_e_liberar(campo_id, valor):
+            """Busca em /prontuarios por campo_id=valor e garante acesso ao paciente.
+
+            Após a busca, o paciente pode aparecer de três formas:
+            1. Ainda internado -> div #paciente (fluxo normal, com guarda de homônimo).
+            2. Em alta, 1º acesso -> página de justificativa; ao enviar, o GHOSP vai
+               para /historicopacs/[prontuario] (lista de RAs).
+            3. Em alta, acesso já liberado antes -> vai direto para /historicopacs
+               (sem justificativa e sem #paciente).
+
+            Os casos 2 e 3 exibem a mesma lista de RAs (container-procedimentos), de
+            onde a extração do RA ocorre na página atual (não refazer a busca, pois
+            um novo acesso re-dispararia a justificativa).
+
+            Retorna (paciente_divs, tem_historico):
+            - paciente_divs: divs #paciente (caso 1).
+            - tem_historico: True se a página atual é o histórico do paciente em alta
+              (container-procedimentos presente, sem #paciente) — casos 2 e 3."""
+            _navega_prontuarios(driver, caminho_ghosp, usuario_ghosp, senha_ghosp)
+            inp = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, campo_id))
+            )
+            inp.clear()
+            inp.send_keys(valor)
+            driver.find_element(
+                By.XPATH, '//input[@type="submit" and @value="Procurar"]'
+            ).click()
+            time.sleep(3)
+
+            if _verifica_erro_500(driver):
+                _refaz_login_ghosp(driver, caminho_ghosp, usuario_ghosp, senha_ghosp)
+                raise Exception(f"Erro 500 após busca por {campo_id} - abortando tentativa atual")
+
+            # Caso 2: paciente em alta, 1º acesso -> justificativa. Ao enviar, vai
+            # para /historicopacs. (Caso 3 já cai direto no histórico, sem justificativa.)
+            if tratar_justificativa_acesso(driver):
+                time.sleep(1)
+
+            logging.info(f"Busca {campo_id} - URL após acesso: {driver.current_url}")
+
+            # Sinal confiável do paciente em alta: a URL vira /historicopacs/[id].
+            # (A página de histórico também possui um banner #paciente, então não dá
+            # para distinguir pelo #paciente - por isso ancoramos na URL.)
+            tem_historico = "historicopacs" in (driver.current_url or "")
+            paciente_divs = driver.find_elements(By.ID, "paciente")
+            return paciente_divs, tem_historico
+
         print(f"\nIniciando processamento de {len(df)} pacientes...")
 
         for index, row in df.iterrows():
@@ -129,33 +177,22 @@ def extrai_internados_ghosp_avancado():
                 cns_csv = cns_csv[:-2]
             
             print(f"\n[{index+1}/{len(df)}] Processando: {nome_csv}")
-            
+
             found = False
+            # Reavaliação: limpa erro antigo para não manter "não encontrado" obsoleto
+            # em pacientes que agora são localizados (ex.: via histórico de alta).
+            df.at[index, 'erro'] = ""
             
             try:
                 # 1. Tentar busca por CNS
                 if cns_csv:
                     print(f"Buscando por CNS: {cns_csv}")
-                    _navega_prontuarios(driver, caminho_ghosp, usuario_ghosp, senha_ghosp)
-
-                    cns_input = WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.ID, "cns"))
-                    )
-                    cns_input.clear()
-                    cns_input.send_keys(cns_csv)
-                    
-                    # Clica no botão Procurar
-                    botao_procurar = driver.find_element(By.XPATH, '//input[@type="submit" and @value="Procurar"]')
-                    botao_procurar.click()
-                    time.sleep(3)
-
-                    if _verifica_erro_500(driver):
-                        _refaz_login_ghosp(driver, caminho_ghosp, usuario_ghosp, senha_ghosp)
-                        raise Exception("Erro 500 após busca por CNS - abortando tentativa atual")
-
-                    # Verifica se abriu a div "paciente"
-                    paciente_divs = driver.find_elements(By.ID, "paciente")
-                    if paciente_divs:
+                    paciente_divs, tem_historico = _buscar_e_liberar("cns", cns_csv)
+                    if tem_historico:
+                        # Paciente em alta: já estamos em /historicopacs, RA extraído abaixo.
+                        found = True
+                        print("Paciente em alta - acesso liberado; extraindo RA do histórico.")
+                    elif paciente_divs:
                         nome_ghosp = paciente_divs[0].find_element(By.XPATH, './/h2').text.strip().upper()
                         if nome_csv in nome_ghosp or nome_ghosp in nome_csv: # Comparação flexível para nomes
                             found = True
@@ -164,24 +201,11 @@ def extrai_internados_ghosp_avancado():
                 # 2. Tentar busca por Nome se não encontrou por CNS
                 if not found:
                     print(f"Tentando busca por Nome: {nome_csv}")
-                    _navega_prontuarios(driver, caminho_ghosp, usuario_ghosp, senha_ghosp)
-
-                    nome_input = WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.ID, "nome"))
-                    )
-                    nome_input.clear()
-                    nome_input.send_keys(nome_csv)
-
-                    botao_procurar = driver.find_element(By.XPATH, '//input[@type="submit" and @value="Procurar"]')
-                    botao_procurar.click()
-                    time.sleep(3)
-
-                    if _verifica_erro_500(driver):
-                        _refaz_login_ghosp(driver, caminho_ghosp, usuario_ghosp, senha_ghosp)
-                        raise Exception("Erro 500 após busca por Nome - abortando tentativa atual")
-                    
-                    paciente_divs = driver.find_elements(By.ID, "paciente")
-                    if paciente_divs:
+                    paciente_divs, tem_historico = _buscar_e_liberar("nome", nome_csv)
+                    if tem_historico:
+                        found = True
+                        print("Paciente em alta - acesso liberado; extraindo RA do histórico.")
+                    elif paciente_divs:
                         nome_ghosp = paciente_divs[0].find_element(By.XPATH, './/h2').text.strip().upper()
                         if nome_csv in nome_ghosp or nome_ghosp in nome_csv:
                             found = True

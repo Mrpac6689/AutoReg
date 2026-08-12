@@ -5,6 +5,7 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import Select
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
+from autoreg.justificativa_ghosp import tratar_justificativa_acesso
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -74,38 +75,11 @@ def processar_lote(csv_path, lote_num, total_lotes):
                 driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
                 time.sleep(1)
                 
-                # Verificar diálogo de justificativa
-                try:
-                    dialog = WebDriverWait(driver, 2).until(
-                        EC.presence_of_element_located((By.XPATH, '//div[@id="form_justificativa" and contains(@class, "ui-dialog-content")]'))
-                    )
-                    
-                    dropdown = WebDriverWait(driver, 5).until(
-                        EC.presence_of_element_located((By.XPATH, '//*[@id="acesso_prontuario_tabela_id"]'))
-                    )
-                    select = Select(dropdown)
-                    select.select_by_visible_text("Enfermagem")
-                    
-                    justificativa = WebDriverWait(driver, 5).until(
-                        EC.presence_of_element_located((By.XPATH, '//*[@id="acesso_prontuario_justificativa"]'))
-                    )
-                    justificativa.clear()
-                    justificativa.send_keys("NIR")
-                    
-                    salvar_btn = WebDriverWait(driver, 5).until(
-                        EC.element_to_be_clickable((By.XPATH, '//*[@id="new_acesso_prontuario"]/div[3]/input'))
-                    )
-                    salvar_btn.click()
+                # Paciente em alta: G-HOSP redireciona para a página de justificativa
+                # de acesso. Preenche/envia e re-navega para o formulário eletrônico.
+                if tratar_justificativa_acesso(driver):
+                    driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
                     time.sleep(1)
-                    
-                    confirmar_btn = WebDriverWait(driver, 5).until(
-                        EC.element_to_be_clickable((By.XPATH, '/html/body/div[8]/div[11]/div/button/span'))
-                    )
-                    confirmar_btn.click()
-                    time.sleep(1)
-                    
-                except TimeoutException:
-                    pass
                 
                 # Clicar em informações
                 try:

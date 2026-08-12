@@ -3,6 +3,7 @@ import time
 from selenium import webdriver
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
+from autoreg.justificativa_ghosp import tratar_justificativa_acesso
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -96,9 +97,15 @@ def internados_ghosp_nota():
                 # Acessa diretamente a URL do histórico do paciente
                 try:
                     driver.get(f"{caminho_ghosp}:4002/pr/interns/{codigo}")
-                    
+
                     # Aguarda a página carregar
                     time.sleep(1)
+
+                    # Paciente em alta: G-HOSP redireciona para a justificativa de
+                    # acesso. Preenche/envia e re-navega para o prontuário do internado.
+                    if tratar_justificativa_acesso(driver):
+                        driver.get(f"{caminho_ghosp}:4002/pr/interns/{codigo}")
+                        time.sleep(1)
 
                     # Obtém o setor do span
                     setor_span = WebDriverWait(driver, 10).until(
