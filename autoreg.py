@@ -35,6 +35,7 @@ from autoreg import ghosp_especial_parallel  # Importa a versão paralela
 from autoreg import solicita_inf_aih  # Importa a função solicita_inf_aih
 from autoreg import solicita_sisreg  # Importa a função solicita_sisreg
 from autoreg import solicita_nota  # Importa a função solicita_nota
+from autoreg import solicita_pre_aih_auto  # Importa a função solicita_pre_aih_auto
 from autoreg import solicita_pre_aih  # Importa a função solicita_pre_aih
 from autoreg import consulta_solicitacao_sisreg  # Importa a função consulta_solicitacao_sisreg
 from autoreg import internados_ghosp_avancado  # Importa a função internados_ghosp_avancado
@@ -146,6 +147,10 @@ FUNCOES = {
         'func': solicita_inf_aih,
         'desc': 'Extrai informações da AIH'
     },
+    'solicita_pre_aih_auto': {
+        'func': solicita_pre_aih_auto,
+        'desc': 'Pré-processa AIHs automaticamente (sem interação do usuário)'
+    },
     'solicita_pre_aih': {
         'func': solicita_pre_aih,
         'desc': 'Extrai link para solicitação de aih do GHOSP'
@@ -232,6 +237,7 @@ FLAG_TO_FUNC = {
     '-especial':         'ghosp_especial',          '--especial': 'ghosp_especial',
     '-especial-parallel':'ghosp_especial_parallel', '--especial-parallel': 'ghosp_especial_parallel',
     '-sia': 'solicita_inf_aih',                 '--solicita-inf-aih': 'solicita_inf_aih',
+    '-spaa': 'solicita_pre_aih_auto',            '--solicita-pre-aih-auto': 'solicita_pre_aih_auto',
     '-spa': 'solicita_pre_aih',                 '--solicita-pre-aih': 'solicita_pre_aih',
     '-ssr': 'solicita_sisreg',                  '--solicita-sisreg': 'solicita_sisreg',
     '-snt': 'solicita_nota',                    '--solicita-nota': 'solicita_nota',
@@ -295,6 +301,7 @@ FUNÇÕES DISPONÍVEIS:
         ('-especial', '--especial', 'ghosp_especial'),
         ('-especial-parallel', '--especial-parallel', 'ghosp_especial_parallel'),
         ('-sia', '--solicita-inf-aih', 'solicita_inf_aih'),
+        ('-spaa', '--solicita-pre-aih-auto', 'solicita_pre_aih_auto'),
         ('-spa', '--solicita-pre-aih', 'solicita_pre_aih'),
         ('-ssr', '--solicita-sisreg', 'solicita_sisreg'),
         ('-snt', '--solicita-nota', 'solicita_nota'),
@@ -573,6 +580,8 @@ Exemplos de uso:
                        help='Extração paralela de dados personalizados do GHOSP (mais rápida)')
     parser.add_argument('-sia', '--solicita-inf-aih', action='store_true',
                        help='Extrai informações da AIH')
+    parser.add_argument('-spaa', '--solicita-pre-aih-auto', action='store_true',
+                       help='Pré-processa AIHs automaticamente (sem interação do usuário)')
     parser.add_argument('-spa', '--solicita-pre-aih', action='store_true',
                        help='Extrai link para solicitação de aih do GHOSP')
     parser.add_argument('-ssr', '--solicita-sisreg', action='store_true',
@@ -657,8 +666,8 @@ Exemplos de uso:
     if args.solicita:
         if args.registro_producao:
             producao_relatorio.registrar_producao('Solicitar Internações', 'internados_ghosp_avancado.csv')
-        print("🔄 Executando rotina de Solicitação (-spa -sia -ssr -snt)...")
-        seq = ['solicita_pre_aih', 'solicita_inf_aih', 'solicita_sisreg', 'solicita_nota']
+        print("🔄 Executando rotina de Solicitação (-spaa -spa -sia -ssr -snt)...")
+        seq = ['solicita_pre_aih_auto', 'solicita_pre_aih', 'solicita_inf_aih', 'solicita_sisreg', 'solicita_nota']
         for i, func_name in enumerate(seq, 1):
             print(f"\n[{i}/{len(seq)}] ", end="")
             if not executar_funcao(func_name):
