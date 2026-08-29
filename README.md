@@ -4,7 +4,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-GPL%20v3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/Version-9.8.2-orange.svg)](https://github.com/Mrpac6689/AutoReg)
+[![Version](https://img.shields.io/badge/Version-10.0.0-orange.svg)](https://github.com/Mrpac6689/AutoReg)
 
 ---
 
@@ -46,7 +46,7 @@ Desenvolvido com uma arquitetura modular e interface de linha de comando intuiti
 
 - **Extração Automática de Códigos** (`-eci`): Coleta códigos de internação diretamente do SISREG
 - **Internação Automatizada** (`-ip`): Processa internações de pacientes de forma automatizada
-- **Detecção de Duplicatas** (`-eid`, `-td`): Identifica e trata internações duplicadas automaticamente
+- **Detecção de Duplicatas** (`-td`): Identifica e trata internações duplicadas automaticamente (a extração, antes um passo manual separado via `-eid`, agora roda internamente)
 - **Extração Avançada** (`-iga`): Extrai dados detalhados de pacientes internados no G-HOSP
 
 ### 🚪 Módulo de Alta
@@ -76,7 +76,9 @@ Desenvolvido com uma arquitetura modular e interface de linha de comando intuiti
 - **Solicitação de AIH** (`-sia`): Extrai informações de Autorização de Internação Hospitalar
 - **Processamento SISREG** (`-ssr`): Executa solicitações no sistema SISREG
 - **Tratamento de Dados** (`-std`): Ajusta e organiza dados para processamento
-- **Extração de Links** (`-spa`): Extrai links de formulários do G-HOSP
+- **Pré-processamento Automático** (`-spaa`): Aprova automaticamente laudos compatíveis (via `correlacoes_aih.json`) antes da revisão manual
+- **Extração de Links** (`-spa`): Extrai links de formulários do G-HOSP (revisão manual)
+- **Ponte Automática** (`-spb`): Substitui a revisão manual do `-spa` no fluxo automático (`-solicita-auto`), descartando registros sem laudo compatível
 - **Inserção de Notas** (`-snt`): Insere números de solicitação em notas de prontuário
 
 ### 🔄 Workflows Agrupados
@@ -84,10 +86,12 @@ Desenvolvido com uma arquitetura modular e interface de linha de comando intuiti
 - **`-interna`**: Executa rotina completa de internação
 - **`-analisa`**: Executa análise e comparação entre sistemas
 - **`-alta`**: Executa rotina completa de alta (inclui tratamento e limpeza)
-- **`-solicita`**: Executa rotina completa de solicitação
+- **`-solicita`**: Executa rotina completa de solicitação (com revisão manual via `-spa`)
+- **`-solicita-auto`**: Executa a mesma rotina sem interação humana (usa `-spb` no lugar de `-spa`) — usado no ciclo automático de cron
 - **`-aihs`**: Executa rotina completa de processamento de AIHs
-- **`-duplicados`**: Executa rotina completa de tratamento de duplicados: `-eid` → `-td`
 - **`--all`**: Executa todas as funções principais com repetição interativa
+
+> ⚠️ **Flags obsoletas** (ocultas do `--help`, mas ainda funcionais por compatibilidade — ver CHANGELOG.md): `-ea`, `-ar`, `-tat`, `-p2c`, `-especial`, `-especial-parallel`, `-eid` (absorvida por `-td`), `-duplicados` (equivalente a `-td` sozinho) e `-R`/registro de produção na AUTOREG-API (ver seção abaixo).
 
 ### 🛠️ Utilitários
 
@@ -250,7 +254,7 @@ O **Autoreg-WEB** é uma aplicação web desenvolvida para fornecer:
 
 ### 🔌 Integração
 
-O AutoReg pode enviar relatórios de produção para o Autoreg-WEB através da flag `-R` (registro de produção), que envia dados via API REST para registro e análise.
+> ⚠️ **Obsoleto**: o AutoReg podia enviar relatórios de produção para o Autoreg-WEB através da flag `-R` (registro de produção), via API REST. Essa integração está descontinuada — a flag `-R` continua funcional por compatibilidade, mas não aparece mais no `--help` (ver CHANGELOG.md).
 
 Para mais informações e documentação completa, visite o repositório do [Autoreg-WEB](https://github.com/mrpac6689/web-autoreg).
 
@@ -337,20 +341,25 @@ autoreg -analisa
 # Rotina completa de alta (inclui tratamento e limpeza)
 autoreg -alta
 
-# Rotina completa de solicitação
+# Rotina completa de solicitação (com revisão manual)
 autoreg -solicita
+
+# Rotina completa de solicitação sem interação humana (uso em cron)
+autoreg -solicita-auto
 
 # Rotina completa de AIHs
 autoreg -aihs
 
-# Tratamento completo de internações duplicadas
-autoreg -duplicados
+# Tratamento completo de internações duplicadas (extração + tratamento juntos)
+autoreg -td
 
 # Executa todas as funções principais com repetição interativa
 autoreg --all
 ```
 
-### 📤 Registro de Produção na API
+### 📤 Registro de Produção na API (obsoleto)
+
+> ⚠️ Descontinuado — mantido apenas para compatibilidade, não aparece mais no `--help`.
 
 ```bash
 # Executa solicitação e envia relatório para AUTOREG-API
@@ -406,7 +415,7 @@ usuario = seu_usuario_ghosp
 senha = sua_senha_ghosp
 caminho = http://10.0.0.0:4001  # Endereço do seu servidor G-HOSP
 
-[AUTOREG-API]   # Opcional: para registro de produção com a flag -R
+[AUTOREG-API]   # Opcional/obsoleto: registro de produção com a flag -R (descontinuado)
 autoreg_api_key = sua_chave_api
 autoreg_api_relatorio_url = https://exemplo.com/api/externa/relatorio/registrar
 ```
@@ -538,7 +547,7 @@ O AutoReg foi desenvolvido para facilitar e automatizar processos hospitalares, 
 
 ---
 
-**AutoReg v9.8.2 Universe** - *Automatização inteligente para sistemas de saúde* 🚀
+**AutoReg v10.0.0 Universe** - *Automatização inteligente para sistemas de saúde* 🚀
 
 *Esperamos que o AutoReg continue facilitando sua rotina e contribuindo para processos hospitalares mais eficientes!*
 
@@ -552,7 +561,7 @@ O AutoReg foi desenvolvido para facilitar e automatizar processos hospitalares, 
 
 [![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-GPL%20v3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/Version-9.8.2-orange.svg)](https://github.com/Mrpac6689/AutoReg)
+[![Version](https://img.shields.io/badge/Version-10.0.0-orange.svg)](https://github.com/Mrpac6689/AutoReg)
 
 ---
 
@@ -594,7 +603,7 @@ Developed with a modular architecture and intuitive command-line interface, Auto
 
 - **Automatic Code Extraction** (`-eci`): Collects admission codes directly from SISREG
 - **Automated Admission** (`-ip`): Processes patient admissions automatically
-- **Duplicate Detection** (`-eid`, `-td`): Identifies and handles duplicate admissions automatically
+- **Duplicate Detection** (`-td`): Identifies and handles duplicate admissions automatically (extraction, formerly a separate manual step via `-eid`, now runs internally)
 - **Advanced Extraction** (`-iga`): Extracts detailed data from patients admitted in G-HOSP
 
 ### 🚪 Discharge Module
@@ -624,7 +633,9 @@ Developed with a modular architecture and intuitive command-line interface, Auto
 - **AIH Request** (`-sia`): Extracts Hospital Admission Authorization information
 - **SISREG Processing** (`-ssr`): Executes requests in the SISREG system
 - **Data Processing** (`-std`): Adjusts and organizes data for processing
-- **Link Extraction** (`-spa`): Extracts form links from G-HOSP
+- **Automatic Pre-processing** (`-spaa`): Auto-approves compatible reports (via `correlacoes_aih.json`) before manual review
+- **Link Extraction** (`-spa`): Extracts form links from G-HOSP (manual review)
+- **Automatic Bridge** (`-spb`): Replaces `-spa`'s manual review in the automated flow (`-solicita-auto`), dropping records with no compatible report
 - **Note Insertion** (`-snt`): Inserts request numbers in medical record notes
 
 ### 🔄 Grouped Workflows
@@ -632,10 +643,12 @@ Developed with a modular architecture and intuitive command-line interface, Auto
 - **`-interna`**: Executes complete admission routine
 - **`-analisa`**: Executes analysis and comparison between systems
 - **`-alta`**: Executes complete discharge routine (includes processing and cleanup)
-- **`-solicita`**: Executes complete request routine
+- **`-solicita`**: Executes complete request routine (with manual review via `-spa`)
+- **`-solicita-auto`**: Executes the same routine with no human interaction (uses `-spb` instead of `-spa`) — used in the automated cron cycle
 - **`-aihs`**: Executes complete AIH processing routine
-- **`-duplicados`**: Executes complete duplicate admission handling routine: `-eid` → `-td`
 - **`--all`**: Executes all main functions with interactive repetition
+
+> ⚠️ **Obsolete flags** (hidden from `--help`, still functional for compatibility — see CHANGELOG.md): `-ea`, `-ar`, `-tat`, `-p2c`, `-especial`, `-especial-parallel`, `-eid` (absorbed by `-td`), `-duplicados` (now equivalent to `-td` alone), and `-R`/AUTOREG-API production registration (see section below).
 
 ### 🛠️ Utilities
 
@@ -798,7 +811,7 @@ AutoReg has a **complementary web interface** that provides a visual and interac
 
 ### 🔌 Integration
 
-AutoReg can send production reports to Autoreg-WEB through the `-R` flag (production registration), which sends data via REST API for registration and analysis.
+> ⚠️ **Obsolete**: AutoReg used to send production reports to Autoreg-WEB through the `-R` flag (production registration) via REST API. This integration is discontinued — the `-R` flag still works for compatibility, but no longer appears in `--help` (see CHANGELOG.md).
 
 For more information and complete documentation, visit the [Autoreg-WEB](https://github.com/mrpac6689/autoreg-web) repository.
 
@@ -920,20 +933,25 @@ autoreg -analisa
 # Complete discharge routine (includes processing and cleanup)
 autoreg -alta
 
-# Complete request routine
+# Complete request routine (with manual review)
 autoreg -solicita
+
+# Complete request routine with no human interaction (used in cron)
+autoreg -solicita-auto
 
 # Complete AIH routine
 autoreg -aihs
 
-# Complete duplicate admission handling
-autoreg -duplicados
+# Complete duplicate admission handling (extraction + treatment together)
+autoreg -td
 
 # Execute all main functions with interactive repetition
 autoreg --all
 ```
 
-### 📤 Production Registration in API
+### 📤 Production Registration in API (obsolete)
+
+> ⚠️ Discontinued — kept only for compatibility, no longer shown in `--help`.
 
 ```bash
 # Execute request and send report to AUTOREG-API
@@ -989,7 +1007,7 @@ usuario = your_ghosp_user
 senha = your_ghosp_password
 caminho = http://10.0.0.0:4001  # Your G-HOSP server address
 
-[AUTOREG-API]   # Optional: for production registration with -R flag
+[AUTOREG-API]   # Optional/obsolete: production registration with -R flag (discontinued)
 autoreg_api_key = your_api_key
 autoreg_api_relatorio_url = https://example.com/api/externa/relatorio/registrar
 ```
@@ -1121,6 +1139,6 @@ AutoReg was developed to facilitate and automate hospital processes, contributin
 
 ---
 
-**AutoReg v9.8.2 Universe** - *Intelligent automation for healthcare systems* 🚀
+**AutoReg v10.0.0 Universe** - *Intelligent automation for healthcare systems* 🚀
 
 *We hope AutoReg continues to facilitate your routine and contribute to more efficient hospital processes!*

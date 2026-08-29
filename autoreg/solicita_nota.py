@@ -3,6 +3,7 @@ import time
 from selenium import webdriver
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
+from autoreg.justificativa_ghosp import tratar_justificativa_acesso
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -129,48 +130,11 @@ def solicita_nota():
                 # Aguarda a página carregar
                 time.sleep(1)
 
-                # Verifica se o diálogo de justificativa de acesso aparece (com conteúdo)
-                try:
-                    dialog = WebDriverWait(driver, 1).until(
-                        EC.presence_of_element_located((By.XPATH, '//div[@id="form_justificativa" and contains(@class, "ui-dialog-content")]'))
-                    )
-                    print("Diálogo de justificativa encontrado!")
-
-                    # Seleciona 'Enfermagem' no dropdown
-                    dropdown = WebDriverWait(driver, 5).until(
-                        EC.presence_of_element_located((By.XPATH, '//*[@id="acesso_prontuario_tabela_id"]'))
-                    )
-                    from selenium.webdriver.support.ui import Select
-                    select = Select(dropdown)
-                    select.select_by_visible_text("Enfermagem")
-                    print("Opção 'Enfermagem' selecionada.")
-
-                    # Preenche justificativa com 'NIR'
-                    justificativa = WebDriverWait(driver, 5).until(
-                        EC.presence_of_element_located((By.XPATH, '//*[@id="acesso_prontuario_justificativa"]'))
-                    )
-                    justificativa.clear()
-                    justificativa.send_keys("NIR")
-                    print("Justificativa preenchida com 'NIR'.")
-
-                    # Clica em salvar
-                    salvar_btn = WebDriverWait(driver, 5).until(
-                        EC.element_to_be_clickable((By.XPATH, '//*[@id="new_acesso_prontuario"]/div[3]/input'))
-                    )
-                    salvar_btn.click()
-                    print("Botão 'Salvar' clicado.")
-
-                    # Aguarda 1 segundo
+                # Paciente em alta: G-HOSP redireciona para a página de justificativa
+                # de acesso. Preenche/envia e re-navega para o formulário eletrônico.
+                if tratar_justificativa_acesso(driver):
+                    driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
                     time.sleep(1)
-
-                    # Clica no botão de confirmação
-                    confirmar_btn = WebDriverWait(driver, 5).until(
-                        EC.element_to_be_clickable((By.XPATH, '/html/body/div[8]/div[11]/div/button/span'))
-                    )
-                    confirmar_btn.click()
-                    print("Botão de confirmação clicado.")
-                except Exception as e:
-                    print(f"Diálogo de justificativa não encontrado.")
 
 
                 # Aguarda um momento para garantir que a página carregou após o diálogo
@@ -271,48 +235,11 @@ def solicita_nota():
                             # Aguarda a página carregar
                             time.sleep(1)
 
-                            # Verifica se o diálogo de justificativa de acesso aparece (com conteúdo)
-                            try:
-                                dialog = WebDriverWait(driver, 1).until(
-                                    EC.presence_of_element_located((By.XPATH, '//div[@id="form_justificativa" and contains(@class, "ui-dialog-content")]'))
-                                )
-                                print("Diálogo de justificativa encontrado!")
-
-                                # Seleciona 'Enfermagem' no dropdown
-                                dropdown = WebDriverWait(driver, 5).until(
-                                    EC.presence_of_element_located((By.XPATH, '//*[@id="acesso_prontuario_tabela_id"]'))
-                                )
-                                from selenium.webdriver.support.ui import Select
-                                select = Select(dropdown)
-                                select.select_by_visible_text("Enfermagem")
-                                print("Opção 'Enfermagem' selecionada.")
-
-                                # Preenche justificativa com 'NIR'
-                                justificativa = WebDriverWait(driver, 5).until(
-                                    EC.presence_of_element_located((By.XPATH, '//*[@id="acesso_prontuario_justificativa"]'))
-                                )
-                                justificativa.clear()
-                                justificativa.send_keys("NIR")
-                                print("Justificativa preenchida com 'NIR'.")
-
-                                # Clica em salvar
-                                salvar_btn = WebDriverWait(driver, 5).until(
-                                    EC.element_to_be_clickable((By.XPATH, '//*[@id="new_acesso_prontuario"]/div[3]/input'))
-                                )
-                                salvar_btn.click()
-                                print("Botão 'Salvar' clicado.")
-
-                                # Aguarda 1 segundo
+                            # Paciente em alta: G-HOSP redireciona para a página de
+                            # justificativa. Preenche/envia e re-navega para o formulário.
+                            if tratar_justificativa_acesso(driver):
+                                driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
                                 time.sleep(1)
-
-                                # Clica no botão de confirmação
-                                confirmar_btn = WebDriverWait(driver, 5).until(
-                                    EC.element_to_be_clickable((By.XPATH, '/html/body/div[8]/div[11]/div/button/span'))
-                                )
-                                confirmar_btn.click()
-                                print("Botão de confirmação clicado.")
-                            except Exception as e:
-                                print(f"Diálogo de justificativa não encontrado ou erro no preenchimento: {e}")
 
                             # Aguarda um momento para garantir que a página carregou após o diálogo
                             time.sleep(1)

@@ -22,6 +22,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
+from autoreg.sessao_sisreg import login_sisreg
 
 setup_logging()
 
@@ -41,20 +42,10 @@ def sisreg_internados():
     try:
         chrome_options = get_chrome_options()
         navegador = webdriver.Chrome(options=chrome_options)
-        wait = WebDriverWait(navegador, 20)
 
-        print("Acessando SISREG...")
-        navegador.get("https://sisregiii.saude.gov.br")
-
-        usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
-        senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
         _, _, _, usuario_sisreg, senha_sisreg = ler_credenciais()
-        usuario_field.send_keys(usuario_sisreg)
-        senha_field.send_keys(senha_sisreg)
-
-        time.sleep(10)
-        wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']"))).click()
-        time.sleep(5)
+        print("Realizando login no SISREG...")
+        login_sisreg(navegador, usuario_sisreg, senha_sisreg)
         print("Login realizado com sucesso!")
         logging.info("Login SISREG realizado.")
 
@@ -130,20 +121,10 @@ def sisreg_a_internar():
     try:
         chrome_options = get_chrome_options()
         navegador = webdriver.Chrome(options=chrome_options)
-        wait = WebDriverWait(navegador, 20)
 
-        print("Acessando SISREG...")
-        navegador.get("https://sisregiii.saude.gov.br")
-
-        usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
-        senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
         _, _, _, usuario_sisreg, senha_sisreg = ler_credenciais()
-        usuario_field.send_keys(usuario_sisreg)
-        senha_field.send_keys(senha_sisreg)
-
-        time.sleep(10)
-        wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']"))).click()
-        time.sleep(5)
+        print("Realizando login no SISREG...")
+        login_sisreg(navegador, usuario_sisreg, senha_sisreg)
         print("Login realizado com sucesso!")
         logging.info("Login SISREG realizado.")
 
@@ -226,6 +207,12 @@ def compara_duplicados():
     saidas = set(df['SAIDA'].dropna().astype(str).str.strip())
     duplicados = sorted(entradas & saidas)
 
+    # Descarta resultados de uma execução anterior: como DUPLICADOS é
+    # recalculado do zero e preenchido por posição, colunas de resultado
+    # gravadas por etapas posteriores (-td) ficariam "grudadas" em linhas
+    # que agora correspondem a duplicados diferentes.
+    df = df.drop(columns=[c for c in ('resultado_alta', 'CODINTERNA', 'resultado_internacao') if c in df.columns])
+
     df['DUPLICADOS'] = ''
     for idx, nome in enumerate(duplicados):
         if idx < len(df):
@@ -270,17 +257,9 @@ def codigo_duplicados():
         _, _, _, usuario_sisreg, senha_sisreg = ler_credenciais()
         chrome_options = get_chrome_options()
         navegador = webdriver.Chrome(options=chrome_options)
-        wait = WebDriverWait(navegador, 20)
 
-        print("Acessando SISREG...")
-        navegador.get("https://sisregiii.saude.gov.br")
-
-        wait.until(EC.presence_of_element_located((By.NAME, "usuario"))).send_keys(usuario_sisreg)
-        wait.until(EC.presence_of_element_located((By.NAME, "senha"))).send_keys(senha_sisreg)
-
-        time.sleep(10)
-        wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']"))).click()
-        time.sleep(5)
+        print("Realizando login no SISREG...")
+        login_sisreg(navegador, usuario_sisreg, senha_sisreg)
         print("Login realizado com sucesso!")
         logging.info("Login SISREG realizado.")
 
@@ -288,7 +267,9 @@ def codigo_duplicados():
         navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_saida_permanencia")
         time.sleep(2)
 
-        wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']"))).click()
+        WebDriverWait(navegador, 20).until(
+            EC.element_to_be_clickable((By.XPATH, "//input[@name='pesquisar' and @value='PESQUISAR']"))
+        ).click()
         time.sleep(5)
 
         nomes_restantes = set(n.upper() for n in nomes_duplicados)

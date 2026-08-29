@@ -11,6 +11,7 @@ from selenium.webdriver.chrome.options import Options
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
 from autoreg.chrome_options import get_chrome_options
+from autoreg.justificativa_ghosp import tratar_justificativa_acesso
 from datetime import datetime
 import logging
 
@@ -92,6 +93,13 @@ def motivo_alta_avancado():
                 url_alta = f"{caminho_ghosp}:4002/pr/altas?intern_id={ra}"
                 driver.get(url_alta)
                 time.sleep(1.5)
+
+                # Paciente em alta: o GHOSP redireciona para a página de
+                # justificativa de acesso. Preenche/envia e re-navega para a
+                # página de alta, agora com o acesso liberado.
+                if tratar_justificativa_acesso(driver):
+                    driver.get(url_alta)
+                    time.sleep(1.5)
 
                 # Localiza a seção de "Resumo de alta"
                 # A div de conteúdo tem a classe 'cor-sec03' e é precedida pelo título 'Resumo de alta'

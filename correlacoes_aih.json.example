@@ -1,0 +1,64 @@
+{
+  "_comentario": [
+    "Arquivo de correlações procedimento × clínica para o módulo -spaa (solicita_pre_aih_auto).",
+    "Copie este arquivo para ~/AutoReg/correlacoes_aih.json e edite conforme necessidade.",
+    "",
+    "ESTRUTURA:",
+    "  Chaves de primeiro nível (ex: CLÍNICA MÉDICA) = compatibilidade direta.",
+    "    prefixos: lista de prefixos aceitos (ex: '0303' aceita qualquer código que comece com 0303).",
+    "    codigos:  lista de códigos exatos aceitos.",
+    "  'conversoes': bloco especial com substituições automáticas de código.",
+    "    destino:  código para o qual o procedimento será convertido.",
+    "    codigos:  lista de códigos exatos que acionam a conversão.",
+    "    prefixos: lista de prefixos que acionam a conversão.",
+    "    sempre:   true = converte qualquer procedimento nesta clínica (ignora codigos/prefixos).",
+    "",
+    "PRECEDÊNCIA em _verificar_conversao (conversão > compatibilidade):",
+    "  1. sempre: true  →  converte independentemente do código",
+    "  2. codigos match →  converte se código exato está na lista",
+    "  3. prefixos match → converte se código começa com um dos prefixos",
+    "  Se nenhum critério de conversão bater, verifica compatibilidade direta.",
+    "",
+    "NORMALIZAÇÃO DE CLÍNICA:",
+    "  Os nomes de clínica são comparados sem acento e em maiúsculas, então",
+    "  'CLÍNICA MÉDICA', 'Clinica Medica' e 'clinica médica' são equivalentes.",
+    "  Isso permite compatibilidade entre o SELECT do formeletronicos e o",
+    "  autocomplete de texto do printernlaudos, que usam formatos diferentes."
+  ],
+
+  "CLÍNICA MÉDICA": {
+    "_comentario": "Compatíveis diretamente: prefixos 0303/0304/0305 + código curinga",
+    "prefixos": ["0303", "0304", "0305"],
+    "codigos": ["0301060088"]
+  },
+
+  "CLÍNICA CIRÚRGICA": {
+    "_comentario": "Compatíveis diretamente: qualquer código iniciado com 04 + código curinga",
+    "prefixos": ["04"],
+    "codigos": ["0301060070"]
+  },
+
+  "conversoes": {
+    "_comentario": "Substituições automáticas de código por clínica",
+
+    "CLÍNICA MÉDICA": {
+      "_comentario": "Converte códigos incompatíveis para o curinga de internação clínica médica",
+      "destino": "0301060088",
+      "codigos": ["0301060061", "0301010170", "0205020089"],
+      "prefixos": []
+    },
+
+    "CLÍNICA CIRÚRGICA": {
+      "_comentario": "Converte códigos incompatíveis para o curinga de internação cirúrgica",
+      "destino": "0301060070",
+      "codigos": ["0301010170", "0303070030"],
+      "prefixos": []
+    },
+
+    "CLÍNICA PSIQUIÁTRICA": {
+      "_comentario": "Sempre converte para internação psiquiátrica, qualquer que seja o código",
+      "destino": "0303170131",
+      "sempre": true
+    }
+  }
+}

@@ -3,6 +3,7 @@ import time
 from selenium import webdriver
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
+from autoreg.justificativa_ghosp import tratar_justificativa_acesso
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -84,18 +85,15 @@ def ghosp_nota():
                 codigo = str(row[1])  # segunda coluna
                 print(f"Buscando prontuário para código: {codigo}")
 
-                # Aguarda campo de código de internação
-                campo_codigo = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, '//*[@id="intern_id"]'))
-                )
-                campo_codigo.clear()
-                campo_codigo.send_keys(codigo)
-
-                # Clica no botão de busca
-                botao_busca = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, '//*[@id="cabecalho"]/form/fieldset/div[10]/div/input'))
-                )
-                botao_busca.click()
+                # Acesso direto ao prontuário do internado (evita a busca em
+                # /prontuarios, que para paciente em alta redireciona para
+                # /historicopacs sem o campo #paclembretes). Trata a justificativa
+                # de acesso e re-navega para o prontuário, agora liberado.
+                driver.get(f"{caminho_ghosp}:4002/pr/interns/{codigo}")
+                time.sleep(1)
+                if tratar_justificativa_acesso(driver):
+                    driver.get(f"{caminho_ghosp}:4002/pr/interns/{codigo}")
+                    time.sleep(1)
 
                 # Aguarda o campo de lembretes aparecer e extrai o conteúdo
                 try:
@@ -110,9 +108,6 @@ def ghosp_nota():
                 except Exception as e:
                     print(f"Não foi possível extrair lembretes para código {codigo}: {e}")
                     df.at[idx, 'dados'] = ''
-
-                # Retorna à página de prontuários para o próximo código
-                driver.get(f"{caminho_ghosp}:4002/prontuarios")
 
             # Salva o CSV atualizado
             df.to_csv(csv_path, index=False)
