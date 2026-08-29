@@ -2,7 +2,7 @@
 """
 AutoReg - Coordenador de Workflow
 Automatização de Sistemas de Saúde - SISREG & G-HOSP
-Versão 9.8.1 - Universe - Fevereiro de 2026
+Versão 10.0.0 - Universe - Agosto de 2026
 Autor: Michel Ribeiro Paes (MrPaC6689)
 """
 
@@ -99,23 +99,23 @@ FUNCOES = {
     },
     'executa_alta': {
         'func': executa_alta,
-        'desc': 'Executa altas no SISREG'
+        'desc': '[OBSOLETO — ver CHANGELOG.md] Executa altas no SISREG (substituído por -eaa)'
     },
     'atualiza_restos': {
         'func': atualiza_restos,
-        'desc': 'Atualiza arquivo de pacientes restantes'
+        'desc': '[OBSOLETO — ver CHANGELOG.md] Atualiza arquivo de pacientes restantes'
     },
     'extrai_internacoes_duplicadas': {
         'func': extrai_internacoes_duplicadas,
-        'desc': 'Identifica internações duplicadas'
+        'desc': '[OBSOLETO — ver CHANGELOG.md] Identifica internações duplicadas (agora roda automaticamente dentro de -td)'
     },
     'trata_duplicados': {
         'func': trata_duplicados,
-        'desc': 'Processa pacientes com duplicações'
+        'desc': 'Identifica e processa pacientes com duplicações (inclui a extração, antes feita por -eid)'
     },
     'trata_altas': {
         'func': trata_altas,
-        'desc': 'Trata Motivos de Alta capturados'
+        'desc': '[OBSOLETO — ver CHANGELOG.md] Trata Motivos de Alta capturados (substituído por -maa)'
     },
     'limpa_cache': {
         'func': limpa_cache,
@@ -127,7 +127,7 @@ FUNCOES = {
     },
     'pdf2csv': {
         'func': pdf2csv,
-        'desc': 'Converte PDF de solicitações em CSV'
+        'desc': '[OBSOLETO — ver CHANGELOG.md] Converte PDF de solicitações em CSV'
     },
     'ghosp_nota': {
         'func': ghosp_nota,
@@ -139,11 +139,11 @@ FUNCOES = {
     },
     'ghosp_especial': {
         'func': ghosp_especial,
-        'desc': 'Extração de dados personalizados do GHOSP'
+        'desc': '[OBSOLETO — ver CHANGELOG.md] Extração de dados personalizados do GHOSP'
     },
     'ghosp_especial_parallel': {
         'func': ghosp_especial_parallel,
-        'desc': 'Extração paralela de dados personalizados do GHOSP (mais rápida)'
+        'desc': '[OBSOLETO — ver CHANGELOG.md] Extração paralela de dados personalizados do GHOSP (mais rápida)'
     },
     'solicita_inf_aih': {
         'func': solicita_inf_aih,
@@ -268,7 +268,7 @@ def mostrar_informacoes():
 ║                    Automatização de Sistemas de Saúde                         ║
 ║                               SISREG & G-HOSP                                 ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║ Versão: 9.7.0 - Universe                                                      ║
+║ Versão: 10.0.0 - Universe                                                     ║
 ║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║
 ║ Contato: michelrpaes@gmail.com                                                ║
 ║ Repositório: https://github.com/Mrpac6689/AutoReg                             ║
@@ -291,22 +291,15 @@ FUNÇÕES DISPONÍVEIS:
         ('-ma', '--motivo-alta', 'motivo_alta'),
         ('-maa', '--motivo-alta-avancado', 'motivo_alta_avancado'),
         ('-ecsa', '--extrai-codigos-sisreg-alta', 'extrai_codigos_sisreg_alta'),
-        ('-ea', '--executa-alta', 'executa_alta'),
         ('-eaa', '--executa-alta-avancado', 'executa_alta_avancado'),
-        ('-ar', '--atualiza-restos', 'atualiza_restos'),
-        ('-eid', '--extrai-internacoes-duplicadas', 'extrai_internacoes_duplicadas'),
         ('-td', '--trata-duplicados', 'trata_duplicados'),
-        ('-tat', '--trata-altas', 'trata_altas'),
         ('-clc', '--limpa-cache', 'limpa_cache'),
         ('-dev', '--devolvidos', 'devolvidos'),
-        ('-p2c', '--pdf2csv', 'pdf2csv'),
         ('-ghn', '--ghosp-nota', 'ghosp_nota'),
         ('-ghc', '--ghosp-cns', 'ghosp_cns'),
         ('-iga', '--internados-ghosp-avancado', 'internados_ghosp_avancado'),
         ('-eiga', '--extrai-internados-ghosp-avancado', 'extrai_internados_ghosp_avancado'),
         ('-ign', '--internados-ghosp-nota', 'internados_ghosp_nota'),
-        ('-especial', '--especial', 'ghosp_especial'),
-        ('-especial-parallel', '--especial-parallel', 'ghosp_especial_parallel'),
         ('-sia', '--solicita-inf-aih', 'solicita_inf_aih'),
         ('-spaa', '--solicita-pre-aih-auto', 'solicita_pre_aih_auto'),
         ('-spb', '--solicita-pre-aih-bridge', 'solicita_pre_aih_bridge'),
@@ -327,8 +320,6 @@ FUNÇÕES DISPONÍVEIS:
         ('-solicita', '--solicita', None),
         ('-solicita-auto', '--solicita-auto', None),
         ('-aihs', '--aihs', None),
-        ('-duplicados', '--duplicados', None),
-        ('-R', '--registro-producao', None)
     ]
     
     for short, long, func_name in flags:
@@ -344,10 +335,6 @@ FUNÇÕES DISPONÍVEIS:
             desc = 'Executa rotina de Solicitação sem interação: -spaa -spb -sia -ssr -snt'
         elif short == '-aihs':
             desc = 'Executa rotina de notas: -iga -ign -std'
-        elif short == '-duplicados':
-            desc = 'Executa rotina de duplicados: -eid -td'
-        elif short == '-R':
-            desc = 'Registra produção na AUTOREG-API (use com -solicita, -interna ou -alta)'
         else:
             desc = ''
         print(f"    {short:<6} {long:<32} {desc}")
@@ -357,7 +344,6 @@ FUNÇÕES ESPECIAIS:
     -all   --all                         Executa workflow completo: -interna -analisa -alta
     -cfg   --config                      Edita arquivo de configuração
     -dir   --directory                   Abre pasta de arquivos do AutoReg
-    -R     --registro-producao           Registra produção na AUTOREG-API (use com -solicita, -interna ou -alta)
 
 EXEMPLOS DE USO:
     python autoreg.py -eci               Extrai códigos de internação
@@ -365,9 +351,11 @@ EXEMPLOS DE USO:
     python autoreg.py --all              Executa workflow completo
     python autoreg.py --config           Edita configuração
     python autoreg.py --help             Mostra esta ajuda
-    python autoreg.py -solicita -R       Executa rotina de solicitação e registra produção na API
-    python autoreg.py -interna -R       Executa rotina de internação e registra produção na API
-    python autoreg.py -alta -R          Executa rotina de alta e registra produção na API
+
+ℹ️  Algumas flags legadas (-ea, -ar, -tat, -p2c, -especial, -especial-parallel,
+    -eid, -duplicados, -R) não aparecem mais neste menu por estarem obsoletas
+    (substituídas ou absorvidas por outro fluxo). Continuam funcionais por
+    compatibilidade — ver CHANGELOG.md.
 
 Para mais informações, consulte o README.md
 """)
@@ -535,9 +523,6 @@ Exemplos de uso:
   %(prog)s -eci -ip             Executa duas funções em sequência
   %(prog)s --all                Executa workflow completo
   %(prog)s --config             Edita configuração
-  %(prog)s -solicita -R         Executa rotina de solicitação e registra produção na API
-  %(prog)s -interna -R         Executa rotina de internação e registra produção na API
-  %(prog)s -alta -R            Executa rotina de alta e registra produção na API
         """
     )
     
@@ -559,22 +544,22 @@ Exemplos de uso:
     parser.add_argument('-ecsa', '--extrai-codigos-sisreg-alta', action='store_true',
                        help='Extrai códigos SISREG para alta')
     parser.add_argument('-ea', '--executa-alta', action='store_true',
-                       help='Executa altas no SISREG')
+                       help=argparse.SUPPRESS)  # OBSOLETO: substituído por -eaa; ver CHANGELOG.md
     parser.add_argument('-eaa', '--executa-alta-avancado', action='store_true',
                        help='Execução de altas no SISREG - versão avançada')
     parser.add_argument('-ar', '--atualiza-restos', action='store_true',
-                       help='Atualiza arquivo de pacientes restantes')
+                       help=argparse.SUPPRESS)  # OBSOLETO: sem uso em nenhum workflow atual; ver CHANGELOG.md
     parser.add_argument('-eid', '--extrai-internacoes-duplicadas', action='store_true',
-                       help='Identifica internações duplicadas')
+                       help=argparse.SUPPRESS)  # OBSOLETO: agora roda automaticamente dentro de -td; ver CHANGELOG.md
     parser.add_argument('-td', '--trata-duplicados', action='store_true',
-                       help='Processa pacientes com duplicações')
+                       help='Identifica e processa pacientes com duplicações (inclui a extração, antes feita por -eid)')
     parser.add_argument('-tat', '--trata-altas', action='store_true',
-                       help='Trata Motivos de Alta capturados')
+                       help=argparse.SUPPRESS)  # OBSOLETO: substituído por -maa; ver CHANGELOG.md
     parser.add_argument('-clc', '--limpa-cache', action='store_true',
                        help='Limpa todos os arquivos da pasta ~/AutoReg, mantendo apenas solicita_inf_aih.csv')
     parser.add_argument('-dev', '--devolvidos', action='store_true',
                        help='Processa solicitações devolvidas')
-    parser.add_argument('-p2c', '--pdf2csv', nargs='?', metavar='PDF', help='Converte PDF de solicitações em CSV')
+    parser.add_argument('-p2c', '--pdf2csv', nargs='?', metavar='PDF', help=argparse.SUPPRESS)  # OBSOLETO: ver CHANGELOG.md
     parser.add_argument('-ghn', '--ghosp-nota', action='store_true',
                        help='Extrair notas de prontuários Ghosp')
     parser.add_argument('-ghc', '--ghosp-cns', action='store_true',
@@ -586,9 +571,9 @@ Exemplos de uso:
     parser.add_argument('-ign', '--internados-ghosp-nota', action='store_true',
                        help='Extrai o conteúdo das notas dos prontuários do GHOSP')
     parser.add_argument('-especial', '--especial', action='store_true',
-                       help='Extração de dados personalizados do GHOSP')
+                       help=argparse.SUPPRESS)  # OBSOLETO: ver CHANGELOG.md
     parser.add_argument('-especial-parallel', '--especial-parallel', action='store_true',
-                       help='Extração paralela de dados personalizados do GHOSP (mais rápida)')
+                       help=argparse.SUPPRESS)  # OBSOLETO: ver CHANGELOG.md
     parser.add_argument('-sia', '--solicita-inf-aih', action='store_true',
                        help='Extrai informações da AIH')
     parser.add_argument('-spaa', '--solicita-pre-aih-auto', action='store_true',
@@ -623,7 +608,7 @@ Exemplos de uso:
     parser.add_argument('-interna', '--interna', action='store_true',
                        help='Executa sequência de internação: -eci -ip')
     parser.add_argument('-alta', '--alta', action='store_true',
-                       help='Executa sequência de alta: -tat -ecsa -ea -ar -eid -td -clc')
+                       help='Executa sequência de alta: -eis -eiga -maa -eaa')
     parser.add_argument('-solicita', '--solicita', action='store_true',
                        help='Executa rotina de Solicitação: -spa -sia -ssr -snt')
     parser.add_argument('-solicita-auto', '--solicita-auto', action='store_true',
@@ -631,9 +616,9 @@ Exemplos de uso:
     parser.add_argument('-aihs', '--aihs', action='store_true',
                        help='Executa rotina de notas: -iga -ign -std')
     parser.add_argument('-duplicados', '--duplicados', action='store_true',
-                       help='Executa rotina de duplicados: -eid -td')
+                       help=argparse.SUPPRESS)  # OBSOLETO: equivalente a -td sozinho; ver CHANGELOG.md
     parser.add_argument('-R', '--registro-producao', action='store_true',
-                       help='Registra produção na AUTOREG-API (válido com -solicita, -interna ou -alta)')
+                       help=argparse.SUPPRESS)  # OBSOLETO: ver CHANGELOG.md
     
     # Funções especiais
     parser.add_argument('-all', '--all', action='store_true',
@@ -725,13 +710,10 @@ Exemplos de uso:
         return
 
     if args.duplicados:
-        print("🔄 Executando rotina de duplicados (-eid -td)...")
-        seq = ['extrai_internacoes_duplicadas', 'trata_duplicados']
-        for i, func_name in enumerate(seq, 1):
-            print(f"\n[{i}/{len(seq)}] ", end="")
-            if not executar_funcao(func_name):
-                print(f"❌ Parando execução devido ao erro em {func_name}")
-                break
+        # OBSOLETO: -td já roda -eid internamente; equivalente a chamar -td sozinho.
+        print("🔄 Executando rotina de duplicados (-td, que já inclui a extração antes feita por -eid)...")
+        if not executar_funcao('trata_duplicados'):
+            print("❌ Parando execução devido ao erro em trata_duplicados")
         return
 
     if args.config:

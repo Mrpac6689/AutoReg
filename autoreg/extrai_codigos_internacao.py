@@ -4,13 +4,12 @@ import csv
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from autoreg.chrome_options import get_chrome_options  # ajuste aqui
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
 from autoreg.detecta_capchta import detecta_captcha
+from autoreg.sessao_sisreg import login_sisreg
 import logging
 
 setup_logging()
@@ -20,58 +19,16 @@ def extrai_codigos_internacao():
     try:
         chrome_options = get_chrome_options()  # ajuste aqui
         navegador = webdriver.Chrome(options=chrome_options)
-        wait = WebDriverWait(navegador, 20)
-        print("Acessando a página de Internação...\n")
-        logging.info("Acessando a página de Internação...\n")
-        navegador.get("https://sisregiii.saude.gov.br")
-        
-        # Realiza o login
-        print("Localizando campo de usuário...")
-        logging.info("Localizando campo de usuário...")
-        usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
-        print("Campo de usuário localizado.")
-        logging.info("Campo de usuário localizado.")
-
-        print("Localizando campo de senha...")
-        logging.info("Localizando campo de senha...")
-        senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
-        print("Campo de senha localizado.")
-        logging.info("Campo de senha localizado.")
 
         print("Lendo credenciais do SISREG...")
         logging.info("Lendo credenciais do SISREG...")
         usuario_ghosp, senha_ghosp, caminho_ghosp, usuario_sisreg, senha_sisreg = ler_credenciais()
-        print("Credenciais lidas.")
-        logging.info("Credenciais lidas.")
 
-        print("Preenchendo usuário...")
-        logging.info("Preenchendo usuário...")
-        usuario_field.send_keys(usuario_sisreg)
-        print("Usuário preenchido.")
-        logging.info("Usuário preenchido.")
-
-        print("Preenchendo senha...")
-        logging.info("Preenchendo senha...")
-        senha_field.send_keys(senha_sisreg)
-        print("Senha preenchida.")
-        logging.info("Senha preenchida.")
-
-        print("Aguardando antes de clicar no botão de login...")
-        logging.info("Aguardando antes de clicar no botão de login...")
-        time.sleep(10)
-
-        print("Localizando botão de login...")
-        logging.info("Localizando botão de login...")
-        login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']")))
-        print("Botão de login localizado.")
-        logging.info("Botão de login localizado.")
-
-        print("Clicando no botão de login...")
-        logging.info("Clicando no botão de login...")
-        login_button.click()
-        print("Botão de login clicado.")
-        logging.info("Botão de login clicado.")
-        time.sleep(5)
+        print("Realizando login no SISREG...")
+        logging.info("Realizando login no SISREG...")
+        login_sisreg(navegador, usuario_sisreg, senha_sisreg)
+        print("Login realizado com sucesso!")
+        logging.info("Login realizado com sucesso!")
 
         # Navega diretamente para a página de Internação (elimina navegação por iframe)
         navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_internar")

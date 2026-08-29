@@ -15,10 +15,11 @@ O AutoReg agora suporta resolução automática de CAPTCHA usando o serviço [2C
 ### 1. Instalar Dependências
 
 ```bash
-# Atualizar ambiente conda
-conda env update -f environment.yml
+# Ativar o venv e instalar todas as dependências
+source venv/bin/activate
+pip install -r requirements.txt
 
-# OU instalar manualmente com pip
+# OU instalar só o pacote do 2Captcha
 pip install 2captcha-python
 ```
 
@@ -169,7 +170,7 @@ Todas as tentativas de resolução são registradas em `~/AutoReg/autoreg.log`:
 ```bash
 pip install 2captcha-python
 # OU
-conda env update -f environment.yml
+pip install -r requirements.txt
 ```
 
 ### API Key não configurada

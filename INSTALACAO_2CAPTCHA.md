@@ -2,14 +2,14 @@
 
 ## Passo a Passo Completo
 
-### 1. Atualizar Ambiente Conda
+### 1. Atualizar Dependências
 
 ```bash
 cd /home/michel/code/AutoReg
 
-# Atualizar ambiente com nova dependência
-conda activate autoreg_env
-conda env update -f environment.yml --prune
+# Ativar o venv e instalar a dependência
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
 ### 2. Verificar Instalação
@@ -109,7 +109,7 @@ api_key = sua_chave_fica_aqui
 ✅ **Arquivos modificados:**
 - `autoreg/detecta_capchta.py` - Integração com resolvedor
 - `config.ini.example` - Template com seção [2CAPTCHA]
-- `environment.yml` - Dependência adicionada
+- `requirements.txt` - Dependência adicionada
 
 ✅ **Nenhuma alteração necessária em:**
 - `autoreg.py` - Funciona transparentemente

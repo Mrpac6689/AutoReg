@@ -5,6 +5,43 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [10.0.0] - 2026-08
+
+Ciclo de manutenção: automação completa do fluxo de solicitação de AIH em cron (com resumo inteligente por WhatsApp), unificação e correção da pipeline de duplicados, limpeza de dependências vulneráveis, e depreciação formal de flags legadas sem uso. Sem mudanças de configuração exigidas para quem já está em produção — `config.ini` continua compatível.
+
+### Adicionado
+- **Atalho `-solicita-auto` em `autoreg.py`**: versão sem interação humana da rotina de solicitação de AIH, para uso em cron. Sequência: `-spaa` → `-spb` → `-sia` → `-ssr` → `-snt`
+- **`solicita_pre_aih_bridge()` (`-spb`) em `solicita_pre_aih_bridge.py`**: substitui a etapa manual `-spa` no fluxo automático. Remove do CSV os registros que o `-spaa` deixou sem `link` (sem laudo compatível encontrado), sem interação com o navegador nem com o G-HOSP; esses registros ficam pendentes de revisão manual futura via `-spa`
+- **`autoreg/relatorio_execucao.py`**: monta um resumo (o que foi feito, o que não foi feito, erros com detalhe) para as rotinas de internação, alta e solicitação, a partir do estado final dos respectivos CSVs, e envia o resumo consolidado por WhatsApp (Evolution API, `config.ini` `[EVOLUTION-API]`)
+- **Coluna `resultado` em `codigos_internacao.csv`** (`interna_pacientes.py`, rotina `-ip`): cada ficha passa a registrar `'Internado com sucesso'` ou `'Erro: ...'`, no mesmo padrão já usado por `executa_alta_avancado.py` (`resultado_sisreg`), permitindo um resumo preciso da rotina de internação
+- **`autoreg/internacao_sisreg.py`**: novo módulo compartilhado com `internar_ficha_sisreg()` — única implementação de "internar uma ficha no SISREG" (navegação, `configFicha`, extração de "Data de Solicitação" − 2 dias, seleção de profissional, tratamento de popups, checagem de "Erro de Sistema"), usada tanto por `-ip` quanto pela etapa final de `-td`, eliminando a segunda cópia divergente que existia em `trata_duplicados.py`
+
+### Corrigido
+- **`execute_and_log()` em `docker-entry-script.sh`**: a checagem de falha usava `$?` depois do `rm` do arquivo temporário (que quase sempre retorna 0), então a detecção de falha de cada etapa nunca funcionava de fato. Corrigido para usar `${PIPESTATUS[0]}` logo após o pipe `... | tee ...`, capturando o exit code real do `python3 autoreg.py -<etapa>`
+- **Internação final de `-td` (`interna_duplicados()` em `trata_duplicados.py`)**: reimplementava a internação de forma mais frágil que `-ip` — sempre usava a data de hoje em vez de "data de solicitação − 2 dias", tratava popups com `except:` genérico, e não recuperava de sessão SISREG expirada no meio do loop. Corrigido ao passar a usar `internacao_sisreg.internar_ficha_sisreg()`, a mesma lógica testada de `-ip`
+- **`NameError` latente em `interna_pacientes.py`/`-ip`**: se a TR "Data de Solicitação:" não fosse encontrada na página, `data_internacao_str` nunca era definida e o preenchimento do campo de data quebrava com `NameError`. Corrigido (dentro de `internacao_sisreg.py`) inicializando `data_internacao_str` com a data de hoje antes da extração, usada como fallback
+- **Colisão sessão-expirada × erro-de-negócio**: `sessao_sisreg.sessao_expirada()` detecta a string "erro de sistema" na página inteira, mas essa é a mesma mensagem usada como resultado de negócio normal (ficha que não pôde ser internada/dada alta). `internar_ficha_sisreg()` sempre navega para uma página nova (`driver.get()`) antes de checar a sessão, evitando falso positivo de re-login causado pelo aviso deixado na tela por uma ficha anterior
+- **`compara_duplicados()` em `extrai_internacoes_duplicadas.py`**: a coluna `DUPLICADOS` é recalculada do zero e preenchida por posição a cada execução; como `-td` agora roda essa extração toda vez (ver abaixo), as colunas `resultado_alta`/`CODINTERNA`/`resultado_internacao` de uma execução anterior ficavam "grudadas" em linhas que passavam a corresponder a duplicados diferentes. Corrigido descartando essas 3 colunas antes de recalcular
+- **Resolvidos alertas do Dependabot em `requirements.txt`** (20 alertas reportados pelo GitHub, dos quais 5 permaneciam abertos):
+  - `pillow` `12.2.0` → `12.3.0` (12 CVEs: decompression bomb, heap out-of-bounds write/read, OS command injection, DoS)
+  - `pypdf` `6.14.0` → `6.16.2` (2 CVEs de loop infinito em imagens inline não terminadas)
+  - `setuptools` `80.9.0` → `84.0.0` (bypass de exclusão do MANIFEST.in via colisão de normalização Unicode)
+  - `soupsieve` `2.7` → `2.9.2` (ReDoS e exaustão de memória via listas de seletores)
+  - Validado com smoke test isolado (`PdfWriter.append/write/close`, `PIL.Image`) confirmando que a API usada em `exames_ambulatorio_relatorio.py` continua compatível
+
+### Alterado
+- **`docker-entry-script.sh`**: o ciclo de cron agora roda `-interna` → `-aihs` → `-solicita-auto` → `-alta`; envio de log via WhatsApp trocado do `tail -n 10` do log cru (com credenciais hardcoded) pelo resumo estruturado gerado por `autoreg/relatorio_execucao.py`, com credenciais lidas de `config.ini [EVOLUTION-API]`
+- **Unificação `-eid` → `-td`**: `trata_duplicados()` agora chama `extrai_internacoes_duplicadas()` como primeiro passo, antes de tratar. Rodar `-td` sozinho já faz o pipeline completo (extração + alta + código + internação); não é mais necessário rodar `-eid` antes
+- **Eliminados 7 blocos de login SISREG manuais duplicados**: `extrai_codigos_internacao.py`, `interna_pacientes.py`, `trata_duplicados.py` (`alta_duplicados`, `cod_inter_duplicado`, `interna_duplicados`) e `extrai_internacoes_duplicadas.py` (`sisreg_internados`, `sisreg_a_internar`, `codigo_duplicados`) passam a usar `sessao_sisreg.login_sisreg()` — mesma troca mecânica em todos, sem mudança de comportamento. `-ip` e a internação de `-td` ganham, de brinde, recuperação de sessão expirada em loop (`garantir_sessao_sisreg`), que só o `-eaa` tinha até aqui
+- **Flags obsoletas ocultadas do `--help`/menu**: `-ea` (`executa_alta`, substituído por `-eaa`), `-ar` (`atualiza_restos`, sem uso em workflow atual), `-tat` (`trata_altas`, substituído por `-maa`), `-p2c` (`pdf2csv`, fora do fluxo de dados atual), `-especial`/`-especial-parallel` (`ghosp_especial*`, sem uso), `-R`/`--registro-producao` (registro de produção descontinuado na AUTOREG-API), `-eid` (absorvida por `-td`) e `-duplicados` (agora equivalente a `-td` sozinho — passou a executar só `['trata_duplicados']` internamente, evitando rodar a extração duas vezes). Todos os `.py` e funções continuam intactos e utilizáveis diretamente por compatibilidade — só saíram de `argparse` (via `help=argparse.SUPPRESS`) e da lista impressa por `mostrar_informacoes()`
+- Descrição de `-alta` no `--help` corrigida para refletir a sequência real (`-eis -eiga -maa -eaa`) — o texto antigo ainda citava `-tat -ecsa -ea -ar -eid -td -clc`, desatualizado desde a introdução de `-eaa`/`-maa`
+- **Removido `environment.yml`**: era um caminho de instalação alternativo via conda que ficou desatualizado (reintroduzia as mesmas versões vulneráveis de `pillow`/`setuptools`/`soupsieve` e ainda referenciava `pypdf2`, pacote legado que o código nem importa mais desde a migração para `pypdf` registrada em `9.8.x`). O setup real do projeto usa `venv` padrão do Python + `requirements.txt` (já documentado no README); referências a `environment.yml`/conda em `CLAUDE.md`, `AGENTS.md`, `INSTALACAO_2CAPTCHA.md` e `CAPTCHA_2CAPTCHA.md` foram atualizadas para o fluxo `venv`
+
+### Trabalho futuro (não incluído nesta entrega)
+- Recuperação de sessão expirada nos loops de paginação de listagem (`sisreg_internados`, `sisreg_a_internar`, `codigo_duplicados`, `alta_duplicados`) — hoje só os dois loops de internação têm essa proteção
+- Consolidar as ~7 aberturas de browser/login de uma execução completa de `-td` numa única sessão compartilhada
+- Bug cosmético (não amplificado por esta mudança): `compara_duplicados()` preenche `DUPLICADOS` por posição de índice, não pela linha de `ENTRADA`/`SAIDA` que efetivamente gerou aquele duplicado
+
 ## [9.9.0] - 2026-08
 
 ### Adicionado

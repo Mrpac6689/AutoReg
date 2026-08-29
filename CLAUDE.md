@@ -14,8 +14,9 @@ All automation is Selenium WebDriver-based (Chrome), navigating and filling form
 
 ```bash
 # Setup (one-time)
-conda env create -f environment.yml
-conda activate autoreg_env
+python3 -m venv venv
+source venv/bin/activate  # Linux/macOS (or venv\Scripts\activate on Windows)
+pip install -r requirements.txt
 cp config.ini.example config.ini
 # Edit config.ini with real credentials
 
@@ -54,6 +55,8 @@ No build step, no test suite, no linter configuration exists in this project.
 - `detecta_capchta.py` — centralizes CAPTCHA detection for all SISREG modules, supports automatic resolution via 2Captcha
 - `resolvedor_captcha.py` — handles automatic CAPTCHA solving using 2Captcha API (reCAPTCHA v2/v3, hCaptcha, image captchas)
 - `relatorio_execucao.py` — builds per-module (interna/alta/solicitação) execution summaries from final CSV state, accumulates them in `~/AutoReg/resumo_execucao.txt`, and sends the consolidated summary via WhatsApp (Evolution API, `config.ini` `[EVOLUTION-API]`). Called from `autoreg.py`'s `-interna`/`-alta`/`-solicita-auto` blocks and from `docker-entry-script.sh` (`python3 -m autoreg.relatorio_execucao`) at the end of the cron cycle
+- `sessao_sisreg.py` — centralized SISREG III login (`login_sisreg`) and session-expiry recovery (`sessao_expirada`, `garantir_sessao_sisreg`, `ControleSessao`/`SessaoSisregAbortada`). Used by `executa_alta_avancado.py`, `interna_pacientes.py`, `trata_duplicados.py`, `extrai_internacoes_duplicadas.py`, `extrai_codigos_internacao.py`
+- `internacao_sisreg.py` — `internar_ficha_sisreg()`, the single implementation of "internar uma ficha no SISREG" (navigate, `configFicha`, date extraction, professional selection, popups, "Erro de Sistema" check). Shared by `-ip` (`interna_pacientes.py`) and the final step of `-td` (`trata_duplicados.py`) so the two don't drift into divergent, differently-broken copies
 
 **Legacy backup files** — `autoreg/*bkp.py` (e.g. `executa_altabkp.py`, `trata_restosbkp.py`, `trata_duplicadosbkp.py`) are old versions kept for reference. They are not imported or active — prefer the non-`bkp` versions.
 
@@ -71,10 +74,24 @@ No build step, no test suite, no linter configuration exists in this project.
 | `--all` | `-interna` then `-alta` | Complete workflow (prompts for repetition count) |
 | *(no shortcut)* | `-eac` → `-eae` → `-eas` → `-ear` | Ambulatorial exam solicitation cycle (consult → extract → solicit → report) |
 | *(no shortcut)* | `-pra` / `-pad` / `-pag` | Ambulatorial production extraction (SISREG); run individually as needed |
-
-Append `-R` to any shortcut to register production results in AUTOREG-API after completion (e.g. `python autoreg.py -solicita -R`).
+| *(no shortcut)* | `-td` alone | Duplicate-admission handling: `-td` now runs the former `-eid` extraction internally as its first step, then treats duplicates |
 
 Individual flags follow the pattern: short flag (e.g. `-ip`) = `--interna-pacientes`. Run `python autoreg.py` with no args to see all functions with descriptions.
+
+## Obsolete Flags
+
+These flags still work if invoked directly (their `.py` files and `FUNCOES`/`FLAG_TO_FUNC` entries are untouched — kept for historical reference), but are hidden from `--help` and from the no-args menu (`argparse.SUPPRESS`, removed from `mostrar_informacoes()`'s `flags` list). See `CHANGELOG.md` for the version each was deprecated in.
+
+| Flag | Reason |
+|------|--------|
+| `-ea` (`executa_alta`) | Superseded by `-eaa` (`executa_alta_avancado`), which is what `-alta` actually runs today |
+| `-ar` (`atualiza_restos`) | No longer used by any current workflow |
+| `-tat` (`trata_altas`) | Superseded by `-maa` (`motivo_alta_avancado`) |
+| `-p2c` (`pdf2csv`) | No longer part of any current data intake path |
+| `-especial` / `-especial-parallel` (`ghosp_especial*`) | No longer used |
+| `-R` (`--registro-producao`, AUTOREG-API reporting) | Deprecated production-tracking mechanism; `producao_relatorio.py` kept for reference |
+| `-eid` (`extrai_internacoes_duplicadas`) | Absorbed into `-td` — runs automatically as `-td`'s first step now |
+| `-duplicados` | Was `-eid` → `-td`; now equivalent to just running `-td` alone |
 
 ## Deployment
 
@@ -98,7 +115,8 @@ AutoReg includes automatic CAPTCHA detection and resolution:
 - **`-R` timing**: for `-alta`, production is registered *before* the sequence runs; for `-interna` and `-solicita` it is also registered before the sequence. This is a pre-registration pattern, not a post-registration one.
 - **Exam deduplication (`-eas`)**: records with a non-empty `solicitacao` column are skipped unless `solicita='s'` is set. The `solicita` column is cleared after successful processing.
 - **Bash exit codes through `tee`** (`docker-entry-script.sh`): after `cmd | tee file`, `$?` reflects `tee`'s exit code, not `cmd`'s — use `${PIPESTATUS[0]}` to check whether the piped command actually failed.
-- **Testing a single `autoreg/` module in isolation**: `from autoreg.X import Y` triggers `autoreg/__init__.py`, which eagerly imports every module in the package (Selenium, requests, bs4, 2captcha...) — even to test a pure-pandas module like `solicita_pre_aih_bridge.py`. Without the full `autoreg_env`, load the file directly via `importlib.util.spec_from_file_location(...)` or copy the needed files into a throwaway package instead.
+- **Testing a single `autoreg/` module in isolation**: `from autoreg.X import Y` triggers `autoreg/__init__.py`, which eagerly imports every module in the package (Selenium, requests, bs4, 2captcha...) — even to test a pure-pandas module like `solicita_pre_aih_bridge.py`. Without the full `venv` dependencies installed, load the file directly via `importlib.util.spec_from_file_location(...)` or copy the needed files into a throwaway package instead.
+- **`sessao_sisreg.sessao_expirada()` false positive**: it detects expired sessions by looking for the substring "erro de sistema" anywhere in `driver.page_source` — but that's also the exact business-error message SISREG shows for a single ficha that can't be internada/dada alta (not a session problem). `internacao_sisreg.internar_ficha_sisreg()` avoids the collision by always doing `driver.get()` to a fresh page *before* calling `garantir_sessao_sisreg()`, so a leftover error div from a previous ficha is never on screen when the check runs. Keep that ordering in any new loop that checks session state.
 
 ## Important Files
 

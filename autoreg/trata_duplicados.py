@@ -6,8 +6,6 @@ import time
 import traceback
 import pandas as pd
 import logging
-import random
-from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
@@ -17,12 +15,19 @@ from autoreg.ler_credenciais import ler_credenciais
 from autoreg.chrome_options import get_chrome_options
 from autoreg.logging import setup_logging
 from autoreg.detecta_capchta import detecta_captcha
+from autoreg.sessao_sisreg import login_sisreg, ControleSessao, SessaoSisregAbortada
+from autoreg.internacao_sisreg import internar_ficha_sisreg
+from autoreg.extrai_internacoes_duplicadas import extrai_internacoes_duplicadas
 
 setup_logging()
 
 def trata_duplicados():
     user_dir = os.path.expanduser('~/AutoReg')
     duplicadas_path = os.path.join(user_dir, 'internacoes_duplicadas.csv')
+
+    # -eid unificado em -td: extrai/atualiza internacoes_duplicadas.csv
+    # antes de tratar (era um passo manual separado, -eid).
+    extrai_internacoes_duplicadas()
 
     if not os.path.exists(duplicadas_path):
         print(f"⚠️ Arquivo {duplicadas_path} não encontrado. Pulando tratamento de duplicados.")
@@ -73,19 +78,10 @@ def alta_duplicados(duplicadas_path):
         navegador = webdriver.Chrome(options=chrome_options)
         wait = WebDriverWait(navegador, 20)
 
-        print("Acessando SISREG...")
-        logging.info("Acessando SISREG para alta de duplicados...")
-        navegador.get("https://sisregiii.saude.gov.br")
-
-        usuario_field = wait.until(EC.presence_of_element_located((By.NAME, "usuario")))
-        senha_field = wait.until(EC.presence_of_element_located((By.NAME, "senha")))
         _, _, _, usuario_sisreg, senha_sisreg = ler_credenciais()
-        usuario_field.send_keys(usuario_sisreg)
-        senha_field.send_keys(senha_sisreg)
-
-        time.sleep(10)
-        wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']"))).click()
-        time.sleep(5)
+        print("Realizando login no SISREG...")
+        logging.info("Acessando SISREG para alta de duplicados...")
+        login_sisreg(navegador, usuario_sisreg, senha_sisreg)
         print("Login realizado com sucesso!")
         logging.info("Login SISREG realizado.")
 
@@ -190,17 +186,9 @@ def cod_inter_duplicado(duplicadas_path):
         _, _, _, usuario_sisreg, senha_sisreg = ler_credenciais()
         chrome_options = get_chrome_options()
         navegador = webdriver.Chrome(options=chrome_options)
-        wait = WebDriverWait(navegador, 20)
 
-        print("Acessando SISREG...")
-        navegador.get("https://sisregiii.saude.gov.br")
-
-        wait.until(EC.presence_of_element_located((By.NAME, "usuario"))).send_keys(usuario_sisreg)
-        wait.until(EC.presence_of_element_located((By.NAME, "senha"))).send_keys(senha_sisreg)
-
-        time.sleep(10)
-        wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']"))).click()
-        time.sleep(5)
+        print("Realizando login no SISREG...")
+        login_sisreg(navegador, usuario_sisreg, senha_sisreg)
         print("Login realizado com sucesso!")
 
         # Navega diretamente para a página de Internação (elimina navegação por iframe)
@@ -304,22 +292,13 @@ def interna_duplicados(duplicadas_path):
         _, _, _, usuario_sisreg, senha_sisreg = ler_credenciais()
         chrome_options = get_chrome_options()
         navegador = webdriver.Chrome(options=chrome_options)
-        wait = WebDriverWait(navegador, 20)
 
-        print("Acessando SISREG...")
-        navegador.get("https://sisregiii.saude.gov.br")
-
-        wait.until(EC.presence_of_element_located((By.NAME, "usuario"))).send_keys(usuario_sisreg)
-        wait.until(EC.presence_of_element_located((By.NAME, "senha"))).send_keys(senha_sisreg)
-
-        time.sleep(10)
-        wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@name='entrar' and @value='entrar']"))).click()
-        time.sleep(5)
+        print("Realizando login no SISREG...")
+        login_sisreg(navegador, usuario_sisreg, senha_sisreg)
         print("Login realizado com sucesso!")
 
-        # Navega diretamente para a página de Internação (elimina navegação por iframe)
-        navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_internar")
-        time.sleep(2)
+        # Controle global de re-logins desta rotina (aborta ao passar do teto)
+        controle = ControleSessao()
 
         for index, row in df.iterrows():
             # Verifica se há CAPTCHA antes de processar
@@ -337,46 +316,10 @@ def interna_duplicados(duplicadas_path):
             logging.info(f"Internando ficha: {ficha}")
 
             try:
-                navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_internar")
-                time.sleep(1)
-                navegador.execute_script(f"configFicha('{ficha}')")
-                time.sleep(3)
-
-                data_hoje = datetime.now().strftime("%d/%m/%Y")
-                data_field = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@type='text' and contains(@id, 'dp')]")))
-                data_field.clear()
-                data_field.send_keys(data_hoje)
-
-                select_prof = Select(wait.until(EC.presence_of_element_located((By.XPATH, "//*[@id='main_page']/form/table[2]/tbody/tr[2]/td[2]/select"))))
-                opts = select_prof.options[1:-1]
-                if opts:
-                    select_prof.select_by_visible_text(random.choice(opts).text)
-
-                wait.until(EC.presence_of_element_located((By.XPATH, "//*[@id='main_page']/form/center[2]/input[2]"))).click()
-
-                time.sleep(2)
-                try:
-                    while True:
-                        alert = navegador.switch_to.alert
-                        print(f"   Confirmando alerta: {alert.text}")
-                        alert.accept()
-                        time.sleep(1)
-                except:
-                    pass
-
-                try:
-                    navegador.find_element(By.XPATH, "//div[contains(text(), 'Erro de Sistema')]")
-                    print(f"   ⚠️ Erro de Sistema detectado para {ficha}.")
-                    df.at[index, 'resultado_internacao'] = 'Erro de Sistema'
-                    df.to_csv(duplicadas_path, index=False)
-                    continue
-                except NoSuchElementException:
-                    pass
-
-                df.at[index, 'resultado_internacao'] = 'Internado'
-                print(f"   ✅ Internação processada para {ficha}.")
-                logging.info(f"Internação processada para ficha {ficha}.")
-                time.sleep(5)
+                resultado = internar_ficha_sisreg(navegador, ficha, usuario_sisreg, senha_sisreg, controle)
+                df.at[index, 'resultado_internacao'] = resultado
+                print(f"   {resultado}")
+                logging.info(f"Ficha {ficha}: {resultado}")
 
             except Exception as e:
                 print(f"   ❌ Erro na ficha {ficha}: {e}")
@@ -385,6 +328,9 @@ def interna_duplicados(duplicadas_path):
 
             df.to_csv(duplicadas_path, index=False)
 
+    except SessaoSisregAbortada as e:
+        print(f"⛔ Internação de duplicados abortada: {e}")
+        logging.error(f"Internação de duplicados abortada por conflito de sessao: {e}")
     except Exception as e:
         print(f"❌ Erro geral na internação de duplicados: {e}")
         logging.error(f"Erro geral na internação de duplicados: {e}")
