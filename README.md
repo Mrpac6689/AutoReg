@@ -76,7 +76,9 @@ Desenvolvido com uma arquitetura modular e interface de linha de comando intuiti
 - **Solicitação de AIH** (`-sia`): Extrai informações de Autorização de Internação Hospitalar
 - **Processamento SISREG** (`-ssr`): Executa solicitações no sistema SISREG
 - **Tratamento de Dados** (`-std`): Ajusta e organiza dados para processamento
-- **Extração de Links** (`-spa`): Extrai links de formulários do G-HOSP
+- **Pré-processamento Automático** (`-spaa`): Aprova automaticamente laudos compatíveis (via `correlacoes_aih.json`) antes da revisão manual
+- **Extração de Links** (`-spa`): Extrai links de formulários do G-HOSP (revisão manual)
+- **Ponte Automática** (`-spb`): Substitui a revisão manual do `-spa` no fluxo automático (`-solicita-auto`), descartando registros sem laudo compatível
 - **Inserção de Notas** (`-snt`): Insere números de solicitação em notas de prontuário
 
 ### 🔄 Workflows Agrupados
@@ -84,7 +86,8 @@ Desenvolvido com uma arquitetura modular e interface de linha de comando intuiti
 - **`-interna`**: Executa rotina completa de internação
 - **`-analisa`**: Executa análise e comparação entre sistemas
 - **`-alta`**: Executa rotina completa de alta (inclui tratamento e limpeza)
-- **`-solicita`**: Executa rotina completa de solicitação
+- **`-solicita`**: Executa rotina completa de solicitação (com revisão manual via `-spa`)
+- **`-solicita-auto`**: Executa a mesma rotina sem interação humana (usa `-spb` no lugar de `-spa`) — usado no ciclo automático de cron
 - **`-aihs`**: Executa rotina completa de processamento de AIHs
 - **`-duplicados`**: Executa rotina completa de tratamento de duplicados: `-eid` → `-td`
 - **`--all`**: Executa todas as funções principais com repetição interativa
@@ -337,8 +340,11 @@ autoreg -analisa
 # Rotina completa de alta (inclui tratamento e limpeza)
 autoreg -alta
 
-# Rotina completa de solicitação
+# Rotina completa de solicitação (com revisão manual)
 autoreg -solicita
+
+# Rotina completa de solicitação sem interação humana (uso em cron)
+autoreg -solicita-auto
 
 # Rotina completa de AIHs
 autoreg -aihs
@@ -624,7 +630,9 @@ Developed with a modular architecture and intuitive command-line interface, Auto
 - **AIH Request** (`-sia`): Extracts Hospital Admission Authorization information
 - **SISREG Processing** (`-ssr`): Executes requests in the SISREG system
 - **Data Processing** (`-std`): Adjusts and organizes data for processing
-- **Link Extraction** (`-spa`): Extracts form links from G-HOSP
+- **Automatic Pre-processing** (`-spaa`): Auto-approves compatible reports (via `correlacoes_aih.json`) before manual review
+- **Link Extraction** (`-spa`): Extracts form links from G-HOSP (manual review)
+- **Automatic Bridge** (`-spb`): Replaces `-spa`'s manual review in the automated flow (`-solicita-auto`), dropping records with no compatible report
 - **Note Insertion** (`-snt`): Inserts request numbers in medical record notes
 
 ### 🔄 Grouped Workflows
@@ -632,7 +640,8 @@ Developed with a modular architecture and intuitive command-line interface, Auto
 - **`-interna`**: Executes complete admission routine
 - **`-analisa`**: Executes analysis and comparison between systems
 - **`-alta`**: Executes complete discharge routine (includes processing and cleanup)
-- **`-solicita`**: Executes complete request routine
+- **`-solicita`**: Executes complete request routine (with manual review via `-spa`)
+- **`-solicita-auto`**: Executes the same routine with no human interaction (uses `-spb` instead of `-spa`) — used in the automated cron cycle
 - **`-aihs`**: Executes complete AIH processing routine
 - **`-duplicados`**: Executes complete duplicate admission handling routine: `-eid` → `-td`
 - **`--all`**: Executes all main functions with interactive repetition
@@ -920,8 +929,11 @@ autoreg -analisa
 # Complete discharge routine (includes processing and cleanup)
 autoreg -alta
 
-# Complete request routine
+# Complete request routine (with manual review)
 autoreg -solicita
+
+# Complete request routine with no human interaction (used in cron)
+autoreg -solicita-auto
 
 # Complete AIH routine
 autoreg -aihs

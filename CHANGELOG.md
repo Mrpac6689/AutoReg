@@ -5,6 +5,20 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [9.9.0] - 2026-08
+
+### Adicionado
+- **Atalho `-solicita-auto` em `autoreg.py`**: versão sem interação humana da rotina de solicitação de AIH, para uso em cron. Sequência: `-spaa` → `-spb` → `-sia` → `-ssr` → `-snt`
+- **`solicita_pre_aih_bridge()` (`-spb`) em `solicita_pre_aih_bridge.py`**: substitui a etapa manual `-spa` no fluxo automático. Remove do CSV os registros que o `-spaa` deixou sem `link` (sem laudo compatível encontrado), sem interação com o navegador nem com o G-HOSP; esses registros ficam pendentes de revisão manual futura via `-spa`
+- **`autoreg/relatorio_execucao.py`**: monta um resumo (o que foi feito, o que não foi feito, erros com detalhe) para as rotinas de internação, alta e solicitação, a partir do estado final dos respectivos CSVs, e envia o resumo consolidado por WhatsApp (Evolution API, `config.ini` `[EVOLUTION-API]`)
+- **Coluna `resultado` em `codigos_internacao.csv`** (`interna_pacientes.py`, rotina `-ip`): cada ficha passa a registrar `'Internado com sucesso'` ou `'Erro: ...'`, no mesmo padrão já usado por `executa_alta_avancado.py` (`resultado_sisreg`), permitindo um resumo preciso da rotina de internação
+
+### Alterado
+- **`docker-entry-script.sh`**: o ciclo de cron passou a executar `-interna` → `-aihs` → `-solicita-auto` → `-alta` (antes só rodava `-interna` e `-alta`). O envio de log via WhatsApp trocou de um `tail -n 10` do log cru (com URL/chave/número de API hardcoded) para o resumo estruturado gerado por `autoreg/relatorio_execucao.py`, com credenciais lidas de `config.ini [EVOLUTION-API]`
+
+### Corrigido
+- **`execute_and_log()` em `docker-entry-script.sh`**: a checagem de falha usava `$?` **depois** do `rm` do arquivo temporário (que quase sempre retorna 0), então a detecção de falha de cada etapa nunca funcionava de fato. Corrigido para usar `${PIPESTATUS[0]}` logo após o pipe `... | tee ...`, capturando o exit code real do `python3 autoreg.py -<etapa>`
+
 ## [9.8.3] - 2026-06
 
 ### Corrigido

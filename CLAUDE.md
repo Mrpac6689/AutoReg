@@ -53,6 +53,7 @@ No build step, no test suite, no linter configuration exists in this project.
 - `logging.py` — logs to `~/AutoReg/autoreg.log` and stdout
 - `detecta_capchta.py` — centralizes CAPTCHA detection for all SISREG modules, supports automatic resolution via 2Captcha
 - `resolvedor_captcha.py` — handles automatic CAPTCHA solving using 2Captcha API (reCAPTCHA v2/v3, hCaptcha, image captchas)
+- `relatorio_execucao.py` — builds per-module (interna/alta/solicitação) execution summaries from final CSV state, accumulates them in `~/AutoReg/resumo_execucao.txt`, and sends the consolidated summary via WhatsApp (Evolution API, `config.ini` `[EVOLUTION-API]`). Called from `autoreg.py`'s `-interna`/`-alta`/`-solicita-auto` blocks and from `docker-entry-script.sh` (`python3 -m autoreg.relatorio_execucao`) at the end of the cron cycle
 
 **Legacy backup files** — `autoreg/*bkp.py` (e.g. `executa_altabkp.py`, `trata_restosbkp.py`, `trata_duplicadosbkp.py`) are old versions kept for reference. They are not imported or active — prefer the non-`bkp` versions.
 
@@ -65,6 +66,7 @@ No build step, no test suite, no linter configuration exists in this project.
 | `-interna` | `-eci` → `-ip` | Full admission cycle |
 | `-alta` | `-eis` → `-eiga` → `-maa` → `-eaa` | Full discharge cycle |
 | `-solicita` | `-spa` → `-sia` → `-ssr` → `-snt` | AIH solicitation |
+| `-solicita-auto` | `-spaa` → `-spb` → `-sia` → `-ssr` → `-snt` | AIH solicitation with no human interaction (cron-safe): `-spb` replaces `-spa`, dropping any record `-spaa` couldn't auto-approve |
 | `-aihs` | `-iga` → `-ign` → `-std` | AIH pre-processing (GHOSP notes → SISREG data) |
 | `--all` | `-interna` then `-alta` | Complete workflow (prompts for repetition count) |
 | *(no shortcut)* | `-eac` → `-eae` → `-eas` → `-ear` | Ambulatorial exam solicitation cycle (consult → extract → solicit → report) |
@@ -76,7 +78,7 @@ Individual flags follow the pattern: short flag (e.g. `-ip`) = `--interna-pacien
 
 ## Deployment
 
-Runs locally or inside a **Docker/KASM container** (KasmVNC remote desktop). The `cron-autoreg-docker.sh` script is the cron-facing entry: it copies `docker-entry-script.sh` into the running container and executes it with `DISPLAY=:1` for the Xvnc virtual display.
+Runs locally or inside a **Docker/KASM container** (KasmVNC remote desktop). The `cron-autoreg-docker.sh` script is the cron-facing entry: it copies `docker-entry-script.sh` into the running container and executes it with `DISPLAY=:1` for the Xvnc virtual display. Inside the container, `docker-entry-script.sh` runs the cycle `-interna` → `-aihs` → `-solicita-auto` → `-alta`, aborting and sending a WhatsApp summary if any step fails.
 
 ## CAPTCHA Handling
 
@@ -95,6 +97,8 @@ AutoReg includes automatic CAPTCHA detection and resolution:
 - **`-p2c` optional argument**: `-p2c` / `--pdf2csv` is the only flag that accepts an optional positional argument (path to a PDF file). All other flags are boolean.
 - **`-R` timing**: for `-alta`, production is registered *before* the sequence runs; for `-interna` and `-solicita` it is also registered before the sequence. This is a pre-registration pattern, not a post-registration one.
 - **Exam deduplication (`-eas`)**: records with a non-empty `solicitacao` column are skipped unless `solicita='s'` is set. The `solicita` column is cleared after successful processing.
+- **Bash exit codes through `tee`** (`docker-entry-script.sh`): after `cmd | tee file`, `$?` reflects `tee`'s exit code, not `cmd`'s — use `${PIPESTATUS[0]}` to check whether the piped command actually failed.
+- **Testing a single `autoreg/` module in isolation**: `from autoreg.X import Y` triggers `autoreg/__init__.py`, which eagerly imports every module in the package (Selenium, requests, bs4, 2captcha...) — even to test a pure-pandas module like `solicita_pre_aih_bridge.py`. Without the full `autoreg_env`, load the file directly via `importlib.util.spec_from_file_location(...)` or copy the needed files into a throwaway package instead.
 
 ## Important Files
 

@@ -114,7 +114,12 @@ def _substituir_procedimento(driver, novo_codigo,
                              campo_id='campo_personalizado_laudo_aih_procedimento_solicitado'):
     """
     Substitui o campo de procedimento pelo novo_codigo via autocomplete.
-    Tenta selecionar a primeira sugestão; se não aparecer, aceita com Tab.
+    Aguarda o menu de sugestões aparecer e seleciona a primeira opção por
+    teclado (seta para baixo + Enter) — a interação nativa do widget
+    jQuery UI Autocomplete, que não depende da estrutura interna do <li>
+    (às vezes <a>, às vezes <div>, conforme a versão do jQuery UI).
+    Se o menu não aparecer, cai para Tab como último recurso.
+    Confere ao final se o valor do campo contém o código digitado.
     campo_id: ID do campo (diferente entre formeletronicos e printernlaudos).
     """
     try:
@@ -123,20 +128,26 @@ def _substituir_procedimento(driver, novo_codigo,
         )
         proc_el.clear()
         proc_el.send_keys(novo_codigo)
-        time.sleep(2)
 
         try:
-            primeira_opcao = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable(
-                    (By.CSS_SELECTOR, '.ui-autocomplete .ui-menu-item:first-child a')
+            WebDriverWait(driver, 5).until(
+                EC.visibility_of_element_located(
+                    (By.CSS_SELECTOR, '.ui-autocomplete .ui-menu-item')
                 )
             )
-            primeira_opcao.click()
+            proc_el.send_keys(Keys.ARROW_DOWN)
+            proc_el.send_keys(Keys.ENTER)
         except TimeoutException:
             proc_el.send_keys(Keys.TAB)
 
         time.sleep(1)
-        print(f"   🔄 Campo procedimento atualizado para {novo_codigo}")
+        valor_final = proc_el.get_attribute('value') or ''
+        if novo_codigo not in valor_final:
+            print(f"   ⚠️  Campo procedimento não confirmou o código {novo_codigo} "
+                  f"(valor atual: {valor_final!r})")
+            return False
+
+        print(f"   🔄 Campo procedimento atualizado para {novo_codigo} → {valor_final!r}")
         return True
     except Exception as e:
         print(f"   ⚠️  Não foi possível substituir procedimento: {e}")
@@ -184,10 +195,22 @@ def _printernlaudos_vazio(driver, caminho_ghosp, ra):
         return True
 
 
+def _lembrete_ja_registrado(driver, texto):
+    """Retorna True se 'texto' já aparece em #paclembretes na página atual."""
+    try:
+        lembretes_elem = driver.find_element(By.ID, 'paclembretes')
+        return texto in (lembretes_elem.get_attribute('innerText') or '')
+    except NoSuchElementException:
+        return False
+
+
 def _inserir_nota_lembrete(driver, caminho_ghosp, ra, texto):
     """
-    Navega para formeletronicos e insere um lembrete no prontuário.
-    Retorna True se bem-sucedido, False em caso de falha.
+    Navega para formeletronicos e insere um lembrete no prontuário,
+    a menos que um lembrete com o mesmo texto já esteja registrado
+    (evita duplicidade em execuções repetidas do mesmo RA).
+    Retorna True se o lembrete já existia ou foi inserido com sucesso,
+    False em caso de falha ao inserir.
     """
     try:
         url = f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}"
@@ -197,6 +220,10 @@ def _inserir_nota_lembrete(driver, caminho_ghosp, ra, texto):
         if tratar_justificativa_acesso(driver):
             driver.get(url)
             time.sleep(1)
+
+        if _lembrete_ja_registrado(driver, texto):
+            print(f"   ℹ️  Nota '{texto}' já registrada para RA {ra} — não duplicando")
+            return True
 
         botao_lembrete = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable(

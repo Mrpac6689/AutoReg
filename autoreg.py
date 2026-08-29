@@ -36,6 +36,7 @@ from autoreg import solicita_inf_aih  # Importa a função solicita_inf_aih
 from autoreg import solicita_sisreg  # Importa a função solicita_sisreg
 from autoreg import solicita_nota  # Importa a função solicita_nota
 from autoreg import solicita_pre_aih_auto  # Importa a função solicita_pre_aih_auto
+from autoreg import solicita_pre_aih_bridge  # Importa a função solicita_pre_aih_bridge
 from autoreg import solicita_pre_aih  # Importa a função solicita_pre_aih
 from autoreg import consulta_solicitacao_sisreg  # Importa a função consulta_solicitacao_sisreg
 from autoreg import internados_ghosp_avancado  # Importa a função internados_ghosp_avancado
@@ -52,6 +53,7 @@ from autoreg import exames_ambulatoriais_consulta  # Importa a função exames_a
 from autoreg import motivo_alta_avancado  # Importa a função motivo_alta_avancado
 from autoreg import executa_alta_avancado  # Importa a função executa_alta_avancado
 from autoreg import producao_relatorio  # Registro de produção via AUTOREG-API
+from autoreg import relatorio_execucao  # Resumo de execução + envio WhatsApp
 
 # Dicionário com as funções e suas descrições
 FUNCOES = {
@@ -151,6 +153,10 @@ FUNCOES = {
         'func': solicita_pre_aih_auto,
         'desc': 'Pré-processa AIHs automaticamente (sem interação do usuário)'
     },
+    'solicita_pre_aih_bridge': {
+        'func': solicita_pre_aih_bridge,
+        'desc': 'Substitui a etapa manual -spa no fluxo automático (-solicita-auto)'
+    },
     'solicita_pre_aih': {
         'func': solicita_pre_aih,
         'desc': 'Extrai link para solicitação de aih do GHOSP'
@@ -238,6 +244,7 @@ FLAG_TO_FUNC = {
     '-especial-parallel':'ghosp_especial_parallel', '--especial-parallel': 'ghosp_especial_parallel',
     '-sia': 'solicita_inf_aih',                 '--solicita-inf-aih': 'solicita_inf_aih',
     '-spaa': 'solicita_pre_aih_auto',            '--solicita-pre-aih-auto': 'solicita_pre_aih_auto',
+    '-spb': 'solicita_pre_aih_bridge',           '--solicita-pre-aih-bridge': 'solicita_pre_aih_bridge',
     '-spa': 'solicita_pre_aih',                 '--solicita-pre-aih': 'solicita_pre_aih',
     '-ssr': 'solicita_sisreg',                  '--solicita-sisreg': 'solicita_sisreg',
     '-snt': 'solicita_nota',                    '--solicita-nota': 'solicita_nota',
@@ -302,6 +309,7 @@ FUNÇÕES DISPONÍVEIS:
         ('-especial-parallel', '--especial-parallel', 'ghosp_especial_parallel'),
         ('-sia', '--solicita-inf-aih', 'solicita_inf_aih'),
         ('-spaa', '--solicita-pre-aih-auto', 'solicita_pre_aih_auto'),
+        ('-spb', '--solicita-pre-aih-bridge', 'solicita_pre_aih_bridge'),
         ('-spa', '--solicita-pre-aih', 'solicita_pre_aih'),
         ('-ssr', '--solicita-sisreg', 'solicita_sisreg'),
         ('-snt', '--solicita-nota', 'solicita_nota'),
@@ -317,6 +325,7 @@ FUNÇÕES DISPONÍVEIS:
         ('-interna', '--interna', None),
         ('-alta', '--alta', None),
         ('-solicita', '--solicita', None),
+        ('-solicita-auto', '--solicita-auto', None),
         ('-aihs', '--aihs', None),
         ('-duplicados', '--duplicados', None),
         ('-R', '--registro-producao', None)
@@ -331,6 +340,8 @@ FUNÇÕES DISPONÍVEIS:
             desc = 'Executa sequência de alta: -eis -eiga -maa -eaa'
         elif short == '-solicita':
             desc = 'Executa rotina de Solicitação: -spa -sia -ssr -snt'
+        elif short == '-solicita-auto':
+            desc = 'Executa rotina de Solicitação sem interação: -spaa -spb -sia -ssr -snt'
         elif short == '-aihs':
             desc = 'Executa rotina de notas: -iga -ign -std'
         elif short == '-duplicados':
@@ -582,6 +593,8 @@ Exemplos de uso:
                        help='Extrai informações da AIH')
     parser.add_argument('-spaa', '--solicita-pre-aih-auto', action='store_true',
                        help='Pré-processa AIHs automaticamente (sem interação do usuário)')
+    parser.add_argument('-spb', '--solicita-pre-aih-bridge', action='store_true',
+                       help='Substitui a etapa manual -spa no fluxo automático (-solicita-auto)')
     parser.add_argument('-spa', '--solicita-pre-aih', action='store_true',
                        help='Extrai link para solicitação de aih do GHOSP')
     parser.add_argument('-ssr', '--solicita-sisreg', action='store_true',
@@ -613,6 +626,8 @@ Exemplos de uso:
                        help='Executa sequência de alta: -tat -ecsa -ea -ar -eid -td -clc')
     parser.add_argument('-solicita', '--solicita', action='store_true',
                        help='Executa rotina de Solicitação: -spa -sia -ssr -snt')
+    parser.add_argument('-solicita-auto', '--solicita-auto', action='store_true',
+                       help='Executa rotina de Solicitação sem interação: -spaa -spb -sia -ssr -snt')
     parser.add_argument('-aihs', '--aihs', action='store_true',
                        help='Executa rotina de notas: -iga -ign -std')
     parser.add_argument('-duplicados', '--duplicados', action='store_true',
@@ -649,6 +664,7 @@ Exemplos de uso:
                 break
         if args.registro_producao:
             producao_relatorio.registrar_producao('Internar Pacientes', 'codigos_internacao.csv')
+        relatorio_execucao.registrar_resumo(relatorio_execucao.resumo_interna())
         return
 
     if args.alta:
@@ -661,6 +677,7 @@ Exemplos de uso:
             if not executar_funcao(func_name):
                 print(f"❌ Parando execução devido ao erro em {func_name}")
                 break
+        relatorio_execucao.registrar_resumo(relatorio_execucao.resumo_alta())
         return
 
     if args.solicita:
@@ -675,6 +692,26 @@ Exemplos de uso:
                 break
             if i < len(seq):
                 time.sleep(1)
+        return
+
+    if args.solicita_auto:
+        if args.registro_producao:
+            producao_relatorio.registrar_producao('Solicitar Internações', 'internados_ghosp_avancado.csv')
+        print("🔄 Executando rotina de Solicitação Automática (-spaa -spb -sia -ssr -snt)...")
+        snapshots = {'inicial': relatorio_execucao.contar_linhas_csv('internados_ghosp_avancado.csv')}
+        seq = ['solicita_pre_aih_auto', 'solicita_pre_aih_bridge', 'solicita_inf_aih', 'solicita_sisreg', 'solicita_nota']
+        for i, func_name in enumerate(seq, 1):
+            print(f"\n[{i}/{len(seq)}] ", end="")
+            if not executar_funcao(func_name):
+                print(f"❌ Parando execução devido ao erro em {func_name}")
+                break
+            if func_name == 'solicita_pre_aih_auto':
+                snapshots['apos_spaa'] = relatorio_execucao.contar_linhas_csv('solicita_inf_aih.csv')
+            elif func_name == 'solicita_pre_aih_bridge':
+                snapshots['apos_bridge'] = relatorio_execucao.contar_linhas_csv('solicita_inf_aih.csv')
+            if i < len(seq):
+                time.sleep(1)
+        relatorio_execucao.registrar_resumo(relatorio_execucao.resumo_solicitacao(snapshots))
         return
 
     if args.aihs:

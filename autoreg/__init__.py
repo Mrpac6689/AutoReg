@@ -30,6 +30,7 @@ from .trata_altas import trata_altas
 from .limpa_cache import limpa_cache
 from .solicita_trata_dados import solicita_trata_dados
 from .solicita_pre_aih_auto import solicita_pre_aih_auto
+from .solicita_pre_aih_bridge import solicita_pre_aih_bridge
 from .solicita_pre_aih import solicita_pre_aih
 from .producao_ambulatorial import producao_ambulatorial
 from .producao_ambulatorial_dados import producao_ambulatorial_dados
