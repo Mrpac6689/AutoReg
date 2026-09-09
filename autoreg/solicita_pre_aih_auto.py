@@ -195,12 +195,28 @@ def _printernlaudos_vazio(driver, caminho_ghosp, ra):
         return True
 
 
-def _lembrete_ja_registrado(driver, texto):
-    """Retorna True se 'texto' já aparece em #paclembretes na página atual."""
+def _lembrete_ja_registrado(driver, caminho_ghosp, ra, texto):
+    """
+    Retorna True se 'texto' já aparece nos lembretes do paciente.
+
+    A checagem precisa ser feita em /pr/interns/{ra} — é lá que o campo
+    #paclembretes é de fato renderizado (mesmo padrão usado em
+    ghosp_nota.py/internados_ghosp_nota.py). Em /pr/formeletronicos esse
+    campo não existe, então checar ali sempre falhava silenciosamente
+    (NoSuchElementException → False) e duplicava a nota a cada execução.
+    """
     try:
-        lembretes_elem = driver.find_element(By.ID, 'paclembretes')
+        driver.get(f"{caminho_ghosp}:4002/pr/interns/{ra}")
+        time.sleep(1)
+        if tratar_justificativa_acesso(driver):
+            driver.get(f"{caminho_ghosp}:4002/pr/interns/{ra}")
+            time.sleep(1)
+
+        lembretes_elem = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, 'paclembretes'))
+        )
         return texto in (lembretes_elem.get_attribute('innerText') or '')
-    except NoSuchElementException:
+    except Exception:
         return False
 
 
@@ -213,6 +229,10 @@ def _inserir_nota_lembrete(driver, caminho_ghosp, ra, texto):
     False em caso de falha ao inserir.
     """
     try:
+        if _lembrete_ja_registrado(driver, caminho_ghosp, ra, texto):
+            print(f"   ℹ️  Nota '{texto}' já registrada para RA {ra} — não duplicando")
+            return True
+
         url = f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}"
         driver.get(url)
         time.sleep(1)
@@ -220,10 +240,6 @@ def _inserir_nota_lembrete(driver, caminho_ghosp, ra, texto):
         if tratar_justificativa_acesso(driver):
             driver.get(url)
             time.sleep(1)
-
-        if _lembrete_ja_registrado(driver, texto):
-            print(f"   ℹ️  Nota '{texto}' já registrada para RA {ra} — não duplicando")
-            return True
 
         botao_lembrete = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable(

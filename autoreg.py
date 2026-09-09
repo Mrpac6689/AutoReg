@@ -32,6 +32,10 @@ from autoreg import ghosp_nota  # Adicione este import
 from autoreg import ghosp_cns  # Importa a função ghosp_cns
 from autoreg import ghosp_especial  # Importa a função ghosp_especial
 from autoreg import ghosp_especial_parallel  # Importa a versão paralela
+from autoreg import especial_prepara
+from autoreg import especial_extrai
+from autoreg import especial_med_prepara
+from autoreg import especial_med_extrai
 from autoreg import solicita_inf_aih  # Importa a função solicita_inf_aih
 from autoreg import solicita_sisreg  # Importa a função solicita_sisreg
 from autoreg import solicita_nota  # Importa a função solicita_nota
@@ -145,6 +149,22 @@ FUNCOES = {
         'func': ghosp_especial_parallel,
         'desc': '[OBSOLETO — ver CHANGELOG.md] Extração paralela de dados personalizados do GHOSP (mais rápida)'
     },
+    'especial_prepara': {
+        'func': especial_prepara,
+        'desc': 'Extrai NOME/SETOR/DATA de um PDF de avaliações profissionais (gera saida_especial.csv)'
+    },
+    'especial_extrai': {
+        'func': especial_extrai,
+        'desc': 'Localiza no GHOSP o profissional e data/hora de cada avaliação de saida_especial.csv'
+    },
+    'especial_med_prepara': {
+        'func': especial_med_prepara,
+        'desc': 'Extrai RA/Internamento/Alta do PDF "Altas por período" (rc008) do G-HOSP (gera especial-med-resultado.csv)'
+    },
+    'especial_med_extrai': {
+        'func': especial_med_extrai,
+        'desc': 'Localiza no GHOSP o médico que deu alta (via RA) para cada linha de especial-med-resultado.csv'
+    },
     'solicita_inf_aih': {
         'func': solicita_inf_aih,
         'desc': 'Extrai informações da AIH'
@@ -242,6 +262,10 @@ FLAG_TO_FUNC = {
     '-ign': 'internados_ghosp_nota',            '--internados-ghosp-nota': 'internados_ghosp_nota',
     '-especial':         'ghosp_especial',          '--especial': 'ghosp_especial',
     '-especial-parallel':'ghosp_especial_parallel', '--especial-parallel': 'ghosp_especial_parallel',
+    '-especial-prepara': 'especial_prepara',        '--especial-prepara': 'especial_prepara',
+    '-especial-extrai':  'especial_extrai',         '--especial-extrai': 'especial_extrai',
+    '-especial-med-prepara': 'especial_med_prepara', '--especial-med-prepara': 'especial_med_prepara',
+    '-especial-med-extrai':  'especial_med_extrai',  '--especial-med-extrai': 'especial_med_extrai',
     '-sia': 'solicita_inf_aih',                 '--solicita-inf-aih': 'solicita_inf_aih',
     '-spaa': 'solicita_pre_aih_auto',            '--solicita-pre-aih-auto': 'solicita_pre_aih_auto',
     '-spb': 'solicita_pre_aih_bridge',           '--solicita-pre-aih-bridge': 'solicita_pre_aih_bridge',
@@ -315,6 +339,10 @@ FUNÇÕES DISPONÍVEIS:
         ('-eas', '--exames-ambulatorio-solicita', 'exames_ambulatorio_solicita'),
         ('-ear', '--exames-ambulatorio-relatorio', 'exames_ambulatorio_relatorio'),
         ('-eac', '--exames-ambulatoriais-consulta', 'exames_ambulatoriais_consulta'),
+        ('-especial-prepara', '--especial-prepara', 'especial_prepara'),
+        ('-especial-extrai', '--especial-extrai', 'especial_extrai'),
+        ('-especial-med-prepara', '--especial-med-prepara', 'especial_med_prepara'),
+        ('-especial-med-extrai', '--especial-med-extrai', 'especial_med_extrai'),
         ('-interna', '--interna', None),
         ('-alta', '--alta', None),
         ('-solicita', '--solicita', None),
@@ -574,6 +602,14 @@ Exemplos de uso:
                        help=argparse.SUPPRESS)  # OBSOLETO: ver CHANGELOG.md
     parser.add_argument('-especial-parallel', '--especial-parallel', action='store_true',
                        help=argparse.SUPPRESS)  # OBSOLETO: ver CHANGELOG.md
+    parser.add_argument('-especial-prepara', '--especial-prepara', nargs='?', metavar='PDF',
+                       help='Extrai NOME/SETOR/DATA de um PDF de avaliações profissionais (gera saida_especial.csv)')
+    parser.add_argument('-especial-extrai', '--especial-extrai', action='store_true',
+                       help='Localiza no GHOSP o profissional e data/hora de cada avaliação de saida_especial.csv')
+    parser.add_argument('-especial-med-prepara', '--especial-med-prepara', nargs='?', metavar='PDF',
+                       help='Extrai RA/Internamento/Alta do PDF "Altas por período" (rc008) do G-HOSP (gera especial-med-resultado.csv)')
+    parser.add_argument('-especial-med-extrai', '--especial-med-extrai', action='store_true',
+                       help='Localiza no GHOSP o médico que deu alta (via RA) para cada linha de especial-med-resultado.csv')
     parser.add_argument('-sia', '--solicita-inf-aih', action='store_true',
                        help='Extrai informações da AIH')
     parser.add_argument('-spaa', '--solicita-pre-aih-auto', action='store_true',
@@ -738,8 +774,8 @@ Exemplos de uso:
             continue
         if token in FLAG_TO_FUNC:
             func_name = FLAG_TO_FUNC[token]
-            if func_name == 'pdf2csv':
-                # -p2c pode receber um caminho opcional como próximo token
+            if func_name in ('pdf2csv', 'especial_prepara', 'especial_med_prepara'):
+                # -p2c e -especial-prepara podem receber um caminho opcional como próximo token
                 next_token = argv_tokens[idx + 1] if idx + 1 < len(argv_tokens) else None
                 if next_token and not next_token.startswith('-'):
                     funcoes_para_executar.append((func_name, next_token))
@@ -754,7 +790,7 @@ Exemplos de uso:
         print(f"🔄 Executando {total} função(ões) em sequência...")
         for i, (func_name, extra_arg) in enumerate(funcoes_para_executar, 1):
             print(f"\n[{i}/{total}] ", end="")
-            if func_name == 'pdf2csv' and extra_arg:
+            if func_name in ('pdf2csv', 'especial_prepara', 'especial_med_prepara') and extra_arg:
                 try:
                     FUNCOES[func_name]['func'](extra_arg)
                     print(f"✅ Concluído: {FUNCOES[func_name]['desc']}")
