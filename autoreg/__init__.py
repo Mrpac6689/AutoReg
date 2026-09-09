@@ -42,3 +42,7 @@ from .exames_ambulatoriais_consulta import exames_ambulatoriais_consulta
 from .extrai_internados_ghosp_avancado import extrai_internados_ghosp_avancado
 from .motivo_alta_avancado import motivo_alta_avancado
 from .executa_alta_avancado import executa_alta_avancado
+from .especial_prepara import especial_prepara
+from .especial_extrai import especial_extrai
+from .especial_med_prepara import especial_med_prepara
+from .especial_med_extrai import especial_med_extrai
