@@ -16,6 +16,7 @@ from selenium.webdriver.common.keys import Keys
 from autoreg.logging import setup_logging
 import logging
 
+setup_logging()
 
 CORRELACOES_PATH = os.path.expanduser('~/AutoReg/correlacoes_aih.json')
 
@@ -334,30 +335,37 @@ def _avaliar_laudos_printernlaudos(driver, correlacoes, conversoes):
             clinica_valor = clinica_el.get_attribute('value') or ''
 
             print(f"      Procedimento: {proc_codigo!r}  |  Clínica: {clinica_valor!r}")
+            logging.info(f"printernlaudos laudo {idx}/{len(linhas)}: proc={proc_codigo!r} clinica={clinica_valor!r}")
 
             # Conversão automática de código
             codigo_destino = _verificar_conversao(proc_codigo, clinica_valor, conversoes)
             if codigo_destino:
                 print(f"   🔄 Conversão: {proc_codigo} → {codigo_destino} ({clinica_valor})")
+                logging.info(f"printernlaudos: conversão {proc_codigo} → {codigo_destino} ({clinica_valor})")
                 if _substituir_procedimento(driver, codigo_destino, campo_id='susproc_descricao'):
                     return APROVADO  # modal fica aberto; _gravar_link clica Gravar
                 print(f"   ⚠️  Conversão falhou — tentando próximo laudo")
+                logging.warning(f"printernlaudos: conversão de {proc_codigo} para {codigo_destino} falhou")
                 _fechar_modal(driver)
                 continue
 
             # Compatibilidade direta
             if _proc_compativel(proc_codigo, correlacoes, clinica_valor):
                 print(f"   ✅ Compatível! Modal aberto para gravação.")
+                logging.info(f"printernlaudos: proc={proc_codigo!r} clinica={clinica_valor!r} compatível — APROVADO")
                 return APROVADO  # modal fica aberto; _gravar_link clica Gravar
 
             print(f"   ℹ️  Não compatível (proc={proc_codigo!r}, clínica={clinica_valor!r})")
+            logging.info(f"printernlaudos: proc={proc_codigo!r} clinica={clinica_valor!r} não compatível")
             _fechar_modal(driver)
 
         except Exception as e:
             print(f"   ⚠️  Erro ao verificar laudo {idx}: {e}")
+            logging.warning(f"printernlaudos: erro ao verificar laudo {idx}: {e}")
             _fechar_modal(driver)
 
     print(f"   ℹ️  Nenhum laudo em printernlaudos foi compatível")
+    logging.info("printernlaudos: nenhum laudo compatível — MANUAL")
     return MANUAL
 
 
@@ -378,6 +386,7 @@ def _avaliar_registro(driver, ra, correlacoes, conversoes, url_lista, caminho_gh
         print(f"   ℹ️  RA {ra}: formeletronicos sem registros — verificando printernlaudos...")
         if _printernlaudos_vazio(driver, caminho_ghosp, ra):
             print(f"   ℹ️  RA {ra}: printernlaudos também vazio → inserindo nota FALTA AIH")
+            logging.info(f"RA {ra}: sem laudo em formeletronicos nem printernlaudos — FALTA_AIH")
             _inserir_nota_lembrete(driver, caminho_ghosp, ra, 'FALTA AIH')
             return FALTA_AIH
         # printernlaudos tem registros — avalia laudos no modal
@@ -391,15 +400,18 @@ def _avaliar_registro(driver, ra, correlacoes, conversoes, url_lista, caminho_gh
         atendimento_ok = any(f"Atendimento: {ra}" in h5.text for h5 in h5_elements)
         if not atendimento_ok:
             print(f"   ℹ️  RA {ra}: nenhum Atendimento com este número")
+            logging.info(f"RA {ra}: nenhum Atendimento com este número — MANUAL")
             return MANUAL
     except Exception as e:
         print(f"   ⚠️  Erro ao verificar Atendimento: {e}")
+        logging.warning(f"RA {ra}: erro ao verificar Atendimento: {e} — MANUAL")
         return MANUAL
 
     # ── Condicional 2: Laudo AIH presente e compatível (ou conversível) ───────
     laudos_urls = _extrair_laudos_aih(driver)
     if not laudos_urls:
         print(f"   ℹ️  RA {ra}: nenhum Laudo AIH encontrado")
+        logging.info(f"RA {ra}: nenhum Laudo AIH encontrado — MANUAL")
         return MANUAL
     print(f"   📋 RA {ra}: {len(laudos_urls)} Laudo(s) AIH — verificando compatibilidade...")
 
@@ -422,27 +434,34 @@ def _avaliar_registro(driver, ra, correlacoes, conversoes, url_lista, caminho_gh
             clinica_valor = clinica_el.get_attribute('value') or ''
 
             print(f"      Procedimento: {proc_codigo!r}  |  Clínica: {clinica_valor!r}")
+            logging.info(f"RA {ra}: laudo AIH {idx}/{len(laudos_urls)}: proc={proc_codigo!r} clinica={clinica_valor!r}")
 
             # Conversão automática de código
             codigo_destino = _verificar_conversao(proc_codigo, clinica_valor, conversoes)
             if codigo_destino:
                 print(f"   🔄 Conversão: {proc_codigo} → {codigo_destino} ({clinica_valor})")
+                logging.info(f"RA {ra}: conversão {proc_codigo} → {codigo_destino} ({clinica_valor})")
                 if _substituir_procedimento(driver, codigo_destino):
                     return APROVADO
                 print(f"   ⚠️  Conversão falhou — tentando próximo laudo")
+                logging.warning(f"RA {ra}: conversão de {proc_codigo} para {codigo_destino} falhou")
                 continue
 
             # Compatibilidade direta
             if _proc_compativel(proc_codigo, correlacoes, clinica_valor):
                 print(f"   ✅ Compatível! URL de edição capturada.")
+                logging.info(f"RA {ra}: proc={proc_codigo!r} clinica={clinica_valor!r} compatível — APROVADO")
                 return APROVADO
 
             print(f"   ℹ️  Não compatível (proc={proc_codigo!r}, clínica={clinica_valor!r})")
+            logging.info(f"RA {ra}: proc={proc_codigo!r} clinica={clinica_valor!r} não compatível")
 
         except Exception as e:
             print(f"   ⚠️  Erro ao verificar Laudo AIH {idx}: {e}")
+            logging.warning(f"RA {ra}: erro ao verificar Laudo AIH {idx}: {e}")
 
     print(f"   ℹ️  RA {ra}: nenhum Laudo AIH compatível com as correlações")
+    logging.info(f"RA {ra}: nenhum Laudo AIH compatível com as correlações — MANUAL")
     driver.get(url_lista)
     time.sleep(1)
     return MANUAL
@@ -626,6 +645,7 @@ def solicita_pre_aih_auto():
 
                 elif resultado == FALTA_AIH:
                     print(f"   🗑️  RA {ra} removido do CSV (FALTA AIH registrada)")
+                    logging.info(f"RA {ra}: FALTA_AIH — nota registrada, removido do CSV")
                     df = df.drop(index=i).reset_index(drop=True)
                     df.to_csv(csv_solicita, index=False)
                     contagem_falta_aih += 1
@@ -633,11 +653,13 @@ def solicita_pre_aih_auto():
 
                 else:  # MANUAL
                     print(f"   ⏭️  RA {ra} encaminhado para revisão manual (-spa)")
+                    logging.info(f"RA {ra}: MANUAL — encaminhado para revisão manual (-spa)")
                     contagem_pulados += 1
                     i += 1
 
             except Exception as e:
                 print(f"❌ Erro ao processar RA {ra}: {e}")
+                logging.error(f"RA {ra}: erro ao processar — {e}")
                 contagem_pulados += 1
                 i += 1
 

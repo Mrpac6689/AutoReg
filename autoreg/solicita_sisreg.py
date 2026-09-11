@@ -118,7 +118,34 @@ def solicita_sisreg():
                     continue
 
                 print(f"\nProcessando registro {index + 1}/{len(df)}")
-                print(f"CNS a ser processado: {row['cns']}")
+
+                # Normaliza e valida o CNS antes de qualquer interação com o navegador:
+                # remove tudo que não for dígito (não só ".0"/pontos) e confere 11 ou 15
+                # dígitos, evitando o alert() do SISREG quando o valor já chega malformado
+                # do G-HOSP e dando um diagnóstico imediato e específico.
+                cns_original = str(row['cns'])
+                cns = ''.join(ch for ch in cns_original if ch.isdigit())
+                if len(cns) not in (11, 15):
+                    erro_msg = (
+                        f"CNS malformado após normalização: '{cns_original}' → '{cns}' "
+                        f"({len(cns)} dígitos, esperado 11 ou 15)"
+                    )
+                    print(f"⚠️  {erro_msg}")
+                    logging.warning(f"Registro {index + 1}: {erro_msg}")
+
+                    if 'erro' not in df.columns:
+                        df['erro'] = ''
+                    if 'revisar' not in df.columns:
+                        df['revisar'] = ''
+
+                    df.at[index, 'erro'] = erro_msg
+                    df.at[index, 'revisar'] = 'sim'
+                    df.to_csv(csv_path, index=False)
+                    print(f"Erro registrado no CSV: {erro_msg}")
+                    logging.info(f"Erro registrado no CSV para registro {index + 1}: {erro_msg}")
+                    continue
+
+                print(f"CNS a ser processado: {cns}")
 
                 # Navega até o menu de Internação
                 print("Acessando menu de Internação...")
@@ -151,11 +178,7 @@ def solicita_sisreg():
                 campo_cns = wait.until(
                     EC.presence_of_element_located((By.XPATH, "//*[@id='main_div']/form/center[1]/table/tbody/tr[2]/td[2]/input"))
                 )
-                # Trata o CNS removendo ".0" e pontos se existirem
-                cns = str(row['cns'])
-                if cns.endswith('.0'):
-                    cns = cns[:-2]
-                cns = cns.replace('.', '')
+                # CNS já normalizado e validado antes da navegação (ver acima)
                 campo_cns.clear()
                 campo_cns.send_keys(cns)
                 
@@ -209,6 +232,7 @@ def solicita_sisreg():
                 # Garante que tenha 10 dígitos com zero à esquerda
                 procedimento = procedimento.zfill(10)
                 print(f"Procedimento a ser inserido: {procedimento}")
+                logging.info(f"Registro {index + 1}: procedimento a ser inserido: {procedimento}")
 
                 # Localiza o campo de procedimento e preenche
                 print("Preenchendo código do procedimento...")
@@ -268,6 +292,7 @@ def solicita_sisreg():
                 # Obtém o tipo do CSV
                 tipo_clinica = row['tipo'].upper()  # Converte para maiúsculas para garantir
                 print(f"Tipo de clínica do paciente: {tipo_clinica}")
+                logging.info(f"Registro {index + 1}: tipo de clínica do paciente: {tipo_clinica}")
                 
                 # Localiza o segundo dropdown
                 print("Localizando segundo menu dropdown...")
