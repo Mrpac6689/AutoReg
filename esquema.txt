@@ -1,0 +1,80 @@
+ESQUEMA: solicita_inf_aih.py
+============================================================
+
+Selenium abre
+    |
+Lê ~/AutoReg/solicita_inf_aih.csv
+    | (precisa ter coluna 'link'; aborta se não encontrar o arquivo)
+    |
+Loga no G-HOSP (usuarios/sign_in)
+    |
+Para cada linha do CSV (coluna 'link')
+    |
+    Navega até o link
+        |
+        ┌───────────────────────────────────────────────────────┐
+        │ URL contém '/formeletronicos'?                        │
+        │                                                       │
+        │   Extrai prontuário (somente dígitos do texto do link)│
+        │   Extrai sinais e sintomas clínicos (campo de texto)  │
+        │   Extrai tipo de clínica (atributo value)             │
+        │   Extrai procedimento (captura número entre parênteses│
+        │       no value, ex: "COLECISTECTOMIA (0407010013)")   │
+        │   Extrai data de internamento (regex DD/MM/AAAA em    │
+        │       elemento oculto, lido via JavaScript)           │
+        │   Extrai médico responsável (texto via JS, sem label) │
+        └───────────────────────────────────────────────────────┘
+               |
+        ┌───────────────────────────────────────────────────────┐
+        │ URL contém '/printernlaudos'?                         │
+        │                                                       │
+        │   Extrai prontuário (igual ao padrão acima)           │
+        │   Passa o mouse sobre a última linha da tabela        │
+        │       de laudos (para revelar o botão "Editar")       │
+        │   Clica em "Editar" do laudo mais recente             │
+        │   Aguarda modal de edição carregar                    │
+        │   Extrai sinais e sintomas (campo no modal)           │
+        │   Extrai tipo de clínica (campo no modal)             │
+        │   Extrai procedimento (regex no value do campo)       │
+        │   Extrai médico (campo no modal)                      │
+        │   Extrai data de solicitação (campo no modal)         │
+        │   Fecha o modal (botão ✕ ou tecla ESC como fallback)  │
+        └───────────────────────────────────────────────────────┘
+               |
+        ┌───────────────────────────────────────────────────────┐
+        │ URL não bate com nenhum padrão?                       │
+        │   → Pula a linha (continue)                           │
+        └───────────────────────────────────────────────────────┘
+               |
+    Clica no nome do paciente (JS click — necessário para
+        disparar o evento Rails UJS data-remote="true")
+        |
+    Modal do paciente abre
+        |
+    Localiza o fieldset "Documentos"
+        |
+    Percorre pares dcampo/vcampo procurando CNS e CPF
+        |
+        ┌────────────────────────────────────────┐
+        │ CNS encontrado e não vazio?            │
+        │   → usa CNS                            │
+        │ CNS vazio?                             │
+        │   → usa CPF como CNS (fallback)        │
+        │ Ambos vazios?                          │
+        │   → CNS fica em branco                 │
+        └────────────────────────────────────────┘
+        |
+    Fecha modal do paciente (botão ✕ ou ESC como fallback)
+        |
+    Atualiza DataFrame com os dados extraídos:
+        prontuario, informacoes, tipo, procedimento,
+        cns, medico, data
+        |
+    Salva CSV imediatamente (progresso incremental — protege
+        contra falha nas próximas iterações)
+        |
+    (próxima linha do CSV)
+
+Selenium fecha
+    |
+Retorna DataFrame completo

@@ -1,0 +1,93 @@
+ESQUEMA: solicita_pre_aih.py
+============================================================
+
+=== ETAPA 1: PREPARAÇÃO DOS CSVs (antes do Selenium) ===
+
+Lê solicita_inf_aih.csv
+    | (se não existir: cria com colunas padrão ['ra', 'link'])
+    |
+Limpa solicita_inf_aih.csv (mantém só o cabeçalho)
+    |
+Lê internados_ghosp_avancado.csv
+    | (aborta se não encontrar ou se coluna 'internacao' não existir)
+    |
+Copia coluna 'internacao' → coluna 'ra' de solicita_inf_aih.csv
+    |
+Salva solicita_inf_aih.csv com os RAs carregados
+
+=== ETAPA 2: SELENIUM ===
+
+Selenium abre
+    |
+Loga no G-HOSP (users/sign_in)
+    |
+Relê solicita_inf_aih.csv (já com os RAs)
+    |
+Loop: while i < total de linhas do CSV
+    |
+    Navega para /pr/formeletronicos?intern_id={ra}
+        |
+        ┌─────────────────────────────────────────────────┐
+        │ Página de justificativa de acesso? (alta)       │
+        │   → trata justificativa e re-navega à mesma URL │
+        └─────────────────────────────────────────────────┘
+        |
+        ╔══════════════════════════════════════════════════════╗
+        ║  pause.flag existe em ~/AutoReg/?                    ║
+        ╠══════════════════════════════════════════════════════╣
+        ║  SIM — Modo frontend (controlado por flags)          ║
+        ║                                                      ║
+        ║  Loop: aguarda 1s e verifica flags                   ║
+        ║      |                                               ║
+        ║      ├─ grava.flag aparece?                          ║
+        ║      │   Remove grava.flag                           ║
+        ║      │   Captura URL atual do navegador              ║
+        ║      │   Salva URL na coluna 'link' do CSV           ║
+        ║      │   Clica "Gravar" (XPath dinâmico por URL*)   ║
+        ║      │   i += 1 → próximo registro                   ║
+        ║      │   Sai do loop de espera                       ║
+        ║      │                                               ║
+        ║      └─ pula.flag aparece?                           ║
+        ║          Remove pula.flag                            ║
+        ║          Remove linha i do DataFrame                 ║
+        ║          Salva CSV (sem a linha removida)            ║
+        ║          i NÃO avança (nova linha ocupa mesmo índice)║
+        ║          Sai do loop de espera                       ║
+        ╠══════════════════════════════════════════════════════╣
+        ║  NÃO — Modo terminal interativo                      ║
+        ║                                                      ║
+        ║  Aguarda keypress do usuário (sem ENTER)             ║
+        ║      (termios modo não-canônico; fallback: input())  ║
+        ║      |                                               ║
+        ║      ├─ 's' pressionado (Salvar)                     ║
+        ║      │   Captura URL atual do navegador              ║
+        ║      │   Salva URL na coluna 'link' do CSV           ║
+        ║      │   Clica "Gravar" (XPath dinâmico por URL*)   ║
+        ║      │   i += 1 → próximo registro                   ║
+        ║      │                                               ║
+        ║      ├─ 'p' pressionado (Pular)                      ║
+        ║      │   Remove linha i do DataFrame                 ║
+        ║      │   Salva CSV (sem a linha removida)            ║
+        ║      │   i NÃO avança (nova linha ocupa mesmo índice)║
+        ║      │                                               ║
+        ║      └─ outra tecla                                  ║
+        ║          Avisa "comando inválido"                    ║
+        ║          i += 1 (sem alterar CSV)                    ║
+        ╚══════════════════════════════════════════════════════╝
+        |
+    (próxima iteração do while)
+
+Fim do loop
+(sem driver.quit() explícito — navegador fica aberto)
+
+------------------------------------------------------------
+* Lógica do botão "Gravar" (igual nos dois modos):
+
+    URL contém '/formeletronicos'?
+        → XPath: //form[starts-with(@id,"edit_formeletronico_")]/div[2]/input
+
+    URL contém '/printernlaudos'?
+        → XPath: //form[starts-with(@id,"edit_hhlaudosaih_")]/div/div/input
+
+    Outro padrão?
+        → Avisa, não clica
