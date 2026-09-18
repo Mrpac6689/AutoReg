@@ -100,7 +100,15 @@ def solicita_nota():
             # Verifica linhas com dados faltantes
             if 'revisar' not in df.columns:
                 df['revisar'] = ''  # Cria a coluna 'revisar' se não existir
-            
+
+            # 'revisar' e 'erro' podem vir como float64 (NaN) do CSV quando
+            # todas as linhas estão vazias (ex.: recém-recriado por -spaa),
+            # travando df.at[]/df.loc[] com "Invalid value ... for dtype
+            # 'float64'". Força dtype object quando já existirem.
+            for col in ('revisar', 'erro'):
+                if col in df.columns:
+                    df[col] = df[col].astype(object)
+
             linhas_invalidas = df[df[colunas_necessarias].isna().any(axis=1)].index
             if not linhas_invalidas.empty:
                 print(f"⚠️ {len(linhas_invalidas)} linha(s) com dados faltantes serão ignoradas")

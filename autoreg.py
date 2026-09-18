@@ -39,6 +39,7 @@ from autoreg import especial_med_extrai
 from autoreg import solicita_inf_aih  # Importa a função solicita_inf_aih
 from autoreg import solicita_sisreg  # Importa a função solicita_sisreg
 from autoreg import solicita_nota  # Importa a função solicita_nota
+from autoreg import solicita_resgate  # Importa a função solicita_resgate
 from autoreg import solicita_pre_aih_auto  # Importa a função solicita_pre_aih_auto
 from autoreg import solicita_pre_aih_bridge  # Importa a função solicita_pre_aih_bridge
 from autoreg import solicita_pre_aih  # Importa a função solicita_pre_aih
@@ -189,6 +190,10 @@ FUNCOES = {
         'func': solicita_nota,
         'desc': 'Insere numero da solicitação SISREG na nota de prontuário'
     },
+    'solicita_resgate': {
+        'func': solicita_resgate,
+        'desc': 'Resgata solicitações com erro "Procedimento nao habilitado!" trocando pelo código residual e retomando -ssr/-snt'
+    },
     'consulta_solicitacao_sisreg': {
         'func': consulta_solicitacao_sisreg,
         'desc': 'Consulta o estado da Solicitação no sistema SISREG'
@@ -272,6 +277,7 @@ FLAG_TO_FUNC = {
     '-spa': 'solicita_pre_aih',                 '--solicita-pre-aih': 'solicita_pre_aih',
     '-ssr': 'solicita_sisreg',                  '--solicita-sisreg': 'solicita_sisreg',
     '-snt': 'solicita_nota',                    '--solicita-nota': 'solicita_nota',
+    '-sresg': 'solicita_resgate',               '--solicita-resgate': 'solicita_resgate',
     '-std': 'solicita_trata_dados',             '--solicita-trata-dados': 'solicita_trata_dados',
     '-css': 'consulta_solicitacao_sisreg',       '--consulta-solicitacao-sisreg': 'consulta_solicitacao_sisreg',
     '-pra': 'producao_ambulatorial',            '--producao-ambulatorial': 'producao_ambulatorial',
@@ -330,6 +336,7 @@ FUNÇÕES DISPONÍVEIS:
         ('-spa', '--solicita-pre-aih', 'solicita_pre_aih'),
         ('-ssr', '--solicita-sisreg', 'solicita_sisreg'),
         ('-snt', '--solicita-nota', 'solicita_nota'),
+        ('-sresg', '--solicita-resgate', 'solicita_resgate'),
         ('-std', '--solicita-trata-dados', 'solicita_trata_dados'),
         ('-css', '--consulta-solicitacao-sisreg', 'consulta_solicitacao_sisreg'),
         ('-pra', '--producao-ambulatorial', 'producao_ambulatorial'),
@@ -622,6 +629,8 @@ Exemplos de uso:
                        help='Executa Solicitações no Sistema SISREG')
     parser.add_argument('-snt', '--solicita-nota', action='store_true',
                        help='Insere numero da solicitação SISREG na nota de prontuário')
+    parser.add_argument('-sresg', '--solicita-resgate', action='store_true',
+                       help='Resgata solicitações com erro "Procedimento nao habilitado!" trocando pelo código residual e retomando -ssr/-snt')
     parser.add_argument('-std', '--solicita-trata-dados', action='store_true',
                        help='Ajusta CSV para tratamento das solicitações de AIH previamente ao SISREG')
     parser.add_argument('-css', '--consulta-solicitacao-sisreg', action='store_true',

@@ -29,6 +29,13 @@ def solicita_inf_aih():
         if 'link' not in df.columns:
             print("❌ Arquivo CSV não contém a coluna 'link'")
             return None
+        # Essas colunas podem vir como float64 (NaN) do CSV quando todas as
+        # linhas estão vazias (ex.: recém-recriado por -spaa) — força dtype
+        # object para permitir gravar texto/números extraídos sem erro.
+        for col in ('prontuario', 'informacoes', 'tipo', 'procedimento', 'cns', 'medico', 'data'):
+            if col not in df.columns:
+                df[col] = ''
+            df[col] = df[col].astype(object)
     except FileNotFoundError:
         print("❌ Arquivo solicita_inf_aih.csv não encontrado em ~/AutoReg")
         return None

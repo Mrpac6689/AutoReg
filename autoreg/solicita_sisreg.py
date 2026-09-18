@@ -443,6 +443,15 @@ def solicita_sisreg():
             df[col] = df[col].astype(str).apply(
                 lambda x: x[:-2] if x.endswith('.0') else x
             )
+
+    # Colunas de texto que este módulo grava via df.at[] — podem vir como
+    # float64 (NaN) do CSV quando todas as linhas estão vazias (ex.: recém-
+    # recriado por -spaa), travando a gravação com "Invalid value ... for
+    # dtype 'float64'". Força dtype object quando já existirem.
+    for col in ('erro', 'revisar', 'solsisreg', 'obs_substituicao'):
+        if col in df.columns:
+            df[col] = df[col].astype(object)
+
     df.to_csv(csv_path, index=False)
     print("CSV normalizado (removido '.0' de ra, cns e procedimento)")
 
@@ -469,6 +478,15 @@ def solicita_sisreg():
                 # do G-HOSP e dando um diagnóstico imediato e específico.
                 cns_original = str(row['cns'])
                 cns = ''.join(ch for ch in cns_original if ch.isdigit())
+                # CPF usado como CNS (quando o G-HOSP não tem CNS cadastrado,
+                # ver solicita_inf_aih.py) pode ter perdido o zero à esquerda
+                # numa releitura do CSV pelo pandas, que infere a coluna como
+                # número quando todos os valores parecem dígitos — 11 dígitos
+                # vira 10. Um CNS de verdade tem 15 dígitos e nunca começa
+                # com 0, então só o caso de 10 dígitos é inequivocamente um
+                # CPF truncado, seguro para reconstruir.
+                if len(cns) == 10:
+                    cns = cns.zfill(11)
                 if len(cns) not in (11, 15):
                     erro_msg = (
                         f"CNS malformado após normalização: '{cns_original}' → '{cns}' "
