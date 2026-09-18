@@ -30,3 +30,4 @@ internaut.py
 executa_autoreg.ps1
 *.deb
 /autoreg_6.5.0-1/
+.DS_Store
