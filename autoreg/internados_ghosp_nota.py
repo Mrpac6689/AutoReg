@@ -11,6 +11,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from autoreg.logging import setup_logging
 import logging
 def internados_ghosp_nota():
+    setup_logging()
     print("\n---===> ACESSO AO GHOSP NOTA <===---")
     usuario_ghosp, senha_ghosp, caminho_ghosp, _, _ = ler_credenciais()
 
@@ -95,6 +96,8 @@ def internados_ghosp_nota():
                 print(f"[{idx+1}/{total_prontuarios}] Acessando prontuário para código: {codigo}")
 
                 # Acessa diretamente a URL do histórico do paciente
+                if 'setor' not in df.columns:
+                    df['setor'] = ''
                 try:
                     driver.get(f"{caminho_ghosp}:4002/pr/interns/{codigo}")
 
@@ -107,35 +110,42 @@ def internados_ghosp_nota():
                         driver.get(f"{caminho_ghosp}:4002/pr/interns/{codigo}")
                         time.sleep(1)
 
-                    # Obtém o setor do span
-                    setor_span = WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/p[1]/span[2]'))
-                    )
-                    setor = setor_span.get_attribute('title')
-                    print(f"Setor encontrado: {setor}")
-
-                    # Adiciona ou atualiza o setor no DataFrame
-                    if 'setor' not in df.columns:
-                        df['setor'] = ''
-                    df.at[idx, 'setor'] = setor
-
-                    # Obtém a nota do paciente na mesma página
+                    # Obtém a nota do paciente (independente do setor abaixo, para que
+                    # uma falha na leitura do setor nunca apague uma nota já lida).
+                    # Usa textContent (não innerText): innerText só retorna texto
+                    # visível/renderizado e pode vir vazio, sem lançar exceção, se o
+                    # painel "DADOS IMPORTANTES" ainda não estiver com a classe "show"
+                    # aplicada no instante da leitura.
                     try:
                         lembretes_elem = WebDriverWait(driver, 10).until(
                             EC.presence_of_element_located((By.XPATH, '//*[@id="paclembretes"]'))
                         )
-                        lembretes_texto = lembretes_elem.get_attribute('innerText')
-                        lembretes_texto = lembretes_texto.replace('\n', ' ').replace('\r', ' ')
+                        lembretes_texto = lembretes_elem.get_attribute('textContent')
+                        lembretes_texto = lembretes_texto.replace('\n', ' ').replace('\r', ' ').strip()
                         print(f"Conteúdo de lembretes extraído")
                         df.at[idx, 'dados'] = lembretes_texto
                     except Exception as e:
                         print(f"Não foi possível extrair lembretes: {e}")
+                        logging.warning(f"Prontuário {codigo}: falha ao extrair lembretes (#paclembretes): {e}")
                         df.at[idx, 'dados'] = ''
+
+                    # Obtém o setor do span (XPath posicional, mais suscetível a
+                    # variações de layout entre pacientes/setores)
+                    try:
+                        setor_span = WebDriverWait(driver, 10).until(
+                            EC.presence_of_element_located((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/p[1]/span[2]'))
+                        )
+                        setor = setor_span.get_attribute('title')
+                        print(f"Setor encontrado: {setor}")
+                        df.at[idx, 'setor'] = setor
+                    except Exception as e:
+                        print(f"Não foi possível extrair o setor: {e}")
+                        logging.warning(f"Prontuário {codigo}: falha ao extrair setor: {e}")
+                        df.at[idx, 'setor'] = ''
 
                 except Exception as e:
                     print(f"Erro ao acessar prontuário {codigo}: {e}")
-                    if 'setor' not in df.columns:
-                        df['setor'] = ''
+                    logging.error(f"Erro ao acessar prontuário {codigo}: {e}")
                     df.at[idx, 'setor'] = ''
                     df.at[idx, 'dados'] = ''
 

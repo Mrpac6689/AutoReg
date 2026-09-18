@@ -185,6 +185,9 @@ def solicita_pre_aih():
 
         if 'link' not in df.columns:
             df['link'] = ''
+        # Coluna 'link' pode vir como float64 (NaN) do CSV quando todas as
+        # linhas estão vazias — força dtype object para permitir gravar URLs.
+        df['link'] = df['link'].astype(object)
 
         # Filtra apenas registros sem link (deixados pelo -spaa para revisão manual)
         df = df[df['link'].isna() | (df['link'] == '')].reset_index(drop=True)

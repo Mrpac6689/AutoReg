@@ -9,7 +9,7 @@ from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.justificativa_ghosp import tratar_justificativa_acesso
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.common.keys import Keys
@@ -53,30 +53,34 @@ def _buscar_clinica_chave(clinica_valor, dicionario):
 def _carregar_correlacoes():
     """
     Carrega e separa compatibilidades e conversões do arquivo JSON.
-    Retorna (correlacoes, conversoes) onde:
-      correlacoes = {"CLÍNICA X": {"prefixos": [...], "codigos": [...]}}
-      conversoes  = {"CLÍNICA X": {"destino": "XXXXXXXXXX", "codigos": [...], "sempre": bool}}
+    Retorna (correlacoes, conversoes, conversoes_clinica) onde:
+      correlacoes       = {"CLÍNICA X": {"prefixos": [...], "codigos": [...]}}
+      conversoes        = {"CLÍNICA X": {"destino": "XXXXXXXXXX", "codigos": [...], "sempre": bool}}
+      conversoes_clinica = {"CLÍNICA X": "CLÍNICA Y"}  — substitui o campo Clínica do
+                            Laudo AIH inteiro (ex.: CLÍNICA PEDIÁTRICA → CLÍNICA MÉDICA)
     """
     if not os.path.exists(CORRELACOES_PATH):
         print(f"⚠️  Arquivo de correlações não encontrado: {CORRELACOES_PATH}")
         print("   Formato: {\"TIPO CLÍNICA\": {\"prefixos\": [...], \"codigos\": [...]}}")
-        return {}, {}
+        return {}, {}, {}
     try:
         with open(CORRELACOES_PATH, 'r', encoding='utf-8') as f:
             dados = json.load(f)
         conversoes = dados.get('conversoes', {})
+        conversoes_clinica = dados.get('conversoes_clinica', {})
         correlacoes = {
             k: v for k, v in dados.items()
-            if not k.startswith('_') and k != 'conversoes'
+            if not k.startswith('_') and k not in ('conversoes', 'conversoes_clinica')
         }
         n_conv = sum(len(v.get('codigos', [])) for v in conversoes.values())
         n_sempre = sum(1 for v in conversoes.values() if v.get('sempre', False))
         print(f"   ✅ Correlações: {len(correlacoes)} clínica(s), "
-              f"{n_conv} conversão(ões) por código, {n_sempre} conversão(ões) universal(is)")
-        return correlacoes, conversoes
+              f"{n_conv} conversão(ões) por código, {n_sempre} conversão(ões) universal(is), "
+              f"{len(conversoes_clinica)} conversão(ões) de clínica")
+        return correlacoes, conversoes, conversoes_clinica
     except Exception as e:
         print(f"❌ Erro ao carregar correlacoes_aih.json: {e}")
-        return {}, {}
+        return {}, {}, {}
 
 
 def _proc_compativel(proc_codigo, correlacoes, clinica_valor):
@@ -107,6 +111,18 @@ def _verificar_conversao(proc_codigo, clinica_valor, conversoes):
     if any(proc_codigo.startswith(p) for p in entrada.get('prefixos', [])):
         return entrada.get('destino')
     return None
+
+
+def _verificar_conversao_clinica(clinica_valor, conversoes_clinica):
+    """
+    Retorna o nome da clínica de destino se clinica_valor deve ser convertida
+    (ex.: "CLÍNICA PEDIÁTRICA" → "CLÍNICA MÉDICA"), ou None se não há
+    conversão definida para essa clínica.
+    """
+    chave = _buscar_clinica_chave(clinica_valor, conversoes_clinica)
+    if chave is None:
+        return None
+    return conversoes_clinica[chave]
 
 
 # ── Ações no formulário ───────────────────────────────────────────────────────
@@ -155,6 +171,35 @@ def _substituir_procedimento(driver, novo_codigo,
         return False
 
 
+def _substituir_clinica(driver, nova_clinica,
+                        campo_id='campo_personalizado_laudo_aih_clinica'):
+    """
+    Seleciona nova_clinica no <select> do campo Clínica do Laudo AIH
+    (ex.: converte CLÍNICA PEDIÁTRICA → CLÍNICA MÉDICA). Usa Select, que
+    simula o clique na <option> e dispara o evento 'change' nativo do
+    <select> — necessário para o G-HOSP sincronizar o campo oculto
+    'campo_personalizado_laudo_aih_clinica_id' associado.
+    Só se aplica ao formeletronicos (o campo de clínica em printernlaudos é
+    um autocomplete de texto, não um <select>).
+    """
+    try:
+        select_el = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, campo_id))
+        )
+        Select(select_el).select_by_visible_text(nova_clinica)
+        time.sleep(1)
+        valor_final = select_el.get_attribute('value') or ''
+        if valor_final != nova_clinica:
+            print(f"   ⚠️  Campo clínica não confirmou {nova_clinica!r} (valor atual: {valor_final!r})")
+            return False
+
+        print(f"   🔄 Campo clínica atualizado para {valor_final!r}")
+        return True
+    except Exception as e:
+        print(f"   ⚠️  Não foi possível substituir clínica: {e}")
+        return False
+
+
 def _fechar_modal(driver):
     """Fecha o modal aberto (botão ✕ ou ESC como fallback)."""
     try:
@@ -177,6 +222,20 @@ def _formeletronicos_vazio(driver):
         return 'Nenhum registro' in lista.text
     except NoSuchElementException:
         return False
+
+
+def _expandir_formularios(driver):
+    """
+    Clica em 'Mostrar todos os formulários preenchidos' quando presente. Sem
+    isso, #lista-forms pode vir truncado e esconder um Laudo AIH mais antigo
+    do mesmo atendimento (ex.: um Laudo AIH incompatível mais recente aparece,
+    mas um compatível mais antigo do mesmo dia fica de fora da lista inicial).
+    """
+    try:
+        driver.find_element(By.LINK_TEXT, "Mostrar todos os formulários preenchidos").click()
+        time.sleep(2)
+    except NoSuchElementException:
+        pass
 
 
 def _printernlaudos_vazio(driver, caminho_ghosp, ra):
@@ -271,6 +330,54 @@ def _inserir_nota_lembrete(driver, caminho_ghosp, ra, texto):
 
 # ── Extração e avaliação de laudos ────────────────────────────────────────────
 
+def _data_internamento(driver):
+    """
+    Extrai a data de Internamento (dd/mm/aaaa) do painel do paciente na página
+    atual (bloco '#pac-dados-atend', campo com classe 'dados-atend-left' —
+    o único desse grupo com essa classe adicional, o que evita depender de
+    posição/índice).
+    """
+    try:
+        # #pac-dados-atend vem com "display: none" por padrão no G-HOSP —
+        # .text retorna vazio para elementos não visíveis, então lê-se o DOM
+        # via textContent (não depende de renderização/visibilidade).
+        texto = driver.find_element(
+            By.XPATH, '//div[@id="pac-dados-atend"]//div[contains(@class,"dados-atend-left")]'
+        ).get_attribute('textContent') or ''
+        match = re.search(r'(\d{2}/\d{2}/\d{4})', texto)
+        return match.group(1) if match else None
+    except Exception:
+        return None
+
+
+def _laudo_aih_data_compativel(driver, data_internamento):
+    """
+    Retorna True se existe algum 'Laudo AIH' na lista de formulários preenchido
+    na mesma data do internamento — cobre o caso em que o médico lança o AIH
+    em um Atendimento ambulatorial diferente do número do RA de internação,
+    mas na mesma data da admissão.
+    """
+    if not data_internamento:
+        return False
+    try:
+        items = driver.find_elements(By.CSS_SELECTOR, 'li.formlist__list-item')
+        for item in items:
+            try:
+                link_laudo = item.find_element(
+                    By.CSS_SELECTOR, 'div.formlist__list-info p a[data-remote="true"]'
+                )
+                if link_laudo.text.strip() != 'Laudo AIH':
+                    continue
+                info_texto = item.find_element(By.CSS_SELECTOR, 'div.formlist__list-info p').text
+                if data_internamento in info_texto:
+                    return True
+            except NoSuchElementException:
+                continue
+    except Exception:
+        pass
+    return False
+
+
 def _extrair_laudos_aih(driver):
     """Retorna lista de URLs de edição dos Laudos AIH da página formeletronicos (mais recentes primeiro)."""
     laudos = []
@@ -292,6 +399,24 @@ def _extrair_laudos_aih(driver):
     except Exception as e:
         print(f"   ⚠️  Erro ao extrair Laudos AIH da lista: {e}")
     return laudos
+
+
+def _existe_laudo_apac(driver):
+    """Retorna True se existe algum 'Laudo APAC' na lista de formulários da página atual."""
+    try:
+        items = driver.find_elements(By.CSS_SELECTOR, 'li.formlist__list-item')
+        for item in items:
+            try:
+                link = item.find_element(
+                    By.CSS_SELECTOR, 'div.formlist__list-info p a[data-remote="true"]'
+                )
+                if link.text.strip() == 'Laudo APAC':
+                    return True
+            except NoSuchElementException:
+                continue
+    except Exception:
+        pass
+    return False
 
 
 def _avaliar_laudos_printernlaudos(driver, correlacoes, conversoes):
@@ -371,7 +496,7 @@ def _avaliar_laudos_printernlaudos(driver, correlacoes, conversoes):
 
 # ── Avaliação principal por RA ────────────────────────────────────────────────
 
-def _avaliar_registro(driver, ra, correlacoes, conversoes, url_lista, caminho_ghosp):
+def _avaliar_registro(driver, ra, correlacoes, conversoes, conversoes_clinica, url_lista, caminho_ghosp):
     """
     Avalia se o RA pode ser processado automaticamente.
 
@@ -392,6 +517,11 @@ def _avaliar_registro(driver, ra, correlacoes, conversoes, url_lista, caminho_gh
         # printernlaudos tem registros — avalia laudos no modal
         return _avaliar_laudos_printernlaudos(driver, correlacoes, conversoes)
 
+    # Expande a lista de formulários antes de checar Atendimento/Laudo AIH,
+    # para não perder um Laudo AIH mais antigo do mesmo atendimento que a
+    # lista truncada por padrão esconderia.
+    _expandir_formularios(driver)
+
     # ── Condicional 1: Atendimento com o mesmo número do RA ──────────────────
     try:
         h5_elements = driver.find_elements(
@@ -399,9 +529,20 @@ def _avaliar_registro(driver, ra, correlacoes, conversoes, url_lista, caminho_gh
         )
         atendimento_ok = any(f"Atendimento: {ra}" in h5.text for h5 in h5_elements)
         if not atendimento_ok:
-            print(f"   ℹ️  RA {ra}: nenhum Atendimento com este número")
-            logging.info(f"RA {ra}: nenhum Atendimento com este número — MANUAL")
-            return MANUAL
+            # Alguns médicos lançam o Laudo AIH num Atendimento ambulatorial
+            # diferente do número do RA de internação. Antes de desistir,
+            # aceita esse laudo se a data de preenchimento bater com a data
+            # de internamento do próprio RA.
+            data_internamento = _data_internamento(driver)
+            if _laudo_aih_data_compativel(driver, data_internamento):
+                print(f"   ℹ️  RA {ra}: nenhum Atendimento com este número, mas há Laudo AIH "
+                      f"com data compatível ao internamento ({data_internamento}) — prosseguindo")
+                logging.info(f"RA {ra}: Atendimento não corresponde ao RA, mas Laudo AIH com "
+                             f"data compatível ao internamento ({data_internamento}) — prosseguindo")
+            else:
+                print(f"   ℹ️  RA {ra}: nenhum Atendimento com este número")
+                logging.info(f"RA {ra}: nenhum Atendimento com este número — MANUAL")
+                return MANUAL
     except Exception as e:
         print(f"   ⚠️  Erro ao verificar Atendimento: {e}")
         logging.warning(f"RA {ra}: erro ao verificar Atendimento: {e} — MANUAL")
@@ -410,10 +551,18 @@ def _avaliar_registro(driver, ra, correlacoes, conversoes, url_lista, caminho_gh
     # ── Condicional 2: Laudo AIH presente e compatível (ou conversível) ───────
     laudos_urls = _extrair_laudos_aih(driver)
     if not laudos_urls:
+        if _existe_laudo_apac(driver):
+            print(f"   ℹ️  RA {ra}: nenhum Laudo AIH, apenas Laudo APAC → tratando como FALTA AIH")
+            logging.info(f"RA {ra}: apenas Laudo APAC (sem Laudo AIH) — FALTA_AIH")
+            _inserir_nota_lembrete(driver, caminho_ghosp, ra, 'FALTA AIH')
+            return FALTA_AIH
         print(f"   ℹ️  RA {ra}: nenhum Laudo AIH encontrado")
         logging.info(f"RA {ra}: nenhum Laudo AIH encontrado — MANUAL")
         return MANUAL
     print(f"   📋 RA {ra}: {len(laudos_urls)} Laudo(s) AIH — verificando compatibilidade...")
+
+    todos_uti = True
+    algum_laudo_lido = False
 
     for idx, edit_url in enumerate(laudos_urls, 1):
         try:
@@ -435,6 +584,21 @@ def _avaliar_registro(driver, ra, correlacoes, conversoes, url_lista, caminho_gh
 
             print(f"      Procedimento: {proc_codigo!r}  |  Clínica: {clinica_valor!r}")
             logging.info(f"RA {ra}: laudo AIH {idx}/{len(laudos_urls)}: proc={proc_codigo!r} clinica={clinica_valor!r}")
+
+            # Conversão automática de clínica (ex.: CLÍNICA PEDIÁTRICA → CLÍNICA MÉDICA)
+            nova_clinica = _verificar_conversao_clinica(clinica_valor, conversoes_clinica)
+            if nova_clinica:
+                print(f"   🔄 Clínica: {clinica_valor} → {nova_clinica}")
+                logging.info(f"RA {ra}: conversão de clínica {clinica_valor} → {nova_clinica}")
+                if _substituir_clinica(driver, nova_clinica):
+                    clinica_valor = nova_clinica
+                else:
+                    print(f"   ⚠️  Conversão de clínica falhou — mantendo {clinica_valor!r}")
+                    logging.warning(f"RA {ra}: conversão de clínica para {nova_clinica} falhou")
+
+            algum_laudo_lido = True
+            if _normalizar_clinica(clinica_valor) != 'UTI':
+                todos_uti = False
 
             # Conversão automática de código
             codigo_destino = _verificar_conversao(proc_codigo, clinica_valor, conversoes)
@@ -459,6 +623,13 @@ def _avaliar_registro(driver, ra, correlacoes, conversoes, url_lista, caminho_gh
         except Exception as e:
             print(f"   ⚠️  Erro ao verificar Laudo AIH {idx}: {e}")
             logging.warning(f"RA {ra}: erro ao verificar Laudo AIH {idx}: {e}")
+            todos_uti = False  # falha ao ler — não dá pra confirmar que era UTI
+
+    if algum_laudo_lido and todos_uti:
+        print(f"   ℹ️  RA {ra}: todos os Laudo(s) AIH são de Clínica UTI → tratando como FALTA AIH")
+        logging.info(f"RA {ra}: todos os Laudo(s) AIH são de Clínica UTI — FALTA_AIH")
+        _inserir_nota_lembrete(driver, caminho_ghosp, ra, 'FALTA AIH')
+        return FALTA_AIH
 
     print(f"   ℹ️  RA {ra}: nenhum Laudo AIH compatível com as correlações")
     logging.info(f"RA {ra}: nenhum Laudo AIH compatível com as correlações — MANUAL")
@@ -518,7 +689,7 @@ def solicita_pre_aih_auto():
 
     # ── Carrega correlações e conversões ─────────────────────────────────────
     print("\n📋 Carregando correlações de procedimento × clínica...")
-    correlacoes, conversoes = _carregar_correlacoes()
+    correlacoes, conversoes, conversoes_clinica = _carregar_correlacoes()
     if not correlacoes:
         print("   ⚠️  Nenhuma correlação carregada — todos os registros irão para -spa")
 
@@ -618,6 +789,9 @@ def solicita_pre_aih_auto():
             return None
         if 'link' not in df.columns:
             df['link'] = ''
+        # Coluna 'link' pode vir como float64 (NaN) do CSV quando todas as
+        # linhas estão vazias — força dtype object para permitir gravar URLs.
+        df['link'] = df['link'].astype(object)
 
         i = 0
         while i < len(df):
@@ -635,7 +809,7 @@ def solicita_pre_aih_auto():
                     time.sleep(1)
 
                 resultado = _avaliar_registro(
-                    driver, ra, correlacoes, conversoes, url_lista, caminho_ghosp
+                    driver, ra, correlacoes, conversoes, conversoes_clinica, url_lista, caminho_ghosp
                 )
 
                 if resultado == APROVADO:

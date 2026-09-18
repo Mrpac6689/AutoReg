@@ -12,6 +12,10 @@
     "    codigos:  lista de códigos exatos que acionam a conversão.",
     "    prefixos: lista de prefixos que acionam a conversão.",
     "    sempre:   true = converte qualquer procedimento nesta clínica (ignora codigos/prefixos).",
+    "  'conversoes_clinica': mapa simples {clínica de origem: clínica de destino}.",
+    "    Substitui o próprio campo Clínica do Laudo AIH (select do formeletronicos)",
+    "    antes de aplicar as regras acima com a clínica já convertida.",
+    "    Ex.: CLÍNICA PEDIÁTRICA é sempre trocada por CLÍNICA MÉDICA no formulário.",
     "",
     "PRECEDÊNCIA em _verificar_conversao (conversão > compatibilidade):",
     "  1. sempre: true  →  converte independentemente do código",
@@ -60,5 +64,9 @@
       "destino": "0303170131",
       "sempre": true
     }
+  },
+
+  "conversoes_clinica": {
+    "CLÍNICA PEDIÁTRICA": "CLÍNICA MÉDICA"
   }
 }
