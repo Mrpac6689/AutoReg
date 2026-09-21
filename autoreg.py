@@ -552,6 +552,7 @@ def main():
     parser = argparse.ArgumentParser(
         description='AutoReg - Coordenador de Workflow para SISREG & G-HOSP',
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False,  # -h/--help é tratado manualmente abaixo (mostrar_informacoes())
         epilog="""
 Exemplos de uso:
   %(prog)s -eci                 Extrai códigos de internação
@@ -673,13 +674,25 @@ Exemplos de uso:
     parser.add_argument('-dir', '--directory', action='store_true',
                        help='Abre pasta ~/AutoReg para consulta de arquivos')
     
-    args = parser.parse_args()
-    
-    # Se nenhum argumento foi fornecido, mostra informações
+    # Sem argumentos: abre a TUI (interface de terminal). A ajuda completa
+    # (antes mostrada aqui) fica em -h/--help — ver add_help=False acima.
     if len(sys.argv) == 1:
+        try:
+            from tui.app import run as executar_tui
+        except ImportError:
+            print("⚠️  TUI indisponível — instale as dependências com 'pip install -r requirements.txt' "
+                  "(pacote 'textual'). Mostrando a ajuda:\n")
+            mostrar_informacoes()
+            return
+        executar_tui()
+        return
+
+    if '-h' in sys.argv or '--help' in sys.argv:
         mostrar_informacoes()
         return
-    
+
+    args = parser.parse_args()
+
     # Processa funções especiais (workflows compostos) primeiro
     if args.all:
         executar_todas()

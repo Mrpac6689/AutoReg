@@ -21,12 +21,82 @@ cp config.ini.example config.ini
 # Edit config.ini with real credentials
 
 # Run
-python autoreg.py --help           # Show all flags and descriptions
+python autoreg.py                  # No args: launches the TUI (see below)
+python autoreg.py -h                # Show all flags and descriptions (was the no-args behavior)
 python autoreg.py -interna         # Run full admission workflow
 python autoreg.py -alta            # Run full discharge workflow
 python autoreg.py -solicita -R     # Run AIH solicitation + record production
 python autoreg.py --all            # Full admission + discharge cycle
+
+# TUI can also be launched directly (equivalent to `python autoreg.py` with no args)
+python tui_app.py
 ```
+
+## TUI (`tui_app.py`, `tui/`)
+
+Running `python autoreg.py` with **no arguments** launches the TUI
+(`tui/app.py`'s `run()`, imported lazily inside `main()` — falls back to
+`mostrar_informacoes()` with a warning if `textual` isn't installed, e.g. in
+a minimal cron/Docker image). `python tui_app.py` does the same thing
+directly. Any explicit flag (including `-h`/`--help`, which now shows the
+`mostrar_informacoes()` menu directly — `add_help=False` disables argparse's
+own auto-generated help) still goes through the normal CLI path untouched.
+
+`tui_app.py`/`tui/` is a Textual-based terminal UI that wraps `autoreg.py` —
+an alternative to typing flags one at a time. It is strictly additive:
+nothing in `autoreg.py`'s CLI dispatch or in `autoreg/` was changed, and
+every action in the TUI runs as its own subprocess
+(`sys.executable -u autoreg.py <flags>`), exactly as if typed in a terminal.
+This isolates Selenium crashes from the TUI process, avoids
+`autoreg/logging.py`'s first-import-wins `logging.basicConfig()` quirk, and
+lets the TUI kill a job without killing itself. `-u` is required because the
+child's `print()` output would otherwise be fully block-buffered (stdout
+isn't a tty) and never stream live.
+
+- `tui/catalogo.py` — the single source of truth for what the TUI can run:
+  the 5 primary Dashboard buttons (`PRINCIPAIS`) and every other flag,
+  grouped by category (`CATEGORIAS`), each with the CSV(s) it's known to
+  touch in `~/AutoReg/`, whether it's interactive, whether it takes an
+  optional PDF path, and whether it's obsolete (hidden by default in the
+  Comandos screen, same philosophy as `argparse.SUPPRESS` in `autoreg.py`).
+  Keep this in sync manually if `autoreg.py`'s `FLAG_TO_FUNC`/`FUNCOES`
+  change.
+- `tui/runner.py` — `JobRunner`: spawns/streams/kills the subprocess, and
+  does best-effort regex parsing of the child's stdout (`[i/N]` step/record
+  counters, `Encontrad[ao]s N` totals) to drive a naive ETA. There is no
+  real progress/ETA concept in `autoreg.py` itself — treat this as a rough
+  estimate, not a guarantee.
+- **`-all` and `-cfg` are never invoked as raw subprocess flags** from the
+  TUI, because both block on an interactive `input()` inside `autoreg.py`
+  (`executar_todas()`'s repetition-count prompt, `editar_config()`'s editor
+  picker) and the TUI runs child processes with `stdin=DEVNULL`. Instead,
+  "Ciclo Completo" in the Comandos screen asks the repetition count via a
+  Textual modal and then runs `-interna`/`-alta` as separate subprocesses
+  N times; "Editar config" opens `config.ini` directly in `$EDITOR` via
+  `app.suspend()`.
+- **Pause/Retomar/Gravar/Pular controls** (Monitor screen, shown only while
+  running `-solicita` or `-spa`) drive the pause/resume protocol that
+  `autoreg/solicita_pre_aih.py` already implements via flag files in
+  `~/AutoReg/`: `pause.flag`, `grava.flag`, `pula.flag`. This is the same
+  mechanism a separate external frontend (`Autoreg-web`, referenced in
+  `docker-entry-script.sh`) already uses — the TUI doesn't touch Selenium.
+  That module has no `try/finally` around its main loop, so force-killing
+  it can leave an orphaned Chrome/chromedriver process; the TUI warns about
+  this specifically when stopping a job flagged as risky
+  (`catalogo.RISCO_CHROME_ORFAO`).
+- Screens (`tui/screens/`) are installed once via `App.install_screen()`
+  and navigated with `AutoRegApp.goto(name)`, which collapses the stack
+  back to the Dashboard before pushing the target — but Textual **unmounts
+  and recreates each screen's widget tree on every pop/push** (the screen
+  object persists, `compose()` runs again). Any handler that awaits
+  `push_screen_wait()` (confirmations, prompts) must be wrapped in
+  `@textual.work`, since plain `on_*`/action handlers aren't run inside a
+  Textual worker and `push_screen_wait()` raises `NoActiveWorker` otherwise.
+  Any code that reacts to `JobRunner` listener callbacks from a screen/
+  widget must guard with `self.is_mounted` and/or catch
+  `textual.css.query.NoMatches`, since a background job can emit an update
+  in the (asynchronous) gap between a screen's unmount and its listener
+  actually being removed.
 
 No build step, no test suite, no linter configuration exists in this project.
 
@@ -78,7 +148,7 @@ No build step, no test suite, no linter configuration exists in this project.
 | *(no shortcut)* | `-especial-prepara` → `-especial-extrai` | Targeted one-off pipeline: extract NOME/SETOR/DATA from a G-HOSP "Avaliações Profissionais" PDF report (e.g. `pr018.jasper`), then look up in G-HOSP which professional performed each evaluation and when; run individually, not part of any cron cycle |
 | *(no shortcut)* | `-especial-med-prepara` → `-especial-med-extrai` | Targeted one-off pipeline: extract RA + internamento/alta datetimes from a G-HOSP "Altas por período" PDF report (`rc008`), then look up in G-HOSP which physician signed the discharge for each RA; independent of the `-especial-prepara`/`-especial-extrai` pair above, run individually, not part of any cron cycle |
 
-Individual flags follow the pattern: short flag (e.g. `-ip`) = `--interna-pacientes`. Run `python autoreg.py` with no args to see all functions with descriptions.
+Individual flags follow the pattern: short flag (e.g. `-ip`) = `--interna-pacientes`. Run `python autoreg.py -h` (or `--help`) to see all functions with descriptions — running `python autoreg.py` with **no** args launches the TUI (`tui_app.py`) instead (see the TUI section below).
 
 ### `-especial-prepara` / `-especial-extrai`
 
@@ -96,7 +166,7 @@ A second, independent one-off pipeline — shares no code or CSV with `-especial
 
 ## Obsolete Flags
 
-These flags still work if invoked directly (their `.py` files and `FUNCOES`/`FLAG_TO_FUNC` entries are untouched — kept for historical reference), but are hidden from `--help` and from the no-args menu (`argparse.SUPPRESS`, removed from `mostrar_informacoes()`'s `flags` list). See `CHANGELOG.md` for the version each was deprecated in.
+These flags still work if invoked directly (their `.py` files and `FUNCOES`/`FLAG_TO_FUNC` entries are untouched — kept for historical reference), but are hidden from `-h`/`--help` (`argparse.SUPPRESS`, removed from `mostrar_informacoes()`'s `flags` list — note `add_help=False`: argparse's own `-h`/`--help` is disabled and `main()` calls `mostrar_informacoes()` directly when `-h`/`--help` is passed, since no-args now launches the TUI instead of this menu). See `CHANGELOG.md` for the version each was deprecated in.
 
 | Flag | Reason |
 |------|--------|
