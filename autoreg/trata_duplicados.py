@@ -57,16 +57,19 @@ def alta_duplicados(duplicadas_path):
         df = pd.read_csv(duplicadas_path, encoding='utf-8')
         if 'CODIGO' not in df.columns:
             print("Arquivo não possui coluna 'CODIGO'.")
+            logging.warning("Alta de duplicados: arquivo não possui coluna 'CODIGO' — nada a fazer.")
             return
 
         pacientes_validos = df[df['CODIGO'].notna() & (df['CODIGO'].astype(str).str.strip() != '')]
         if pacientes_validos.empty:
             print("Nenhum código válido para dar alta.")
+            logging.info("Alta de duplicados: nenhum código válido para dar alta.")
             return
 
         print(f"📋 {len(pacientes_validos)} ficha(s) para alta.")
     except Exception as e:
         print(f"Erro na leitura inicial: {e}")
+        logging.error(f"Alta de duplicados: erro na leitura inicial do CSV: {e}")
         return
 
     if 'resultado_alta' not in df.columns:
@@ -167,16 +170,19 @@ def cod_inter_duplicado(duplicadas_path):
         df = pd.read_csv(duplicadas_path)
         if 'DUPLICADOS' not in df.columns:
             print("Coluna 'DUPLICADOS' não encontrada.")
+            logging.warning("Busca de CODINTERNA: coluna 'DUPLICADOS' não encontrada — nada a fazer.")
             return
 
         nomes_duplicados = df['DUPLICADOS'].dropna().astype(str).str.strip().tolist()
         if not nomes_duplicados:
             print("Nenhum nome duplicado para buscar.")
+            logging.info("Busca de CODINTERNA: nenhum nome duplicado para buscar.")
             return
 
         print(f"📋 Buscando códigos para {len(nomes_duplicados)} paciente(s).")
     except Exception as e:
         print(f"Erro ao ler CSV: {e}")
+        logging.error(f"Busca de CODINTERNA: erro ao ler CSV: {e}")
         return
 
     codigos_por_nome = {}
@@ -199,39 +205,56 @@ def cod_inter_duplicado(duplicadas_path):
         nomes_restantes = set(n.upper() for n in nomes_duplicados)
 
         while nomes_restantes:
-            # Verifica se há CAPTCHA antes de processar
-            resultado_captcha = detecta_captcha(navegador)
-            if resultado_captcha != 'ok':
-                print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando processamento.")
-                logging.error(f"Processamento abortado por CAPTCHA não resolvido: {resultado_captcha}")
-                break
-
-            linhas = navegador.find_elements(By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]")
-            for linha in linhas:
-                try:
-                    nome = linha.find_element(By.XPATH, "./td[2]").text.strip().upper()
-                    if nome in nomes_restantes:
-                        ficha_onclick = linha.get_attribute("onclick")
-                        if ficha_onclick:
-                            ficha = ficha_onclick.split("'")[1]
-                            codigos_por_nome[nome] = ficha
-                            nomes_restantes.discard(nome)
-                            print(f"   ✅ Código encontrado: {nome} -> {ficha}")
-                except:
-                    continue
-
-            if not nomes_restantes:
-                break
-
             try:
-                prox = navegador.find_element(By.XPATH, "//a[contains(@onclick, 'exibirPagina')]/img[@alt='Proxima']")
-                if prox.is_displayed():
-                    prox.click()
-                    time.sleep(3)
-                else:
+                # Verifica se há CAPTCHA antes de processar
+                resultado_captcha = detecta_captcha(navegador)
+                if resultado_captcha != 'ok':
+                    print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando processamento.")
+                    logging.error(f"Processamento abortado por CAPTCHA não resolvido: {resultado_captcha}")
                     break
-            except NoSuchElementException:
-                print("Sem mais páginas para pesquisar.")
+
+                linhas = navegador.find_elements(By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]")
+                for linha in linhas:
+                    try:
+                        nome = linha.find_element(By.XPATH, "./td[2]").text.strip().upper()
+                        if nome in nomes_restantes:
+                            ficha_onclick = linha.get_attribute("onclick")
+                            if ficha_onclick:
+                                ficha = ficha_onclick.split("'")[1]
+                                codigos_por_nome[nome] = ficha
+                                nomes_restantes.discard(nome)
+                                print(f"   ✅ Código encontrado: {nome} -> {ficha}")
+                    except Exception:
+                        continue
+
+                if not nomes_restantes:
+                    break
+
+                try:
+                    prox = navegador.find_element(By.XPATH, "//a[contains(@onclick, 'exibirPagina')]/img[@alt='Proxima']")
+                    if prox.is_displayed():
+                        prox.click()
+                        time.sleep(3)
+                    else:
+                        break
+                except NoSuchElementException:
+                    print("Sem mais páginas para pesquisar.")
+                    break
+            except Exception as e:
+                # Uma falha do Selenium numa única página (sessão instável,
+                # elemento morto após navegação, etc.) não deve descartar os
+                # códigos já encontrados nas páginas anteriores — registra e
+                # para a busca, preservando o que já foi achado até aqui em
+                # vez de deixar o erro subir e zerar tudo.
+                print(
+                    f"   ⚠️ Falha ao processar página da busca "
+                    f"(mantendo {len(codigos_por_nome)}/{len(nomes_duplicados)} já encontrado(s)): {e}"
+                )
+                logging.warning(
+                    f"Busca de CODINTERNA interrompida por falha numa página "
+                    f"(mantendo {len(codigos_por_nome)}/{len(nomes_duplicados)} já encontrado(s), "
+                    f"faltam: {sorted(nomes_restantes)}): {e}"
+                )
                 break
 
         if nomes_restantes:
@@ -272,16 +295,23 @@ def interna_duplicados(duplicadas_path):
         df = pd.read_csv(duplicadas_path)
         if 'CODINTERNA' not in df.columns:
             print("Coluna CODINTERNA não encontrada.")
+            logging.warning("Internação de duplicados: coluna CODINTERNA não encontrada — nada a internar.")
             return
 
         df_validos = df[df['CODINTERNA'].notna() & (df['CODINTERNA'].astype(str).str.strip() != '')]
         if df_validos.empty:
             print("Nenhum código para internar.")
+            logging.warning(
+                "Internação de duplicados: nenhum CODINTERNA válido em internacoes_duplicadas.csv "
+                "— fase encerrada sem abrir o navegador (verifique se a busca de códigos "
+                "anterior encontrou algum resultado)."
+            )
             return
 
         print(f"📋 {len(df_validos)} ficha(s) para internar.")
     except Exception as e:
         print(f"Erro ao ler CSV: {e}")
+        logging.error(f"Internação de duplicados: erro ao ler CSV: {e}")
         return
 
     if 'resultado_internacao' not in df.columns:
