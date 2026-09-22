@@ -10,7 +10,11 @@ from autoreg.solicita_nota import solicita_nota
 
 setup_logging()
 
-CORRELACOES_PATH = os.path.expanduser('~/AutoReg/correlacoes_aih.json')
+# Mesmo arquivo (dentro da árvore do projeto, versionado no git) que -spaa usa
+# — ver comentário em solicita_pre_aih_auto.py.
+CORRELACOES_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'correlacoes_aih.json'
+)
 ERRO_ALVO = 'Procedimento nao habilitado!'
 
 

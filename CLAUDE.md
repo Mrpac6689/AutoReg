@@ -210,6 +210,7 @@ AutoReg includes automatic CAPTCHA detection and resolution:
 |------|---------|
 | `config.ini` | Runtime credentials — **gitignored**, never commit |
 | `config.ini.example` | Template for `config.ini` (includes `[2CAPTCHA]` section) |
+| `correlacoes_aih.json` | Procedure×clinic correlation/conversion rules for `-spaa` (`solicita_pre_aih_auto.py`) and `-sresg` (`solicita_resgate.py`) — lives in the project root next to `autoreg.py` and **is committed to git**, unlike other `~/AutoReg` runtime data, because it's tuned over time through real use and must survive a machine loss. Both modules resolve its path from `__file__` (two `dirname()` calls up from `autoreg/`), not from `~/AutoReg` |
 | `autoreg/__init__.py` | Exports all public functions (source of truth for available API) |
 | `~/AutoReg/*.csv` | Runtime data files (inter-module exchange, not in repo) |
 | `~/AutoReg/autoreg.log` | Runtime log file |

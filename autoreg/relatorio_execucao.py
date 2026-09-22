@@ -161,7 +161,8 @@ def resumo_solicitacao(snapshots):
     linhas = ["📨 *SOLICITAÇÃO DE AIH*", f"📋 {inicial} internação(ões) avaliada(s)"]
     linhas.append(f"✅ {sucesso} solicitação(ões) concluída(s) com sucesso")
     if falta_aih > 0:
-        linhas.append(f"📝 {falta_aih} sem laudo disponível (nota 'FALTA AIH' registrada no G-HOSP)")
+        linhas.append(f"📝 {falta_aih} removido(s) do fluxo — sem laudo disponível ou Clínica "
+                       f"Pediátrica/solicitação externa (nota registrada no G-HOSP)")
     if manual_pendente > 0:
         linhas.append(f"⏭️ {manual_pendente} pendente(s) de revisão manual (sem laudo compatível — rodar -spa)")
 

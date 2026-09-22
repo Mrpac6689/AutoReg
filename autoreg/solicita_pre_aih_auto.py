@@ -18,12 +18,18 @@ import logging
 
 setup_logging()
 
-CORRELACOES_PATH = os.path.expanduser('~/AutoReg/correlacoes_aih.json')
+# Dentro da árvore do projeto (não em ~/AutoReg, que é área efêmera de dados de
+# execução) para que essas correlações — construídas e ajustadas ao longo do
+# uso real do sistema — sejam versionadas no git e não se percam com a máquina.
+CORRELACOES_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'correlacoes_aih.json'
+)
 
 # Valores de retorno de _avaliar_registro
 APROVADO   = 'aprovado'    # link capturado e gravado
 MANUAL     = 'manual'      # sem condição satisfeita → linha fica para -spa
 FALTA_AIH  = 'falta_aih'  # sem laudo em lugar nenhum → nota inserida + linha removida
+IGNORAR_PEDIATRICA = 'ignorar_pediatrica'  # laudo(s) só de Clínica Pediátrica → nota inserida + linha removida
 
 
 # ── Normalização e lookup ─────────────────────────────────────────────────────
@@ -501,9 +507,11 @@ def _avaliar_registro(driver, ra, correlacoes, conversoes, conversoes_clinica, u
     Avalia se o RA pode ser processado automaticamente.
 
     Retorna:
-      APROVADO   — Laudo compatível (ou convertido) encontrado; driver na página/modal de edição.
-      FALTA_AIH  — Sem laudo em formulários nem em printernlaudos; nota inserida.
-      MANUAL     — Nenhuma condição satisfeita; linha fica para -spa.
+      APROVADO           — Laudo compatível (ou convertido) encontrado; driver na página/modal de edição.
+      FALTA_AIH          — Sem laudo em formulários nem em printernlaudos; nota inserida.
+      IGNORAR_PEDIATRICA — Laudo(s) AIH exclusivamente de Clínica Pediátrica (solicitação
+                           é externa ao SISREG, não deve ser feita); nota inserida.
+      MANUAL             — Nenhuma condição satisfeita; linha fica para -spa.
     """
 
     # ── Sem nenhum registro em formeletronicos ────────────────────────────────
@@ -562,6 +570,7 @@ def _avaliar_registro(driver, ra, correlacoes, conversoes, conversoes_clinica, u
     print(f"   📋 RA {ra}: {len(laudos_urls)} Laudo(s) AIH — verificando compatibilidade...")
 
     todos_uti = True
+    todos_pediatrica = True
     algum_laudo_lido = False
 
     for idx, edit_url in enumerate(laudos_urls, 1):
@@ -585,7 +594,19 @@ def _avaliar_registro(driver, ra, correlacoes, conversoes, conversoes_clinica, u
             print(f"      Procedimento: {proc_codigo!r}  |  Clínica: {clinica_valor!r}")
             logging.info(f"RA {ra}: laudo AIH {idx}/{len(laudos_urls)}: proc={proc_codigo!r} clinica={clinica_valor!r}")
 
-            # Conversão automática de clínica (ex.: CLÍNICA PEDIÁTRICA → CLÍNICA MÉDICA)
+            # Clínica Pediátrica não é mais convertida para Clínica Médica: a AIH é
+            # solicitada externamente ao SISREG, não deve ser solicitada por aqui.
+            # O laudo é descartado, mas outros laudos do mesmo RA (se houver) ainda
+            # são avaliados normalmente.
+            if _normalizar_clinica(clinica_valor) == 'CLINICA PEDIATRICA':
+                print(f"   🚫 Clínica Pediátrica — não deve ser solicitada (Solicitação Externa)")
+                logging.info(f"RA {ra}: laudo AIH de Clínica Pediátrica — ignorado")
+                algum_laudo_lido = True
+                todos_uti = False
+                continue
+            todos_pediatrica = False
+
+            # Conversão automática de clínica (ex.: CLÍNICA GERIÁTRICA (IDOSO) → CLÍNICA MÉDICA)
             nova_clinica = _verificar_conversao_clinica(clinica_valor, conversoes_clinica)
             if nova_clinica:
                 print(f"   🔄 Clínica: {clinica_valor} → {nova_clinica}")
@@ -624,6 +645,12 @@ def _avaliar_registro(driver, ra, correlacoes, conversoes, conversoes_clinica, u
             print(f"   ⚠️  Erro ao verificar Laudo AIH {idx}: {e}")
             logging.warning(f"RA {ra}: erro ao verificar Laudo AIH {idx}: {e}")
             todos_uti = False  # falha ao ler — não dá pra confirmar que era UTI
+
+    if algum_laudo_lido and todos_pediatrica:
+        print(f"   ℹ️  RA {ra}: todos os Laudo(s) AIH são de Clínica Pediátrica → ignorando (Solicitação Externa)")
+        logging.info(f"RA {ra}: todos os Laudo(s) AIH são de Clínica Pediátrica — IGNORAR_PEDIATRICA")
+        _inserir_nota_lembrete(driver, caminho_ghosp, ra, 'Aih de Pediatria - Solicitação Externa')
+        return IGNORAR_PEDIATRICA
 
     if algum_laudo_lido and todos_uti:
         print(f"   ℹ️  RA {ra}: todos os Laudo(s) AIH são de Clínica UTI → tratando como FALTA AIH")
@@ -758,6 +785,7 @@ def solicita_pre_aih_auto():
     contagem_aprovados  = 0
     contagem_pulados    = 0
     contagem_falta_aih  = 0
+    contagem_pediatrica = 0
 
     try:
         print("Iniciando o Chromedriver...")
@@ -825,6 +853,14 @@ def solicita_pre_aih_auto():
                     contagem_falta_aih += 1
                     # Não incrementa i: próxima linha agora ocupa este índice
 
+                elif resultado == IGNORAR_PEDIATRICA:
+                    print(f"   🗑️  RA {ra} removido do CSV (Clínica Pediátrica — Solicitação Externa)")
+                    logging.info(f"RA {ra}: IGNORAR_PEDIATRICA — nota registrada, removido do CSV")
+                    df = df.drop(index=i).reset_index(drop=True)
+                    df.to_csv(csv_solicita, index=False)
+                    contagem_pediatrica += 1
+                    # Não incrementa i: próxima linha agora ocupa este índice
+
                 else:  # MANUAL
                     print(f"   ⏭️  RA {ra} encaminhado para revisão manual (-spa)")
                     logging.info(f"RA {ra}: MANUAL — encaminhado para revisão manual (-spa)")
@@ -849,6 +885,7 @@ def solicita_pre_aih_auto():
     print(f"\n✅ Processamento automático concluído!")
     print(f"   Aprovados automaticamente : {contagem_aprovados}")
     print(f"   FALTA AIH (nota inserida) : {contagem_falta_aih}")
+    print(f"   Clínica Pediátrica (ignorados, nota inserida): {contagem_pediatrica}")
     print(f"   Encaminhados para -spa    : {contagem_pulados}")
 
     return df
