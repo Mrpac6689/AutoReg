@@ -24,15 +24,16 @@ em sistemas hospitalares SISREG e G-HOSP. Esta TUI é uma interface por cima
 do autoreg.py — cada comando roda como um subprocesso próprio, exatamente
 como se você tivesse digitado a flag no terminal.
 
-[b]OS 5 BOTÕES PRINCIPAIS (Dashboard)[/b]
+[b]OS 6 BOTÕES PRINCIPAIS (Dashboard)[/b]
   Interna                    -interna         -eci → -ip
   Alta                       -alta            -eis → -eiga → -maa → -eaa
   Trata Duplicados           -td              extração + tratamento de duplicados
   Busca AIHs não solicitadas -aihs            -iga → -ign → -std
-  Solicita AIHs              -solicita        -spaa → -spa → -sia → -ssr → -snt
+  Solicita AIHs (manual)     -solicita        -spaa → -spa → -sia → -ssr → -snt
+  Solicita AIHs (automática) -solicita-auto   -spaa → -spb → -sia → -ssr → -snt
 
 [b]TELAS[/b]
-  Dashboard   Início: banner, estado do sistema, os 5 botões principais.
+  Dashboard   Início: banner, estado do sistema, os 6 botões principais.
   Comandos    Catálogo completo das demais flags, por categoria, com filtro
               de texto e opção de mostrar flags obsoletas.
   Monitor     Acompanha o comando em execução: passo do workflow, progresso
@@ -41,12 +42,15 @@ como se você tivesse digitado a flag no terminal.
   Logs        autoreg.log (com filtro por texto/nível), saída bruta do
               último job, e o resumo_execucao.txt da última execução.
 
-[b]SOBRE O PASSO "SOLICITA AIHs" (-spa)[/b]
-Esse passo pede revisão humana. No Monitor, use Pausar/Retomar para
-congelar o loop no registro atual, Gravar para capturar o link atual e
-confirmar, e Pular para descartar o registro atual — mesmo protocolo que a
-automação já usa internamente (arquivos pause.flag/grava.flag/pula.flag em
-~/AutoReg/).
+[b]SOBRE "SOLICITA AIHs (revisão manual)" (-spa)[/b]
+Esse passo pede revisão humana dos registros que o -spaa não aprovou. Ao
+chegar no -spa a execução já entra pausada: abra o laudo correto no Chrome
+e use Gravar para capturar o link atual e confirmar, ou Pular para
+descartar o registro. Retomar libera os registros restantes sem link (o
+-ssr não os solicita). Gravar/Pular só ficam ativos enquanto pausado.
+Protocolo: arquivos pause.flag/grava.flag/pula.flag em ~/AutoReg/.
+"Solicita AIHs (automática)" (-solicita-auto) não tem revisão: o que o
+-spaa não aprovar é descartado.
 
 [b]EXEMPLOS EQUIVALENTES NO TERMINAL[/b]
   python autoreg.py -eci               Extrai códigos de internação

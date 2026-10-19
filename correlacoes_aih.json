@@ -54,15 +54,21 @@
     "codigos": ["0301060070"]
   },
 
+  "ORTOPEDIA": {
+    "_comentario": "Nome da clínica nos laudos de printernlaudos (RA 655540, 19/10/2026: 0408010150 'Ortopedia'). -ssr mapeia ORTOPEDIA + 0408 para ORTOPEDIATRAUMATOLOGIA.",
+    "prefixos": ["0408"],
+    "codigos": []
+  },
+
   "conversoes": {
     "CLÍNICA MÉDICA": {
       "destino": "0301060088",
-      "codigos": ["0301060061", "0301010170", "0205020089", "0301060029", "0301010072"],
+      "codigos": ["0301060061", "0301010170", "0205020089", "0301060029", "0301010072", "0401010058", "0401010031"],
       "prefixos": []
     },
     "CLÍNICA CIRÚRGICA": {
       "destino": "0301060070",
-      "codigos": ["0301010170", "0303070030", "0301060061"],
+      "codigos": ["0301010170", "0303070030", "0301060061", "0401010058", "0401010031"],
       "prefixos": []
     },
     "CLÍNICA PSIQUIÁTRICA": {

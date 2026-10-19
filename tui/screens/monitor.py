@@ -127,6 +127,10 @@ class MonitorScreen(Screen):
         if pausavel:
             self.query_one("#btn-pausar", Button).disabled = runner.pausado()
             self.query_one("#btn-retomar", Button).disabled = not runner.pausado()
+            # Sem pause.flag nenhum loop consome grava/pula.flag: o clique
+            # deixaria um flag órfão (19/10/2026, Gravar durante o -spaa)
+            self.query_one("#btn-gravar", Button).disabled = not runner.pausado()
+            self.query_one("#btn-pular", Button).disabled = not runner.pausado()
 
     @work
     async def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -149,7 +153,10 @@ class MonitorScreen(Screen):
             self.runner.pausar()
         elif bid == "btn-retomar":
             self.runner.retomar()
-        elif bid == "btn-gravar":
-            self.runner.gravar()
-        elif bid == "btn-pular":
-            self.runner.pular()
+        elif bid in ("btn-gravar", "btn-pular"):
+            if not self.runner.pausado():
+                self.notify("Gravar/Pular só valem com a execução pausada no -spa.", severity="warning")
+            elif bid == "btn-gravar":
+                self.runner.gravar()
+            else:
+                self.runner.pular()

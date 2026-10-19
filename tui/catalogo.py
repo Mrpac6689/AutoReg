@@ -36,7 +36,7 @@ class Workflow:
 
 
 # ---------------------------------------------------------------------------
-# Os 5 botões principais da tela inicial
+# Os 6 botões principais da tela inicial
 # ---------------------------------------------------------------------------
 
 PRINCIPAIS: tuple[Workflow, ...] = (
@@ -66,10 +66,16 @@ PRINCIPAIS: tuple[Workflow, ...] = (
     ),
     Workflow(
         flag="-solicita",
-        titulo="Solicita AIHs",
-        descricao="Solicitação de AIH com revisão humana (pausável/pulável)",
+        titulo="Solicita AIHs (revisão manual)",
+        descricao="Solicitação de AIH com revisão humana dos registros que o -spaa não aprovou (Gravar/Pular no Monitor)",
         passos="-spaa → -spa → -sia → -ssr → -snt",
         interativo=True,
+    ),
+    Workflow(
+        flag="-solicita-auto",
+        titulo="Solicita AIHs (automática)",
+        descricao="Solicitação de AIH sem interação: descarta o que o -spaa não aprovou (mesmo fluxo do cron)",
+        passos="-spaa → -spb → -sia → -ssr → -snt",
     ),
 )
 

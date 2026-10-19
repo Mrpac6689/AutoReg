@@ -7,7 +7,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException, UnexpectedAlertPresentException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import Select
 from autoreg.chrome_options import get_chrome_options
@@ -24,10 +24,13 @@ setup_logging()
 STATUS_SUCESSO = 'sucesso'
 STATUS_PENDENTE = 'pendente'
 STATUS_CNS_NAO_ENCONTRADO = 'cns_nao_encontrado'
+STATUS_PROC_NAO_HABILITADO = 'proc_nao_habilitado'
 STATUS_ERRO_DESCONHECIDO = 'erro_desconhecido'
 
-# Procedimento substituto a tentar quando o SISREG rejeita a solicitação com
-# "O paciente já possui uma solicitação pendente para o procedimento."
+# Procedimento substituto (curinga da clínica) a tentar quando o SISREG
+# rejeita a solicitação com "O paciente já possui uma solicitação pendente
+# para o procedimento." ou com o alert "Procedimento nao habilitado!"
+# (procedimento que o hospital não pode solicitar, ex. 0401010058).
 # As chaves espelham deliberadamente o mesmo agrupamento usado em
 # tipo_para_opcao (incluindo "CIRURGIA GERAL" como sinônimo de clínica
 # cirúrgica), para manter consistência com a lógica de especialidade já
@@ -38,6 +41,7 @@ SUBSTITUICAO_PROCEDIMENTO_PENDENTE = {
     'CLÍNICA CIRÚRGICA': '0301060070',
     'CLINICA CIRURGICA': '0301060070',
     'CIRURGIA GERAL': '0301060070',
+    'ORTOPEDIA': '0301060070',
 }
 
 
@@ -45,6 +49,45 @@ def _ra_do_registro(row):
     """RA da linha de solicita_inf_aih.csv para os logs (sem o '.0' do pandas)."""
     ra = str(row.get('ra', '')).strip()
     return ra[:-2] if ra.endswith('.0') else ra
+
+
+def _documentos_para_solicitar(row):
+    """
+    Documentos com que o paciente pode ser buscado no SISREG, na ordem de
+    tentativa: [('CPF', '...'), ('CNS', '...')], só os bem formados.
+
+    O CPF vem antes porque o CNS cadastrado no G-HOSP muitas vezes é
+    provisório (898...) e o SISREG não o encontra. A coluna 'cns' também
+    pode conter um CPF (o -sia usa o CPF quando o CNS está vazio), então os
+    valores repetidos são descartados.
+    """
+    def digitos(valor):
+        texto = str(valor).strip()
+        if texto.endswith('.0'):  # float do pandas
+            texto = texto[:-2]
+        return ''.join(ch for ch in texto if ch.isdigit())
+
+    documentos = []
+
+    cpf = digitos(row.get('cpf', ''))
+    # Releitura do CSV pelo pandas como número tira o zero à esquerda
+    if 0 < len(cpf) < 11:
+        cpf = cpf.zfill(11)
+    if len(cpf) == 11:
+        documentos.append(('CPF', cpf))
+
+    cns = digitos(row.get('cns', ''))
+    # CPF usado como CNS (quando o G-HOSP não tem CNS cadastrado, ver
+    # solicita_inf_aih.py) pode ter perdido o zero à esquerda numa releitura
+    # do CSV pelo pandas — 11 dígitos vira 10. Um CNS de verdade tem 15
+    # dígitos e nunca começa com 0, então só o caso de 10 dígitos é
+    # inequivocamente um CPF truncado, seguro para reconstruir.
+    if len(cns) == 10:
+        cns = cns.zfill(11)
+    if len(cns) in (11, 15) and all(valor != cns for _, valor in documentos):
+        documentos.append(('CPF' if len(cns) == 11 else 'CNS', cns))
+
+    return documentos
 
 
 def _executar_tentativa_solicitacao(navegador, wait, row, cns, procedimento):
@@ -66,6 +109,7 @@ def _executar_tentativa_solicitacao(navegador, wait, row, cns, procedimento):
       (STATUS_SUCESSO, numero_solicitacao)
       (STATUS_PENDENTE, None)
       (STATUS_CNS_NAO_ENCONTRADO, None)
+      (STATUS_PROC_NAO_HABILITADO, texto_do_alert)
       (STATUS_ERRO_DESCONHECIDO, None)
     """
     # Navega até o menu de Internação
@@ -127,9 +171,19 @@ def _executar_tentativa_solicitacao(navegador, wait, row, cns, procedimento):
 
     # Localiza o dropdown do CID
     print("Localizando menu dropdown do CID...")
-    dropdown_cid = wait.until(
-        EC.presence_of_element_located((By.XPATH, "/html/body/center/form/table/tbody/tr/td/table/tbody/tr[4]/td[2]/select"))
-    )
+    try:
+        dropdown_cid = wait.until(
+            EC.presence_of_element_located((By.XPATH, "/html/body/center/form/table/tbody/tr/td/table/tbody/tr[4]/td[2]/select"))
+        )
+    except UnexpectedAlertPresentException as e:
+        texto_alert = (e.alert_text or '').strip()
+        if 'habilitado' not in texto_alert.lower():
+            raise
+        try:
+            navegador.switch_to.alert.accept()
+        except Exception:
+            pass  # o Chrome já descartou o alert ao levantar a exceção
+        return (STATUS_PROC_NAO_HABILITADO, texto_alert)
     select_cid = Select(dropdown_cid)
 
     # Pega todas as opções exceto a primeira (rótulo)
@@ -438,14 +492,14 @@ def solicita_sisreg():
         return
 
     # Lê o CSV e pega o primeiro CNS
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(csv_path, dtype={'cpf': str})  # cpf como texto: lido como número, o zero à esquerda some
     if df.empty:
         print("Arquivo CSV está vazio!")
         logging.error("Arquivo CSV está vazio")
         return
 
     # Remove ".0" do final dos campos numéricos lidos como float pelo pandas
-    for col in ['ra', 'cns', 'procedimento']:
+    for col in ['ra', 'cns', 'cpf', 'procedimento']:
         if col in df.columns:
             df[col] = df[col].astype(str).apply(
                 lambda x: x[:-2] if x.endswith('.0') else x
@@ -460,7 +514,7 @@ def solicita_sisreg():
             df[col] = df[col].astype(object)
 
     df.to_csv(csv_path, index=False)
-    print("CSV normalizado (removido '.0' de ra, cns e procedimento)")
+    print("CSV normalizado (removido '.0' de ra, cns, cpf e procedimento)")
 
     try:
         for index, row in df.iterrows():
@@ -479,31 +533,26 @@ def solicita_sisreg():
 
                 print(f"\nProcessando registro {index + 1}/{len(df)}")
 
-                # Normaliza e valida o CNS antes de qualquer interação com o navegador:
-                # remove tudo que não for dígito (não só ".0"/pontos) e confere 11 ou 15
-                # dígitos, evitando o alert() do SISREG quando o valor já chega malformado
-                # do G-HOSP e dando um diagnóstico imediato e específico.
-                cns_original = str(row['cns'])
-                cns = ''.join(ch for ch in cns_original if ch.isdigit())
-                # CPF usado como CNS (quando o G-HOSP não tem CNS cadastrado,
-                # ver solicita_inf_aih.py) pode ter perdido o zero à esquerda
-                # numa releitura do CSV pelo pandas, que infere a coluna como
-                # número quando todos os valores parecem dígitos — 11 dígitos
-                # vira 10. Um CNS de verdade tem 15 dígitos e nunca começa
-                # com 0, então só o caso de 10 dígitos é inequivocamente um
-                # CPF truncado, seguro para reconstruir.
-                if len(cns) == 10:
-                    cns = cns.zfill(11)
-                if len(cns) not in (11, 15):
+                # Documentos do paciente, CPF antes do CNS: o CNS que o G-HOSP
+                # tem cadastrado muitas vezes é provisório (898...) e o SISREG
+                # não o encontra no DATASUS, enquanto o CPF do mesmo paciente
+                # é achado (RAs 655261, 655475, 651857, 19/10/2026). O CNS
+                # só é tentado se o SISREG não achar o CPF.
+                documentos = _documentos_para_solicitar(row)
+                if not documentos:
+                    cns_original = str(row.get('cns', ''))
+                    cns_digitos = ''.join(ch for ch in cns_original if ch.isdigit())
                     cns_lido = str(row.get('cns_lido', '')).strip().lower() == 'sim'
-                    if not cns and not cns_lido:
+                    if not cns_lido:
                         # -sia não chegou a ler o prontuário (sem link, falha):
                         # não é o mesmo que CNS ausente no G-HOSP
                         erro_msg = "CNS não extraído por -sia (prontuário não lido)"
+                    elif not cns_digitos:
+                        erro_msg = "CNS e CPF não cadastrados no G-HOSP"
                     else:
                         erro_msg = (
-                            f"CNS malformado após normalização: '{cns_original}' → '{cns}' "
-                            f"({len(cns)} dígitos, esperado 11 ou 15)"
+                            f"CNS malformado após normalização: '{cns_original}' → '{cns_digitos}' "
+                            f"({len(cns_digitos)} dígitos, esperado 11 ou 15)"
                         )
                     print(f"⚠️  {erro_msg}")
                     logging.warning(f"Registro {index + 1} (RA {_ra_do_registro(row)}): {erro_msg}")
@@ -520,8 +569,6 @@ def solicita_sisreg():
                     logging.info(f"Erro registrado no CSV para registro {index + 1}: {erro_msg}")
                     continue
 
-                print(f"CNS a ser processado: {cns}")
-
                 # Lê o procedimento do CSV, remove pontos e ".0", depois garante 10 dígitos
                 procedimento_original = str(row['procedimento'])
                 if procedimento_original.endswith('.0'):
@@ -531,28 +578,46 @@ def solicita_sisreg():
                 print(f"Procedimento a ser inserido: {procedimento_original}")
                 logging.info(f"Registro {index + 1} (RA {_ra_do_registro(row)}): procedimento a ser inserido: {procedimento_original}")
 
-                # Primeira tentativa, com o procedimento vindo do CSV
-                status, detalhe = _executar_tentativa_solicitacao(navegador, wait, row, cns, procedimento_original)
+                # Primeira tentativa, com o procedimento vindo do CSV, um
+                # documento de cada vez até o SISREG encontrar o paciente
+                for n_doc, (tipo_doc, cns) in enumerate(documentos):
+                    if n_doc > 0:
+                        tipo_anterior = documentos[n_doc - 1][0]
+                        print(f"⚠️  {tipo_anterior} não encontrado no SISREG. Tentando com {tipo_doc} {cns}...")
+                        logging.warning(
+                            f"Registro {index + 1} (RA {_ra_do_registro(row)}): {tipo_anterior} não encontrado; "
+                            f"tentando {tipo_doc} {cns}"
+                        )
+                        navegador.switch_to.default_content()
+                    print(f"{tipo_doc} a ser processado: {cns}")
+                    status, detalhe = _executar_tentativa_solicitacao(navegador, wait, row, cns, procedimento_original)
+                    if status != STATUS_CNS_NAO_ENCONTRADO:
+                        break
 
                 procedimento_usado = procedimento_original
                 procedimento_substituido = False
                 tipo_clinica_retry = None
+                motivo_substituicao = None
 
-                # Se o SISREG acusar solicitação pendente para o procedimento, tenta uma
-                # única vez com o procedimento substituto correspondente à clínica do
-                # paciente (Cirúrgica -> 0301060070, Médica -> 0301060088). Para outras
-                # clínicas (Psiquiátrica, Pediátrica, tipo desconhecido) não há substituto
-                # mapeado e o comportamento permanece o de apenas registrar o erro.
-                if status == STATUS_PENDENTE:
+                # Se o SISREG acusar solicitação pendente ou procedimento não
+                # habilitado, tenta uma única vez com o procedimento curinga da
+                # clínica do paciente (Cirúrgica -> 0301060070, Médica ->
+                # 0301060088). Para outras clínicas (Psiquiátrica, Pediátrica,
+                # tipo desconhecido) não há curinga mapeado e o erro é só registrado.
+                if status in (STATUS_PENDENTE, STATUS_PROC_NAO_HABILITADO):
+                    motivo_substituicao = (
+                        "pendência prévia" if status == STATUS_PENDENTE
+                        else "procedimento não habilitado no SISREG"
+                    )
                     tipo_clinica_retry = str(row['tipo']).upper()
                     procedimento_substituto = SUBSTITUICAO_PROCEDIMENTO_PENDENTE.get(tipo_clinica_retry)
 
                     if procedimento_substituto and procedimento_substituto != procedimento_original:
-                        print(f"⚠️  Solicitação pendente para o procedimento {procedimento_original}. "
+                        print(f"⚠️  {motivo_substituicao.capitalize()} para o procedimento {procedimento_original}. "
                               f"Tentando novamente com o procedimento substituto {procedimento_substituto} "
                               f"(clínica: {tipo_clinica_retry})...")
                         logging.warning(
-                            f"Registro {index + 1} (RA {_ra_do_registro(row)}): solicitação pendente para procedimento "
+                            f"Registro {index + 1} (RA {_ra_do_registro(row)}): {motivo_substituicao} para procedimento "
                             f"{procedimento_original}; tentando substituto {procedimento_substituto}"
                         )
                         navegador.switch_to.default_content()
@@ -579,7 +644,7 @@ def solicita_sisreg():
                             df['obs_substituicao'] = ''
                         df.at[index, 'obs_substituicao'] = (
                             f"Procedimento original {procedimento_original} trocado para "
-                            f"{procedimento_usado} por pendência prévia; solicitação enviada "
+                            f"{procedimento_usado} por {motivo_substituicao}; solicitação enviada "
                             f"com sucesso na 2ª tentativa."
                         )
                     df.to_csv(csv_path, index=False)
@@ -604,8 +669,29 @@ def solicita_sisreg():
                     print(f"Erro registrado no CSV: {erro_msg}")
                     logging.info(f"Erro registrado no CSV para registro {index + 1}: {erro_msg}")
 
+                elif status == STATUS_PROC_NAO_HABILITADO:
+                    # Mantém o texto do alert do SISREG: é o que o -sresg procura
+                    erro_msg = f"{detalhe or 'Procedimento nao habilitado!'} ({procedimento_usado}"
+                    if procedimento_substituido:
+                        erro_msg += f", curinga da clínica {tipo_clinica_retry}, após {procedimento_original})"
+                    else:
+                        erro_msg += f"; sem procedimento curinga para a clínica '{row.get('tipo', '')}')"
+                    print(f"⚠️  {erro_msg}")
+                    logging.warning(f"Registro {index + 1} (RA {_ra_do_registro(row)}): {erro_msg}")
+
+                    if 'erro' not in df.columns:
+                        df['erro'] = ''
+                    if 'revisar' not in df.columns:
+                        df['revisar'] = ''
+
+                    df.at[index, 'erro'] = erro_msg
+                    df.at[index, 'revisar'] = 'sim'
+                    df.to_csv(csv_path, index=False)
+                    logging.info(f"Erro registrado no CSV para registro {index + 1}: {erro_msg}")
+
                 elif status == STATUS_CNS_NAO_ENCONTRADO:
-                    erro_msg = "CNS incorreto ou não encontrado na base do DATASUS"
+                    tipos = ' nem '.join(tipo for tipo, _ in documentos)
+                    erro_msg = f"{tipos} não encontrado na base do DATASUS"
                     print(f"⚠️  {erro_msg}")
                     logging.warning(f"Registro {index + 1} (RA {_ra_do_registro(row)}): {erro_msg}")
 

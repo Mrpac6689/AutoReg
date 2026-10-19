@@ -542,9 +542,18 @@ def _avaliar_registro(driver, ra, correlacoes, conversoes, conversoes_clinica, u
                 logging.info(f"RA {ra}: Atendimento não corresponde ao RA, mas Laudo AIH com "
                              f"data compatível ao internamento ({data_internamento}) — prosseguindo")
             else:
-                print(f"   ℹ️  RA {ra}: nenhum Atendimento com este número")
-                logging.info(f"RA {ra}: nenhum Atendimento com este número — MANUAL")
-                return MANUAL
+                # Os formulários são de outros atendimentos: na prática falta o
+                # Laudo AIH desta internação. Antes de gravar FALTA AIH, confere
+                # printernlaudos — esse caminho nunca o consultava e mandava
+                # tudo para MANUAL (RAs 653246, 650553, 651691, 653114, 19/10/2026).
+                print(f"   ℹ️  RA {ra}: nenhum Atendimento com este número — verificando printernlaudos...")
+                if _printernlaudos_vazio(driver, caminho_ghosp, ra):
+                    print(f"   ℹ️  RA {ra}: printernlaudos também vazio → inserindo nota FALTA AIH")
+                    logging.info(f"RA {ra}: nenhum Atendimento com este número nem laudo em printernlaudos — FALTA_AIH")
+                    _inserir_nota_lembrete(driver, caminho_ghosp, ra, 'FALTA AIH')
+                    return FALTA_AIH
+                logging.info(f"RA {ra}: nenhum Atendimento com este número, mas há laudo(s) em printernlaudos — avaliando")
+                return _avaliar_laudos_printernlaudos(driver, correlacoes, conversoes)
     except Exception as e:
         print(f"   ⚠️  Erro ao verificar Atendimento: {e}")
         logging.warning(f"RA {ra}: erro ao verificar Atendimento: {e} — MANUAL")

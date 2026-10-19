@@ -10,6 +10,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from autoreg.logging import setup_logging
+from autoreg.justificativa_ghosp import tratar_justificativa_acesso
 import logging
 
 def solicita_inf_aih():
@@ -25,7 +26,8 @@ def solicita_inf_aih():
 
     # Lê o arquivo CSV
     try:
-        df = pd.read_csv(csv_path)
+        # cpf como texto: lido como número, o zero à esquerda some
+        df = pd.read_csv(csv_path, dtype={'cpf': str})
         if 'link' not in df.columns:
             print("❌ Arquivo CSV não contém a coluna 'link'")
             return None
@@ -36,7 +38,7 @@ def solicita_inf_aih():
         # distingue "CNS e CPF vazios no prontuário" de "CNS nunca lido" (sem
         # link, timeout...), que o -snt confundia e gravava a nota "FALTA
         # CNS/CPF" indevidamente (RA 653114, 16/10/2026).
-        for col in ('prontuario', 'informacoes', 'tipo', 'procedimento', 'cns', 'medico', 'data', 'cns_lido'):
+        for col in ('prontuario', 'informacoes', 'tipo', 'procedimento', 'cns', 'cpf', 'medico', 'data', 'cns_lido'):
             if col not in df.columns:
                 df[col] = ''
             df[col] = df[col].astype(object)
@@ -79,6 +81,7 @@ def solicita_inf_aih():
             ra = str(row.get('ra', ''))
             if ra.endswith('.0'):
                 ra = ra[:-2]
+            etapa = "ler link"
             try:
                 link = row['link']
                 # Registro MANUAL do -spaa que ninguém revisou no -spa fica sem link
@@ -87,12 +90,17 @@ def solicita_inf_aih():
                     logging.warning(f"-sia RA {ra}: sem link (não revisado em -spa) — CNS não lido")
                     continue
                 print(f"\nProcessando link {index + 1}/{len(df)}: {link}")
+                etapa = "abrir link"
                 driver.get(link)
                 time.sleep(1)  # Aguarda a página carregar
+                if tratar_justificativa_acesso(driver):
+                    driver.get(link)
+                    time.sleep(1)
 
                 # Verifica o tipo de URL para determinar a estratégia de extração
                 if '/formeletronicos' in link:
                     print("Detectado padrão: formeletronicos")
+                    etapa = "formulário formeletronicos"
                     
                     # Obtém o número do prontuário
                     print("Extraindo número do prontuário...")
@@ -163,8 +171,9 @@ def solicita_inf_aih():
 
                 elif '/printernlaudos' in link:
                     print("Detectado padrão: printernlaudos")
-                    
+
                     # Obtém o número do prontuário
+                    etapa = "prontuário"
                     print("Extraindo número do prontuário...")
                     prontuario_element = WebDriverWait(driver, 10).until(
                         EC.presence_of_element_located((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/h4/a'))
@@ -178,45 +187,39 @@ def solicita_inf_aih():
                     prontuario = prontuario.replace('.', '')
                     print(f"Prontuário extraído: {prontuario}")
 
-                    # Clica no botão Editar do laudo mais recente
-                    print("Clicando no botão Editar do laudo mais recente...")
-                    # Busca todas as linhas do tbody (thead é separado, não há linha vazia)
+                    # Abre o laudo mais recente pelo mesmo caminho do -spaa (JS click
+                    # em a.btn-i-editar, que é data-remote): o hover + clickable
+                    # em td[last()] dava Timeout (RA 655540, 19/10/2026).
+                    etapa = "tabela de laudos"
                     linhas_laudos = WebDriverWait(driver, 10).until(
                         EC.presence_of_all_elements_located((By.XPATH, '//*[@id="lista_prlaudosmppes"]/tbody/tr'))
                     )
 
                     if not linhas_laudos:
                         print("⚠️ Nenhum laudo encontrado na tabela")
+                        logging.warning(f"-sia RA {ra}: nenhum laudo em printernlaudos — CNS não lido")
                         continue
+                    if len(linhas_laudos) > 1:
+                        logging.warning(f"-sia RA {ra}: {len(linhas_laudos)} laudos em printernlaudos — "
+                                        f"usando o último, confira se é o que o -spaa aprovou")
 
-                    # Pega a última linha (laudo mais recente) - XPath é 1-indexado
-                    ultima_linha_index = len(linhas_laudos)
+                    etapa = "modal do laudo"
+                    botao_editar = linhas_laudos[-1].find_element(By.CSS_SELECTOR, 'a.btn-i-editar[title="Editar"]')
+                    driver.execute_script("arguments[0].click();", botao_editar)
+                    print(f"Botão Editar clicado (linha {len(linhas_laudos)})")
 
-                    # Primeiro, move o mouse sobre a última linha para revelar o botão Editar
-                    from selenium.webdriver.common.action_chains import ActionChains
-                    ultima_linha = driver.find_element(By.XPATH, f'//*[@id="lista_prlaudosmppes"]/tbody/tr[{ultima_linha_index}]')
-                    ActionChains(driver).move_to_element(ultima_linha).perform()
-                    print(f"Mouse posicionado sobre a linha {ultima_linha_index}")
-                    time.sleep(1)  # Aguarda o botão aparecer
-
-                    # Clica no botão Editar da última linha (coluna de ações é a última)
-                    botao_editar = WebDriverWait(driver, 10).until(
-                        EC.element_to_be_clickable((By.XPATH, f'//*[@id="lista_prlaudosmppes"]/tbody/tr[{ultima_linha_index}]/td[last()]/a[@title="Editar"]'))
-                    )
-                    botao_editar.click()
-                    print(f"Botão Editar clicado (linha {ultima_linha_index})")
-                    
-                    # Aguarda o modal de edição carregar completamente
                     print("Aguardando modal de edição carregar...")
                     WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.XPATH, '//*[@id="hhlaudosaih_sinais_e_sintomas"]'))
+                        EC.presence_of_element_located((By.ID, 'susproc_descricao'))
                     )
                     time.sleep(2)  # Aguarda estabilização do modal
 
                     # Obtém as informações clínicas
                     print("Extraindo informações clínicas...")
-                    informacoes_element = driver.find_element(By.XPATH, '//*[@id="hhlaudosaih_sinais_e_sintomas"]')
-                    informacoes = informacoes_element.get_attribute('value') or informacoes_element.text
+                    informacoes_elements = driver.find_elements(By.ID, 'hhlaudosaih_sinais_e_sintomas')
+                    informacoes = ''
+                    if informacoes_elements:
+                        informacoes = informacoes_elements[0].get_attribute('value') or informacoes_elements[0].text
                     # Trata o texto removendo quebras de linha e caracteres problemáticos
                     informacoes = ' '.join(informacoes.split())  # Remove quebras de linha e múltiplos espaços
                     informacoes = informacoes.replace(';', ',').replace('"', "'").replace('\n', ' ').replace('\r', ' ')
@@ -272,6 +275,7 @@ def solicita_inf_aih():
                     continue
 
                 # Clica no link do nome do paciente para abrir modal com CNS
+                etapa = "modal do paciente (Documentos)"
                 print("Clicando no elemento do paciente...")
                 paciente_element = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, '#paciente .dados-pct h4 a[data-remote="true"]'))
@@ -303,7 +307,10 @@ def solicita_inf_aih():
                         cpf = ''.join(filter(str.isdigit, cpf_text))
                         print(f"CPF encontrado: {cpf}")
                 
-                # Se CNS estiver vazio, usa o CPF
+                # O -ssr tenta o CPF antes do CNS (CNS provisório 898... não é
+                # achado no SISREG). A coluna 'cns' continua recebendo o CPF
+                # quando o CNS está vazio: o -snt só grava a nota "FALTA
+                # CNS/CPF" quando ela fica vazia.
                 if not cns or cns.strip() == '':
                     print("CNS vazio, usando CPF como CNS...")
                     if cpf:
@@ -343,6 +350,7 @@ def solicita_inf_aih():
                 df.at[index, 'tipo'] = tipo_clinica
                 df.at[index, 'procedimento'] = procedimento
                 df.at[index, 'cns'] = cns
+                df.at[index, 'cpf'] = cpf
                 df.at[index, 'cns_lido'] = 'sim'
                 df.at[index, 'medico'] = medico
                 df.at[index, 'data'] = data
@@ -353,7 +361,7 @@ def solicita_inf_aih():
 
             except Exception as e:
                 print(f"❌ Erro ao processar link {index + 1}: {str(e)}")
-                logging.error(f"-sia RA {ra}: falha na extração ({link}) — CNS não lido: {str(e).splitlines()[0] if str(e) else type(e).__name__}")
+                logging.error(f"-sia RA {ra}: falha na extração ({link}, etapa: {etapa}) — CNS não lido: {str(e).splitlines()[0] if str(e) else type(e).__name__}")
                 # Em caso de erro, salva o que já foi processado
                 if df is not None:
                     df.to_csv(csv_path, index=False)

@@ -1,3 +1,17 @@
+# Fuso fixo para toda execução do AutoReg, venha de onde vier (cron, TUI,
+# shell no container KASM, python -m autoreg.X). O container roda em UTC e
+# só o docker-entry-script.sh exportava TZ=America/Rio_Branco: execuções pela
+# TUI saíam em UTC (19/10/2026), com outro "hoje" depois das 19h locais —
+# datas no SISREG, corte de 48h do -std, bloqueio de 15 dias do histórico e
+# horários do autoreg.log. Fica no __init__ porque ele roda antes de qualquer
+# módulo do pacote calcular uma data; o Chrome/chromedriver herdam o ambiente.
+import os as _os
+import time as _time
+
+_os.environ['TZ'] = 'America/Rio_Branco'
+if hasattr(_time, 'tzset'):  # não existe no Windows
+    _time.tzset()
+
 from .extrai_codigos_internacao import extrai_codigos_internacao
 from .ler_credenciais import ler_credenciais
 from .chrome_options import get_chrome_options

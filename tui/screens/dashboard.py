@@ -1,4 +1,4 @@
-"""Tela inicial: banner, painel de status do sistema e os 5 botões
+"""Tela inicial: banner, painel de status do sistema e os 6 botões
 principais pedidos pelo usuário."""
 
 from __future__ import annotations
