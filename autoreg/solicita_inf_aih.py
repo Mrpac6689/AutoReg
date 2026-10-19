@@ -32,7 +32,11 @@ def solicita_inf_aih():
         # Essas colunas podem vir como float64 (NaN) do CSV quando todas as
         # linhas estão vazias (ex.: recém-recriado por -spaa) — força dtype
         # object para permitir gravar texto/números extraídos sem erro.
-        for col in ('prontuario', 'informacoes', 'tipo', 'procedimento', 'cns', 'medico', 'data'):
+        # 'cns_lido' = 'sim' só quando o fieldset "Documentos" foi de fato lido:
+        # distingue "CNS e CPF vazios no prontuário" de "CNS nunca lido" (sem
+        # link, timeout...), que o -snt confundia e gravava a nota "FALTA
+        # CNS/CPF" indevidamente (RA 653114, 16/10/2026).
+        for col in ('prontuario', 'informacoes', 'tipo', 'procedimento', 'cns', 'medico', 'data', 'cns_lido'):
             if col not in df.columns:
                 df[col] = ''
             df[col] = df[col].astype(object)
@@ -72,8 +76,16 @@ def solicita_inf_aih():
         
         # Itera sobre os links do CSV
         for index, row in df.iterrows():
+            ra = str(row.get('ra', ''))
+            if ra.endswith('.0'):
+                ra = ra[:-2]
             try:
                 link = row['link']
+                # Registro MANUAL do -spaa que ninguém revisou no -spa fica sem link
+                if pd.isna(link) or str(link).strip() == '':
+                    print(f"⚠️ Registro {index + 1}/{len(df)} (RA {ra}) sem link — pulando")
+                    logging.warning(f"-sia RA {ra}: sem link (não revisado em -spa) — CNS não lido")
+                    continue
                 print(f"\nProcessando link {index + 1}/{len(df)}: {link}")
                 driver.get(link)
                 time.sleep(1)  # Aguarda a página carregar
@@ -297,11 +309,14 @@ def solicita_inf_aih():
                     if cpf:
                         cns = cpf
                         print(f"CPF usado como CNS: {cns}")
+                        logging.info(f"-sia RA {ra}: CNS vazio no prontuário, usando CPF {cns}")
                     else:
                         print("CPF também está vazio")
                         cns = ""
+                        logging.info(f"-sia RA {ra}: CNS e CPF vazios no prontuário")
                 else:
                     print(f"CNS extraído com sucesso: {cns}")
+                    logging.info(f"-sia RA {ra}: CNS lido: {cns}")
 
                 # Clica no botão de fechar/voltar o modal do paciente
                 print("Fechando modal do paciente...")
@@ -328,6 +343,7 @@ def solicita_inf_aih():
                 df.at[index, 'tipo'] = tipo_clinica
                 df.at[index, 'procedimento'] = procedimento
                 df.at[index, 'cns'] = cns
+                df.at[index, 'cns_lido'] = 'sim'
                 df.at[index, 'medico'] = medico
                 df.at[index, 'data'] = data
                 
@@ -337,6 +353,7 @@ def solicita_inf_aih():
 
             except Exception as e:
                 print(f"❌ Erro ao processar link {index + 1}: {str(e)}")
+                logging.error(f"-sia RA {ra}: falha na extração ({link}) — CNS não lido: {str(e).splitlines()[0] if str(e) else type(e).__name__}")
                 # Em caso de erro, salva o que já foi processado
                 if df is not None:
                     df.to_csv(csv_path, index=False)

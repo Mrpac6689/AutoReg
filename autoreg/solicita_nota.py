@@ -232,8 +232,23 @@ def solicita_nota():
             else:
                 # Filtra linhas onde CNS está vazio (NaN, None, string vazia ou só espaços)
                 mask_cns_vazio = df_revisar['cns'].isna() | (df_revisar['cns'].astype(str).str.strip() == '') | (df_revisar['cns'].astype(str) == 'nan')
-                df_cns_vazio = df_revisar[mask_cns_vazio]
-                
+                # Fail-closed: CNS vazio só vira nota quando o -sia confirmou que
+                # leu o fieldset "Documentos" (cns_lido = sim). Sem isso, um
+                # registro sem link ou com falha de leitura no -sia recebia a nota
+                # mesmo com CNS cadastrado (RA 653114, 16/10/2026). Coluna ausente
+                # (CSV antigo, -sia caiu antes de salvar) = nenhuma nota.
+                if 'cns_lido' in df_revisar.columns:
+                    mask_cns_lido = df_revisar['cns_lido'].astype(str).str.strip().str.lower() == 'sim'
+                else:
+                    mask_cns_lido = pd.Series(False, index=df_revisar.index)
+                for _, row_nao_lido in df_revisar[mask_cns_vazio & ~mask_cns_lido].iterrows():
+                    ra_nao_lido = str(row_nao_lido['ra'])
+                    if ra_nao_lido.endswith('.0'):
+                        ra_nao_lido = ra_nao_lido[:-2]
+                    print(f"⚠️  CNS do RA {ra_nao_lido} não foi lido pelo -sia — nota CNS não gravada")
+                    logging.warning(f"-snt RA {ra_nao_lido}: CNS não foi lido por -sia — nota CNS não gravada")
+                df_cns_vazio = df_revisar[mask_cns_vazio & mask_cns_lido]
+
                 if len(df_cns_vazio) > 0:
                     print(f"📝 Encontradas {len(df_cns_vazio)} linha(s) com CNS vazio. Inserindo lembretes...")
                     

@@ -495,10 +495,16 @@ def solicita_sisreg():
                 if len(cns) == 10:
                     cns = cns.zfill(11)
                 if len(cns) not in (11, 15):
-                    erro_msg = (
-                        f"CNS malformado após normalização: '{cns_original}' → '{cns}' "
-                        f"({len(cns)} dígitos, esperado 11 ou 15)"
-                    )
+                    cns_lido = str(row.get('cns_lido', '')).strip().lower() == 'sim'
+                    if not cns and not cns_lido:
+                        # -sia não chegou a ler o prontuário (sem link, falha):
+                        # não é o mesmo que CNS ausente no G-HOSP
+                        erro_msg = "CNS não extraído por -sia (prontuário não lido)"
+                    else:
+                        erro_msg = (
+                            f"CNS malformado após normalização: '{cns_original}' → '{cns}' "
+                            f"({len(cns)} dígitos, esperado 11 ou 15)"
+                        )
                     print(f"⚠️  {erro_msg}")
                     logging.warning(f"Registro {index + 1} (RA {_ra_do_registro(row)}): {erro_msg}")
 
