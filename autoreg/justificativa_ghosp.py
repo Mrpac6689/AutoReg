@@ -88,3 +88,41 @@ def tratar_justificativa_acesso(driver, motivo=MOTIVO_PADRAO, texto=TEXTO_PADRAO
     logging.info(f"Justificativa de acesso enviada (motivo='{motivo}').")
     print("  ✓ Justificativa enviada. Acesso liberado.")
     return True
+
+
+def _normalizar_lembrete(texto):
+    """Colapsa espacos/quebras de linha e passa para maiusculas, para comparar
+    lembretes independentemente de como o G-HOSP os renderiza."""
+    return " ".join((texto or "").split()).upper()
+
+
+def ler_lembretes_paciente(driver, caminho_ghosp, ra, timeout=10):
+    """Le os lembretes (#paclembretes) do paciente do RA em /pr/interns/{ra}.
+
+    Usa textContent (nao innerText): innerText so retorna texto visivel e pode
+    vir vazio, sem lancar excecao, se o painel "DADOS IMPORTANTES" nao estiver
+    aberto - o que faria uma nota ja gravada parecer ausente e ser duplicada.
+
+    Returns:
+        str: texto normalizado dos lembretes ('' se o paciente nao tem nenhum).
+        None: se nao foi possivel ler (o chamador decide se grava ou nao).
+    """
+    url = f"{caminho_ghosp}:4002/pr/interns/{ra}"
+    try:
+        driver.get(url)
+        time.sleep(1)
+        if tratar_justificativa_acesso(driver):
+            driver.get(url)
+            time.sleep(1)
+        elem = WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located((By.ID, "paclembretes"))
+        )
+        return _normalizar_lembrete(elem.get_attribute("textContent"))
+    except Exception as e:
+        logging.warning(f"RA {ra}: falha ao ler lembretes (#paclembretes): {e}")
+        return None
+
+
+def lembrete_ja_registrado(texto_lembretes, texto):
+    """True se 'texto' ja aparece em 'texto_lembretes' (comparacao normalizada)."""
+    return _normalizar_lembrete(texto) in _normalizar_lembrete(texto_lembretes)

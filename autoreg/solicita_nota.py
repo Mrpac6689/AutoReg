@@ -3,13 +3,19 @@ import time
 from selenium import webdriver
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
-from autoreg.justificativa_ghosp import tratar_justificativa_acesso
+from autoreg.justificativa_ghosp import (
+    tratar_justificativa_acesso, ler_lembretes_paciente, lembrete_ja_registrado,
+)
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from autoreg.logging import setup_logging
 import logging
+
+# Lembrete para CNS faltante
+TEXTO_LEMBRETE_CNS = "FALTA CNS/CPF, FAVOR PROVIDENCIAR PARA SOLICITAÇÃO DE AIH"
+
 def solicita_nota():
     print("\n---===> SOLICITA INSERE CODIGO SISREG NA NOTA <===---")
     usuario_ghosp, senha_ghosp, caminho_ghosp, _, _ = ler_credenciais()
@@ -240,6 +246,20 @@ def solicita_nota():
                             ra = ra[:-2]
                         # Remove qualquer ponto restante
                         ra = ra.replace('.', '')
+                        # Sem essa checagem o mesmo RA recebia a nota a cada ciclo do
+                        # cron (-spaa volta a gerá-lo enquanto o CNS não é corrigido):
+                        # RA 649772 chegou a 18 notas iguais.
+                        lembretes = ler_lembretes_paciente(driver, caminho_ghosp, ra)
+                        if lembretes is None:
+                            print(f"⚠️  Não foi possível ler os lembretes do RA {ra} — nota CNS não gravada neste ciclo")
+                            logging.warning(f"-snt RA {ra}: lembretes não lidos — nota CNS não gravada para não arriscar duplicar")
+                            continue
+                        if lembrete_ja_registrado(lembretes, TEXTO_LEMBRETE_CNS):
+                            print(f"ℹ️  Nota CNS já registrada para RA {ra} — não duplicando")
+                            logging.info(f"-snt RA {ra}: nota CNS já registrada no G-HOSP, não duplicada")
+                            indices_processados.append(idx)
+                            continue
+
                         print(f"Acessando formulário eletrônico para lembrete CNS (RA: {ra})...")
 
                         try:
@@ -270,8 +290,7 @@ def solicita_nota():
                                 EC.presence_of_element_located((By.XPATH, '//*[@id="prlembrete_lembrete"]'))
                             )
 
-                            # Texto do lembrete para CNS faltante
-                            texto_lembrete_cns = "FALTA CNS/CPF, FAVOR PROVIDENCIAR PARA SOLICITAÇÃO DE AIH"
+                            texto_lembrete_cns = TEXTO_LEMBRETE_CNS
                             print(f"Inserindo lembrete CNS: {texto_lembrete_cns}")
                             campo_lembrete.clear()  # Limpa o campo antes de inserir
                             campo_lembrete.send_keys(texto_lembrete_cns)

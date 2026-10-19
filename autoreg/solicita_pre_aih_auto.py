@@ -7,7 +7,9 @@ import pandas as pd
 from selenium import webdriver
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
-from autoreg.justificativa_ghosp import tratar_justificativa_acesso
+from autoreg.justificativa_ghosp import (
+    tratar_justificativa_acesso, ler_lembretes_paciente, lembrete_ja_registrado,
+)
 from autoreg.ras_paciente import filtrar_lembretes_nao_lidos, filtrar_ra_anterior_solicitado
 from autoreg.historico_solicitacoes import DIAS_BLOQUEIO_RESOLICITACAO, solicitacoes_recentes
 from selenium.webdriver.common.by import By
@@ -272,20 +274,10 @@ def _lembrete_ja_registrado(driver, caminho_ghosp, ra, texto):
     ghosp_nota.py/internados_ghosp_nota.py). Em /pr/formeletronicos esse
     campo não existe, então checar ali sempre falhava silenciosamente
     (NoSuchElementException → False) e duplicava a nota a cada execução.
+    Falha de leitura → False (grava mesmo assim).
     """
-    try:
-        driver.get(f"{caminho_ghosp}:4002/pr/interns/{ra}")
-        time.sleep(1)
-        if tratar_justificativa_acesso(driver):
-            driver.get(f"{caminho_ghosp}:4002/pr/interns/{ra}")
-            time.sleep(1)
-
-        lembretes_elem = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, 'paclembretes'))
-        )
-        return texto in (lembretes_elem.get_attribute('innerText') or '')
-    except Exception:
-        return False
+    lembretes = ler_lembretes_paciente(driver, caminho_ghosp, ra)
+    return lembretes is not None and lembrete_ja_registrado(lembretes, texto)
 
 
 def _inserir_nota_lembrete(driver, caminho_ghosp, ra, texto):
