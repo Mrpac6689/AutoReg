@@ -13,6 +13,7 @@ from selenium.webdriver.support.ui import Select
 from autoreg.chrome_options import get_chrome_options
 from autoreg.logging import setup_logging
 from autoreg.detecta_capchta import detecta_captcha
+from autoreg.historico_solicitacoes import registrar_solicitacao
 import logging
 import random
 from datetime import datetime
@@ -38,6 +39,12 @@ SUBSTITUICAO_PROCEDIMENTO_PENDENTE = {
     'CLINICA CIRURGICA': '0301060070',
     'CIRURGIA GERAL': '0301060070',
 }
+
+
+def _ra_do_registro(row):
+    """RA da linha de solicita_inf_aih.csv para os logs (sem o '.0' do pandas)."""
+    ra = str(row.get('ra', '')).strip()
+    return ra[:-2] if ra.endswith('.0') else ra
 
 
 def _executar_tentativa_solicitacao(navegador, wait, row, cns, procedimento):
@@ -493,7 +500,7 @@ def solicita_sisreg():
                         f"({len(cns)} dígitos, esperado 11 ou 15)"
                     )
                     print(f"⚠️  {erro_msg}")
-                    logging.warning(f"Registro {index + 1}: {erro_msg}")
+                    logging.warning(f"Registro {index + 1} (RA {_ra_do_registro(row)}): {erro_msg}")
 
                     if 'erro' not in df.columns:
                         df['erro'] = ''
@@ -516,7 +523,7 @@ def solicita_sisreg():
                 procedimento_original = procedimento_original.replace('.', '')
                 procedimento_original = procedimento_original.zfill(10)
                 print(f"Procedimento a ser inserido: {procedimento_original}")
-                logging.info(f"Registro {index + 1}: procedimento a ser inserido: {procedimento_original}")
+                logging.info(f"Registro {index + 1} (RA {_ra_do_registro(row)}): procedimento a ser inserido: {procedimento_original}")
 
                 # Primeira tentativa, com o procedimento vindo do CSV
                 status, detalhe = _executar_tentativa_solicitacao(navegador, wait, row, cns, procedimento_original)
@@ -539,7 +546,7 @@ def solicita_sisreg():
                               f"Tentando novamente com o procedimento substituto {procedimento_substituto} "
                               f"(clínica: {tipo_clinica_retry})...")
                         logging.warning(
-                            f"Registro {index + 1}: solicitação pendente para procedimento "
+                            f"Registro {index + 1} (RA {_ra_do_registro(row)}): solicitação pendente para procedimento "
                             f"{procedimento_original}; tentando substituto {procedimento_substituto}"
                         )
                         navegador.switch_to.default_content()
@@ -554,6 +561,9 @@ def solicita_sisreg():
                 # primeira tentativa quanto a segunda (retry com procedimento substituto)
                 if status == STATUS_SUCESSO:
                     numero_solicitacao = detalhe
+                    # Antes de tudo: o histórico é o que impede o -spaa de reenviar
+                    # este RA num ciclo seguinte (ver historico_solicitacoes.py)
+                    registrar_solicitacao(row.get('ra', ''), numero_solicitacao, procedimento_usado, cns)
                     df.at[index, 'solsisreg'] = numero_solicitacao
                     if 'erro' in df.columns:
                         df.at[index, 'erro'] = ''
@@ -578,7 +588,7 @@ def solicita_sisreg():
                             f"(clínica {tipo_clinica_retry}), sem sucesso."
                         )
                     print(f"⚠️  {erro_msg}")
-                    logging.warning(f"Registro {index + 1}: {erro_msg}")
+                    logging.warning(f"Registro {index + 1} (RA {_ra_do_registro(row)}): {erro_msg}")
 
                     if 'erro' not in df.columns:
                         df['erro'] = ''
@@ -591,7 +601,7 @@ def solicita_sisreg():
                 elif status == STATUS_CNS_NAO_ENCONTRADO:
                     erro_msg = "CNS incorreto ou não encontrado na base do DATASUS"
                     print(f"⚠️  {erro_msg}")
-                    logging.warning(f"Registro {index + 1}: {erro_msg}")
+                    logging.warning(f"Registro {index + 1} (RA {_ra_do_registro(row)}): {erro_msg}")
 
                     if 'erro' not in df.columns:
                         df['erro'] = ''
@@ -606,7 +616,7 @@ def solicita_sisreg():
 
                 elif status == STATUS_ERRO_DESCONHECIDO:
                     print("❌ Número da solicitação não encontrado e nenhuma mensagem de erro conhecida detectada")
-                    logging.error(f"Registro {index + 1}: Número da solicitação não encontrado")
+                    logging.error(f"Registro {index + 1} (RA {_ra_do_registro(row)}): Número da solicitação não encontrado")
 
                 navegador.switch_to.default_content()
                 print(f"Registro {index + 1} processado com sucesso!")

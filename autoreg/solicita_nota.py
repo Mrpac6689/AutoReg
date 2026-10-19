@@ -76,6 +76,7 @@ def solicita_nota():
 
         if not logado:
             print("❌ Não foi possível efetuar login no G-HOSP após várias tentativas. Abortando.")
+            logging.error("-snt: login no G-HOSP falhou após várias tentativas — nenhum lembrete gravado")
             return
 
         # Localiza o menu dropdown e passa o mouse para abrir
@@ -124,6 +125,7 @@ def solicita_nota():
             indices_sucesso = []
 
             for idx, row in df_valido.iterrows():
+                texto_lembrete = ''  # para o log de falha nunca mostrar o texto do RA anterior
                 ra = str(row['ra'])  # usando coluna 'ra'
                 # Remove ".0" no final se existir
                 if ra.endswith('.0'):
@@ -170,6 +172,8 @@ def solicita_nota():
                         print(f"⚠️  Número da solicitação ajustado para 9 dígitos: {solsisreg}")
 
                     # Monta o texto do lembrete com as informações das colunas
+                    # Data + nº de 9 dígitos: é o que ras_paciente.datas_solicitacoes_clinica()
+                    # reconhece como solicitação (filtro de RA duplicado na mesma data/24h).
                     texto_lembrete = f"{row['data']} - {solsisreg} - {row['tipo']}"
                     print(f"Inserindo lembrete: {texto_lembrete}")
                     campo_lembrete.clear()  # Limpa o campo antes de inserir
@@ -181,6 +185,7 @@ def solicita_nota():
                     )
                     botao_salvar.click()
                     print("Lembrete salvo com sucesso!")
+                    logging.info(f"-snt RA {ra}: lembrete gravado no G-HOSP: {texto_lembrete!r}")
 
                     # Aguarda um momento para garantir que o lembrete foi salvo
                     time.sleep(1)
@@ -190,6 +195,7 @@ def solicita_nota():
 
                 except Exception as e:
                     print(f"Erro ao adicionar lembrete para RA {ra}: {e}")
+                    logging.error(f"-snt RA {ra}: falha ao gravar lembrete {texto_lembrete!r} — registro mantido no CSV: {e}")
                     # Mantém o registro no CSV (preserva o solsisreg) e marca o erro,
                     # sem mexer em 'revisar' para não impedir a regravação posterior via -snt.
                     if 'erro' not in df.columns:
@@ -276,6 +282,7 @@ def solicita_nota():
                             )
                             botao_salvar.click()
                             print("Lembrete CNS salvo com sucesso!")
+                            logging.info(f"-snt RA {ra}: lembrete CNS gravado no G-HOSP: {texto_lembrete_cns!r}")
                             
                             # Aguarda um momento para garantir que o lembrete foi salvo
                             time.sleep(1)
@@ -285,6 +292,7 @@ def solicita_nota():
 
                         except Exception as e:
                             print(f"Erro ao adicionar lembrete CNS para RA {ra}: {e}")
+                            logging.error(f"-snt RA {ra}: falha ao gravar lembrete CNS: {e}")
                     
                     # Remove as linhas processadas do CSV
                     if indices_processados:
@@ -297,6 +305,7 @@ def solicita_nota():
 
         except Exception as e:
             print(f"Erro ao acessar o menu de prontuários ou buscar internação: {e}")
+            logging.exception(f"-snt: execução interrompida: {e}")
 
         print("EXTRAÇÃO DE DADOS CONCLUÍDA.")
     except Exception as e:

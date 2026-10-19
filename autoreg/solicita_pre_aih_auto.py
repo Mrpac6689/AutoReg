@@ -8,6 +8,8 @@ from selenium import webdriver
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.justificativa_ghosp import tratar_justificativa_acesso
+from autoreg.ras_paciente import filtrar_lembretes_nao_lidos, filtrar_ra_anterior_solicitado
+from autoreg.historico_solicitacoes import DIAS_BLOQUEIO_RESOLICITACAO, solicitacoes_recentes
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
@@ -752,6 +754,46 @@ def solicita_pre_aih_auto():
             print(f"   📄 Colunas disponíveis: {', '.join(df_internados.columns.tolist())}")
             return None
 
+        def _ras_removidos(antes, depois):
+            return ', '.join(str(ra) for ra in antes['internacao'] if ra not in set(depois['internacao']))
+
+        logging.info(
+            f"-spaa: {len(df_internados)} RA(s) em internados_ghosp_avancado.csv: "
+            f"{', '.join(str(ra) for ra in df_internados['internacao'])}"
+        )
+
+        # Defensivo: mesmos filtros do -std, para -solicita rodado sem -aihs logo antes
+        antes = df_internados
+        df_internados, removidos_nao_lidos = filtrar_lembretes_nao_lidos(df_internados)
+        if removidos_nao_lidos:
+            print(f"   🗑️  {removidos_nao_lidos} RA(s) descartado(s): lembretes não lidos pelo -ign (próximo ciclo)")
+            logging.warning(
+                f"-spaa: {removidos_nao_lidos} RA(s) descartado(s) por lembretes não lidos pelo -ign: "
+                f"{_ras_removidos(antes, df_internados)}"
+            )
+        antes = df_internados
+        df_internados, removidos_ra_anterior = filtrar_ra_anterior_solicitado(df_internados)
+        if removidos_ra_anterior:
+            print(f"   🗑️  {removidos_ra_anterior} RA(s) descartado(s): RA anterior na mesma data/24h já solicitado")
+            logging.info(
+                f"-spaa: {removidos_ra_anterior} RA(s) descartado(s) por RA anterior na mesma data/24h já solicitado: "
+                f"{_ras_removidos(antes, df_internados)}"
+            )
+
+        # Não reenvia RA que o próprio AutoReg já solicitou recentemente no SISREG
+        recentes = solicitacoes_recentes()
+        if recentes:
+            ra_norm = df_internados['internacao'].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
+            mask_recente = ra_norm.isin(recentes.keys())
+            for ra in ra_norm[mask_recente]:
+                quando, solsisreg = recentes[ra]
+                print(f"   🗑️  RA {ra} descartado: já solicitado em {quando:%d/%m/%Y %H:%M} (solicitação {solsisreg})")
+                logging.info(
+                    f"RA {ra}: já solicitado em {quando:%d/%m/%Y %H:%M} (solicitação {solsisreg}) — "
+                    f"não reenviado (bloqueio de {DIAS_BLOQUEIO_RESOLICITACAO} dias)"
+                )
+            df_internados = df_internados[~mask_recente].reset_index(drop=True)
+
         solicitacoes = df_internados['internacao'].dropna()
         total_solicitacoes = len(solicitacoes)
         print(f"   ✅ Encontradas {total_solicitacoes} internações")
@@ -771,6 +813,10 @@ def solicita_pre_aih_auto():
 
         df_solicita_limpo.to_csv(csv_solicita, index=False)
         print(f"   ✅ {total_solicitacoes} registros transferidos com sucesso")
+        logging.info(
+            f"-spaa: {total_solicitacoes} RA(s) transferido(s) para solicita_inf_aih.csv: "
+            f"{', '.join(str(ra) for ra in solicitacoes.values)}"
+        )
     except Exception as e:
         print(f"   ❌ Erro ao transferir dados: {e}")
         return None

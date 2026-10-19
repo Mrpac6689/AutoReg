@@ -221,6 +221,11 @@ class JobRunner:
             )
             if os.name == "posix":
                 kwargs["start_new_session"] = True
+            # Mesmo fuso do ciclo do cron (docker-entry-script.sh exporta
+            # TZ=America/Rio_Branco). Sem isso, dentro do container (UTC) o
+            # filho veria outro "hoje" depois das 19h locais — datas preenchidas
+            # no SISREG, corte de 48h do -std e horários do autoreg.log mudam.
+            kwargs["env"] = {**os.environ, "TZ": os.environ.get("TZ") or "America/Rio_Branco"}
             # "-u": sem isso, o print() do processo filho fica bufferizado em
             # bloco (stdout não é um tty) e a saída só chegaria de uma vez,
             # no final — nada de streaming ao vivo nem parsing de progresso.

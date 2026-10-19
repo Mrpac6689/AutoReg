@@ -53,6 +53,8 @@ def interna_pacientes():
                 df.at[idx, 'resultado'] = resultado
                 print(f"   {resultado}")
                 logging.info(f"Ficha {ficha}: {resultado}")
+            except SessaoSisregAbortada:
+                raise
             except Exception as e:
                 print(f"Erro ao processar a ficha {ficha}: {e}\n")
                 logging.error(f"Erro ao processar a ficha {ficha}: {e}")

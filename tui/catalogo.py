@@ -126,12 +126,12 @@ CATEGORIAS: tuple[Categoria, ...] = (
         "Solicitação de AIH",
         (
             Comando("-sia", "Extrai informações da AIH", csvs=("solicita_inf_aih.csv",)),
-            Comando("-spaa", "Pré-processa AIHs automaticamente (sem interação do usuário)", csvs=("solicita_inf_aih.csv",)),
+            Comando("-spaa", "Pré-processa AIHs automaticamente (sem interação do usuário)", csvs=("solicita_inf_aih.csv", "internados_ghosp_avancado.csv", "historico_solicitacoes.csv")),
             Comando("-spb", "Substitui a etapa manual -spa no fluxo automático (-solicita-auto)", csvs=("solicita_inf_aih.csv",)),
             Comando("-spa", "Extrai link para solicitação de AIH do GHOSP (revisão humana)", csvs=("solicita_inf_aih.csv",), interativo=True),
-            Comando("-ssr", "Executa Solicitações no Sistema SISREG", csvs=("solicita_inf_aih.csv",)),
+            Comando("-ssr", "Executa Solicitações no Sistema SISREG", csvs=("solicita_inf_aih.csv", "historico_solicitacoes.csv")),
             Comando("-snt", "Insere número da solicitação SISREG na nota de prontuário", csvs=("solicita_inf_aih.csv",)),
-            Comando("-sresg", "Resgata solicitações com erro \"Procedimento nao habilitado!\" (troca código residual, retoma -ssr/-snt)", csvs=("solicita_inf_aih.csv",)),
+            Comando("-sresg", "Resgata solicitações com erro \"Procedimento nao habilitado!\" (troca código residual, retoma -ssr/-snt)", csvs=("solicita_inf_aih.csv", "historico_solicitacoes.csv")),
             Comando("-css", "Consulta o estado da Solicitação no SISREG", csvs=("consulta_solicitacao_sisreg.csv",)),
             Comando("-p2c", "Converte PDF de solicitações em CSV", aceita_pdf=True, obsoleto=True),
         ),
@@ -167,7 +167,7 @@ CATEGORIAS: tuple[Categoria, ...] = (
     Categoria(
         "Utilitários",
         (
-            Comando("-clc", "Limpa todos os arquivos de ~/AutoReg, mantendo apenas solicita_inf_aih.csv"),
+            Comando("-clc", "Limpa todos os arquivos de ~/AutoReg, mantendo solicita_inf_aih.csv, internados_ghosp_avancado.csv e historico_solicitacoes.csv"),
             Comando("-dev", "Processa solicitações devolvidas"),
             Comando("-ghn", "Extrai notas de prontuários GHOSP"),
             Comando("-ghc", "Extrai CNSs dos prontuários e cria lista_same_cns.csv", csvs=("lista_same_cns.csv",)),

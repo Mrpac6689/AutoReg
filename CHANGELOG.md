@@ -5,6 +5,22 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [Não lançado]
+
+### Adicionado
+- **Filtro de RA duplicado na mesma data/24h (`-aihs` e `-solicita`/`-solicita-auto`)**: quando o paciente tem um RA HUERB anterior com entrada no mesmo dia **ou** até 24h antes, e os lembretes do paciente mostram uma solicitação de clínica (CM, CC etc. — **UTI não conta**) datada entre a entrada desse RA anterior e 15 dias depois (mesma janela do `-std`; sem o limite, pacientes de longa permanência com solicitação recente ficariam bloqueados para sempre), o RA atual deixa de ser solicitado (mantém-se só o mais antigo). Como os lembretes são do paciente, e não do RA, é a data de cada lembrete que o liga a uma internação. A lista de RAs vem de `/historicopacs/{prontuario}`, aberta pelo `-ign` só para pacientes com lembrete de solicitação de clínica datado. `-ign` grava o RA anterior na nova coluna `ra_anterior_solicitado` de `internados_ghosp_avancado.csv`; `-std` e `-spaa` removem essas linhas. Fail-open: falha ao ler a lista de RAs não descarta nada
+- **`autoreg/ras_paciente.py`**: novo módulo compartilhado com a extração da lista de RAs HUERB do paciente (antes privada em `especial_extrai.py`), a regra de janela, o parser de lembretes de solicitação (um lembrete por bloco de texto; nº SISREG de 9 dígitos + data; ignora UTI e lembretes sem data), e `tem_data_proxima()` — o critério de ±15 dias que `-std` já usava, extraído sem mudança de comportamento
+- **`autoreg/historico_solicitacoes.py` e `~/AutoReg/historico_solicitacoes.csv`**: `-ssr` registra cada solicitação criada com sucesso (data/hora, RA, nº SISREG, procedimento, CNS) e `-spaa` não reenvia um RA solicitado nos últimos 15 dias (`DIAS_BLOQUEIO_RESOLICITACAO`), independente dos lembretes do G-HOSP. `-clc` preserva o arquivo
+
+### Corrigido
+- **Solicitação duplicada quando o `-ign` falha ao ler o prontuário** (caso RA 642852, 01/10/2026: solicitado às ~09h, ficha internada no SISREG às ~12h20 — o que libera nova solicitação do mesmo procedimento —, timeout do Chrome no `-ign` às 12h27 gravou `dados` vazio, `-std` não teve lembrete para filtrar e `-ssr` criou uma 2ª solicitação às 12h49; o RA 644502 em 27–28/09 seguiu o mesmo caminho). O `-ign` agora falha fechado: a nova coluna `lembretes_lidos` só recebe `sim` quando os lembretes são lidos de fato, e `-std`/`-spaa` descartam qualquer linha sem essa confirmação — inclusive quando a coluna não existe porque o `-ign` caiu antes de salvar ou não foi executado. O RA volta a ser avaliado no ciclo seguinte
+
+### Alterado
+- **Formato do `autoreg.log`**: cada linha passa a trazer o fuso (`-0500`) e o PID do processo (`[pid N]`) — `AAAA-MM-DD HH:MM:SS,mmm -0500 [pid N] - NÍVEL - mensagem`. O cron (TZ local) e execuções disparadas pela TUI dentro do container (UTC) gravam no mesmo arquivo e, sem isso, apareciam intercaladas com 5h de diferença e sem como separar
+- **Rastreabilidade por RA no log**: `autoreg.py` registra o comando ao iniciar e o início/fim/falha (com traceback) de cada etapa; `-ign` registra por RA os lembretes lidos, o setor, as solicitações de clínica datadas, a lista de RAs do histórico e a decisão do filtro de RA anterior; `-std` e `-spaa` registram quais RAs cada filtro removeu e quais seguem; `-ssr` inclui o RA nas linhas "Registro N"; `-snt` (que não registrava nada) registra cada lembrete gravado e cada falha
+- **TUI (`tui/runner.py`) passa `TZ=America/Rio_Branco` ao processo filho** quando não houver `TZ` definido, igual ao ciclo do cron. Dentro do container (UTC), depois das 19h locais o filho via o dia seguinte como "hoje" — data preenchida no SISREG, corte de 48h do `-std` e horários do log
+- **`-std`: lembretes de UTI não contam mais como solicitação já realizada** no filtro de "datas próximas (±15 dias)". Um paciente cujo único lembrete datado é uma solicitação de leito de UTI passa a seguir para a solicitação de AIH de clínica
+
 ## [10.0.0] - 2026-08
 
 Ciclo de manutenção: automação completa do fluxo de solicitação de AIH em cron (com resumo inteligente por WhatsApp), unificação e correção da pipeline de duplicados, limpeza de dependências vulneráveis, e depreciação formal de flags legadas sem uso. Sem mudanças de configuração exigidas para quem já está em produção — `config.ini` continua compatível.

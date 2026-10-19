@@ -5,7 +5,7 @@ def limpa_cache():
     os.makedirs(user_dir, exist_ok=True)
     
     # Arquivos que devem ser mantidos
-    arquivos_protegidos = ['solicita_inf_aih.csv', 'internados_ghosp_avancado.csv']
+    arquivos_protegidos = ['solicita_inf_aih.csv', 'internados_ghosp_avancado.csv', 'historico_solicitacoes.csv']
     
     # Verifica se o diretório existe
     if not os.path.exists(user_dir):

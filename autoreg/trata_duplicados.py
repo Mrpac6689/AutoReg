@@ -35,7 +35,7 @@ def trata_duplicados():
         return
 
     try:
-        df = pd.read_csv(duplicadas_path)
+        df = pd.read_csv(duplicadas_path, dtype={'CODIGO': str, 'CODINTERNA': str})
         if df.empty:
             print("✅ Arquivo de duplicados está vazio. Nenhuma ação necessária.")
             logging.info("Arquivo de duplicados vazio.")
@@ -167,7 +167,7 @@ def cod_inter_duplicado(duplicadas_path):
     logging.info("---===> EXTRAÇÃO DE CÓDIGOS SISREG - DUPLICADOS <===---")
 
     try:
-        df = pd.read_csv(duplicadas_path)
+        df = pd.read_csv(duplicadas_path, dtype={'CODIGO': str, 'CODINTERNA': str})
         if 'DUPLICADOS' not in df.columns:
             print("Coluna 'DUPLICADOS' não encontrada.")
             logging.warning("Busca de CODINTERNA: coluna 'DUPLICADOS' não encontrada — nada a fazer.")
@@ -292,7 +292,7 @@ def interna_duplicados(duplicadas_path):
     logging.info("---===> INTERNAÇÃO DE DUPLICADOS <===---")
 
     try:
-        df = pd.read_csv(duplicadas_path)
+        df = pd.read_csv(duplicadas_path, dtype={'CODIGO': str, 'CODINTERNA': str})
         if 'CODINTERNA' not in df.columns:
             print("Coluna CODINTERNA não encontrada.")
             logging.warning("Internação de duplicados: coluna CODINTERNA não encontrada — nada a internar.")
@@ -338,7 +338,7 @@ def interna_duplicados(duplicadas_path):
                 logging.error(f"Processamento abortado por CAPTCHA não resolvido: {resultado_captcha}")
                 break
 
-            ficha = str(row.get('CODINTERNA', '')).strip()
+            ficha = str(row.get('CODINTERNA', '')).strip().split('.')[0]
             if not ficha or ficha == 'nan':
                 continue
 
@@ -351,6 +351,8 @@ def interna_duplicados(duplicadas_path):
                 print(f"   {resultado}")
                 logging.info(f"Ficha {ficha}: {resultado}")
 
+            except SessaoSisregAbortada:
+                raise
             except Exception as e:
                 print(f"   ❌ Erro na ficha {ficha}: {e}")
                 logging.error(f"Erro ao internar ficha {ficha}: {e}")

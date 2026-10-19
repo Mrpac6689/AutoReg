@@ -17,6 +17,7 @@ from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
 from autoreg.chrome_options import get_chrome_options
 from autoreg.justificativa_ghosp import tratar_justificativa_acesso
+from autoreg.ras_paciente import extrair_ras_huerb
 
 JANELA_DIAS = 30
 DATA_HORA_RE = re.compile(r'\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}')
@@ -89,37 +90,6 @@ def _candidatos_historicopacs(driver, caminho_ghosp):
     if "historicopacs" in url_atual:
         return [url_atual]
     return []
-
-
-def _extrai_ras_huerb(driver):
-    """
-    Extrai (ra, data_entrada) de cada RAitem da unidade HUERB na página de
-    histórico do paciente atualmente carregada (mesma lógica de
-    extrai_internados_ghosp_avancado.py).
-    """
-    ras = []
-    try:
-        container = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "container-procedimentos"))
-        )
-    except TimeoutException:
-        return ras
-
-    for item in container.find_elements(By.CLASS_NAME, "RAitem"):
-        try:
-            if 'HUERB' not in item.text.upper():
-                continue
-            ra_numero = item.find_element(By.CLASS_NAME, "ra").get_attribute("value")
-            span_data = item.find_element(By.CLASS_NAME, "ml5").text
-            data_texto = span_data.replace('\n', ' ').strip()
-            m = re.search(r'(\d{2}/\d{2}/\d{4})\s*(\d{2}):\s*(\d{2})', data_texto)
-            if not m:
-                continue
-            data_obj = datetime.strptime(f"{m.group(1)} {m.group(2)}:{m.group(3)}", "%d/%m/%Y %H:%M")
-            ras.append({'ra': ra_numero, 'data_entrada': data_obj})
-        except Exception:
-            continue
-    return ras
 
 
 def _encontra_ra_compativel(ras, data_avaliacao):
@@ -266,7 +236,7 @@ def especial_extrai():
                             driver.get(url_candidato)
                             time.sleep(1)
 
-                    ras = _extrai_ras_huerb(driver)
+                    ras = extrair_ras_huerb(driver)
                     ra_encontrado = _encontra_ra_compativel(ras, data_avaliacao)
                     if ra_encontrado:
                         break

@@ -25,8 +25,13 @@ python autoreg.py                  # No args: launches the TUI (see below)
 python autoreg.py -h                # Show all flags and descriptions (was the no-args behavior)
 python autoreg.py -interna         # Run full admission workflow
 python autoreg.py -alta            # Run full discharge workflow
-python autoreg.py -solicita -R     # Run AIH solicitation + record production
+python autoreg.py -solicita-auto   # Run AIH solicitation with no human interaction
 python autoreg.py --all            # Full admission + discharge cycle
+./run_autoreg.sh -interna          # Same as above, activating venv/ first (used outside an activated shell)
+
+# Ad-hoc check scripts (plain python, no test runner)
+python test_detecta_captcha.py         # CAPTCHA detection patterns, offline
+python test_2captcha_integration.py    # 2Captcha setup, needs [2CAPTCHA] in config.ini
 
 # TUI can also be launched directly (equivalent to `python autoreg.py` with no args)
 python tui_app.py
@@ -98,7 +103,9 @@ isn't a tty) and never stream live.
   in the (asynchronous) gap between a screen's unmount and its listener
   actually being removed.
 
-No build step, no test suite, no linter configuration exists in this project.
+No build step, no test suite (only the two ad-hoc scripts above), no linter configuration exists in this project.
+
+`AGENTS.md` is a shorter parallel guide for other agents. It has drifted out of date, so trust this file over it when they disagree.
 
 ## Architecture
 
@@ -138,7 +145,7 @@ No build step, no test suite, no linter configuration exists in this project.
 |----------|------------------|-------------|
 | `-interna` | `-eci` → `-ip` | Full admission cycle |
 | `-alta` | `-eis` → `-eiga` → `-maa` → `-eaa` | Full discharge cycle |
-| `-solicita` | `-spa` → `-sia` → `-ssr` → `-snt` | AIH solicitation |
+| `-solicita` | `-spaa` → `-spa` → `-sia` → `-ssr` → `-snt` | AIH solicitation (`-spa` is interactive: human reviews what `-spaa` couldn't auto-approve) |
 | `-solicita-auto` | `-spaa` → `-spb` → `-sia` → `-ssr` → `-snt` | AIH solicitation with no human interaction (cron-safe): `-spb` replaces `-spa`, dropping any record `-spaa` couldn't auto-approve |
 | `-aihs` | `-iga` → `-ign` → `-std` | AIH pre-processing (GHOSP notes → SISREG data) |
 | `--all` | `-interna` then `-alta` | Complete workflow (prompts for repetition count) |
@@ -148,7 +155,13 @@ No build step, no test suite, no linter configuration exists in this project.
 | *(no shortcut)* | `-especial-prepara` → `-especial-extrai` | Targeted one-off pipeline: extract NOME/SETOR/DATA from a G-HOSP "Avaliações Profissionais" PDF report (e.g. `pr018.jasper`), then look up in G-HOSP which professional performed each evaluation and when; run individually, not part of any cron cycle |
 | *(no shortcut)* | `-especial-med-prepara` → `-especial-med-extrai` | Targeted one-off pipeline: extract RA + internamento/alta datetimes from a G-HOSP "Altas por período" PDF report (`rc008`), then look up in G-HOSP which physician signed the discharge for each RA; independent of the `-especial-prepara`/`-especial-extrai` pair above, run individually, not part of any cron cycle |
 
-Individual flags follow the pattern: short flag (e.g. `-ip`) = `--interna-pacientes`. Run `python autoreg.py -h` (or `--help`) to see all functions with descriptions — running `python autoreg.py` with **no** args launches the TUI (`tui_app.py`) instead (see the TUI section below).
+Workflow shortcuts are hardcoded sequences in `main()` (not composed from `FLAG_TO_FUNC`), each stops at the first failing step, and each `return`s, so a shortcut can't be combined with other flags on the same command line. Individual flags, on the other hand, run in the **exact order they appear in `sys.argv`** (`autoreg.py -eid -td` runs `-eid` first).
+
+`-sresg` (`solicita_resgate.py`) is a standalone flag outside every shortcut. It shares `correlacoes_aih.json` with `-spaa`. `-clc` wipes `~/AutoReg/` except `solicita_inf_aih.csv`, `internados_ghosp_avancado.csv` and `historico_solicitacoes.csv`.
+
+**Adding a new flag** touches several places in `autoreg.py`, and nothing enforces that they stay in sync: the import, the `FUNCOES` dict (func + `desc`), `FLAG_TO_FUNC` (both short and long forms), the `flags` list in `mostrar_informacoes()`, `parser.add_argument(...)`, and the optional-positional-arg special case in the argv loop if the flag takes a path. Outside that file, also update `autoreg/__init__.py` exports and `tui/catalogo.py`.
+
+Individual flags follow the pattern: short flag (e.g. `-ip`) = `--interna-pacientes`. Run `python autoreg.py -h` (or `--help`) to see all functions with descriptions — running `python autoreg.py` with **no** args launches the TUI (`tui_app.py`) instead (see the TUI section above).
 
 ### `-especial-prepara` / `-especial-extrai`
 
@@ -197,11 +210,15 @@ AutoReg includes automatic CAPTCHA detection and resolution:
 ## Non-obvious Behaviors
 
 - **G-HOSP 500 auto-recovery** (`extrai_internados_ghosp_avancado.py`): if a Rails error-500 page is detected mid-session, the module silently performs a full re-login and retries the navigation. This is transparent to the caller.
-- **`-p2c` optional argument**: `-p2c` / `--pdf2csv` is the only flag that accepts an optional positional argument (path to a PDF file). All other flags are boolean.
-- **`-R` timing**: for `-alta`, production is registered *before* the sequence runs; for `-interna` and `-solicita` it is also registered before the sequence. This is a pre-registration pattern, not a post-registration one.
+- **Optional PDF argument**: `-p2c`, `-especial-prepara` and `-especial-med-prepara` accept an optional positional PDF path (`nargs='?'`). The argv-order loop in `main()` has a hardcoded tuple of these function names so it can consume the next token. All other flags are boolean.
+- **`-R` timing (obsolete flag)**: for `-alta`/`-solicita`/`-solicita-auto`, production is registered *before* the sequence runs, but for `-interna` it is registered *after*.
 - **Exam deduplication (`-eas`)**: records with a non-empty `solicitacao` column are skipped unless `solicita='s'` is set. The `solicita` column is cleared after successful processing.
 - **Bash exit codes through `tee`** (`docker-entry-script.sh`): after `cmd | tee file`, `$?` reflects `tee`'s exit code, not `cmd`'s — use `${PIPESTATUS[0]}` to check whether the piped command actually failed.
 - **Testing a single `autoreg/` module in isolation**: `from autoreg.X import Y` triggers `autoreg/__init__.py`, which eagerly imports every module in the package (Selenium, requests, bs4, 2captcha...) — even to test a pure-pandas module like `solicita_pre_aih_bridge.py`. Without the full `venv` dependencies installed, load the file directly via `importlib.util.spec_from_file_location(...)` or copy the needed files into a throwaway package instead.
+- **`autoreg.log` format and concurrent writers**: lines are `YYYY-MM-DD HH:MM:SS,mmm -0500 [pid N] - LEVEL - msg`. The host cron runs `cron-autoreg-docker.sh` at 9/12/15/18/21h. The cycle runs **inside the `autoreg` container** with `TZ=America/Rio_Branco`, while TUIs opened inside the container (KASM) launch commands too, and all of them share `~/AutoReg`. Lines written before the offset/pid were added mix local time and UTC with no marker. `autoreg.py` logs `===== autoreg.py iniciado: <flags> | TZ=… =====` and `>>> Etapa X iniciada` / `<<< Etapa X concluída|falhou`, which you can use to delimit runs.
+- **`-ign` fails closed** (`lembretes_lidos` column): when `-ign` can't read a prontuário (e.g. a Chrome read timeout), `dados` comes out empty. That looks exactly like "patient has no lembretes", which made `-std`'s "already solicited" filters pass the RA and `-ssr` solicit it a second time (RA 642852, 01/10/2026). So `-ign` sets `lembretes_lidos = sim` only on a real read, and `-std`/`-spaa` (`ras_paciente.filtrar_lembretes_nao_lidos`) drop every row without it. That includes the whole CSV when the column is missing because `-ign` crashed before saving or never ran. Don't reintroduce a path where a read failure leaves a row eligible.
+- **Local solicitation history** (`autoreg/historico_solicitacoes.py`, `~/AutoReg/historico_solicitacoes.csv`): `-ssr` appends every successful SISREG solicitation, and `-spaa` skips any RA solicited in the last `DIAS_BLOQUEIO_RESOLICITACAO` (15) days. This is needed because SISREG only rejects a duplicate for the *same procedure while the previous one is still pending*: once `-interna` admits the ficha, a new solicitation goes through.
+- **RA duplicado na mesma data/24h** (`autoreg/ras_paciente.py`): `/pr/interns/{RA}` shows the patient's prontuário for that RA, while the patient's RA list (`container-procedimentos` → `RAitem`, with entry date+time) lives at `/historicopacs/{prontuario}`. `-ign` builds that URL from the prontuário link in the `#paciente` banner and opens it only when the lembretes contain a dated clinic solicitation. If an older HUERB RA was entered the same calendar day or within 24h, and the lembretes show a clinic solicitation dated on or after that older RA's entry, `-ign` writes the older RA into `ra_anterior_solicitado`. `-std` and `-spaa` then drop those rows. **Lembretes (`#paclembretes`) belong to the patient, not the RA**: every RA of the patient shows the same list, so only a lembrete's date ties it to an admission. Almost every internação has an earlier HUERB RA within 24h (the emergency visit), and the patient's own solicitation always satisfies "dated after RA1's entry". So the 15-day upper bound is what keeps long-stay patients from being blocked forever, and in practice this filter overlaps heavily with `-std`'s ±15-day rule. A lembrete counts as a solicitation if it has a 9-digit SISREG number and a date and doesn't mention UTI. `-std`'s older "any date within ±15 days" rule also ignores UTI lembretes (`remover_lembretes_uti`). Real lembretes are mostly hand-written ("SISREG CM 23/09 123456789"), and they're split one per block of 3+ spaces or a newline. The check is fail-open. The `rc001` report never lists two RAs of the same patient at once, so this can't be done from the CSV alone.
 - **`sessao_sisreg.sessao_expirada()` false positive**: it detects expired sessions by looking for the substring "erro de sistema" anywhere in `driver.page_source` — but that's also the exact business-error message SISREG shows for a single ficha that can't be internada/dada alta (not a session problem). `internacao_sisreg.internar_ficha_sisreg()` avoids the collision by always doing `driver.get()` to a fresh page *before* calling `garantir_sessao_sisreg()`, so a leftover error div from a previous ficha is never on screen when the check runs. Keep that ordering in any new loop that checks session state.
 
 ## Important Files

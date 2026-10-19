@@ -7,6 +7,7 @@ Autor: Michel Ribeiro Paes (MrPaC6689)
 """
 
 import argparse
+import logging
 import sys
 import os
 import configparser
@@ -124,7 +125,7 @@ FUNCOES = {
     },
     'limpa_cache': {
         'func': limpa_cache,
-        'desc': 'Limpa todos os arquivos da pasta ~/AutoReg, mantendo apenas solicita_inf_aih.csv'
+        'desc': 'Limpa todos os arquivos da pasta ~/AutoReg, mantendo solicita_inf_aih.csv, internados_ghosp_avancado.csv e historico_solicitacoes.csv'
     },
     'devolvidos': {
         'func': devolvidos,
@@ -454,11 +455,15 @@ def executar_funcao(func_name):
     """Executa uma função específica"""
     if func_name in FUNCOES:
         print(f"🚀 Executando: {FUNCOES[func_name]['desc']}")
+        logging.info(f">>> Etapa {func_name} iniciada")
+        inicio = time.time()
         try:
             FUNCOES[func_name]['func']()
             print(f"✅ Concluído: {FUNCOES[func_name]['desc']}")
+            logging.info(f"<<< Etapa {func_name} concluída ({time.time() - inicio:.0f}s)")
         except Exception as e:
             print(f"❌ Erro ao executar {func_name}: {e}")
+            logging.exception(f"<<< Etapa {func_name} falhou ({time.time() - inicio:.0f}s): {e}")
             return False
         return True
     else:
@@ -592,7 +597,7 @@ Exemplos de uso:
     parser.add_argument('-tat', '--trata-altas', action='store_true',
                        help=argparse.SUPPRESS)  # OBSOLETO: substituído por -maa; ver CHANGELOG.md
     parser.add_argument('-clc', '--limpa-cache', action='store_true',
-                       help='Limpa todos os arquivos da pasta ~/AutoReg, mantendo apenas solicita_inf_aih.csv')
+                       help='Limpa todos os arquivos da pasta ~/AutoReg, mantendo solicita_inf_aih.csv, internados_ghosp_avancado.csv e historico_solicitacoes.csv')
     parser.add_argument('-dev', '--devolvidos', action='store_true',
                        help='Processa solicitações devolvidas')
     parser.add_argument('-p2c', '--pdf2csv', nargs='?', metavar='PDF', help=argparse.SUPPRESS)  # OBSOLETO: ver CHANGELOG.md
@@ -692,6 +697,12 @@ Exemplos de uso:
         return
 
     args = parser.parse_args()
+    # Marca o início de cada execução no autoreg.log (cron e manuais gravam no
+    # mesmo arquivo — o [pid] e o fuso de cada linha identificam qual é qual)
+    logging.info(
+        f"===== autoreg.py iniciado: {' '.join(sys.argv[1:])} | TZ={os.environ.get('TZ', '(não definido)')} "
+        f"| usuário={os.environ.get('USER') or os.environ.get('LOGNAME') or '?'} ====="
+    )
 
     # Processa funções especiais (workflows compostos) primeiro
     if args.all:
