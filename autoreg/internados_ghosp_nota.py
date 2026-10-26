@@ -16,6 +16,8 @@ from autoreg.ras_paciente import (
 )
 import logging
 
+MAX_TIMEOUTS_SEGUIDOS = 3
+
 
 def _url_historico_paciente(driver, caminho_ghosp):
     """
@@ -172,7 +174,21 @@ def internados_ghosp_nota():
                 return
 
             total_prontuarios = len(df)
+            # Chrome travado: cada driver.get() leva o read timeout inteiro (120s)
+            # do chromedriver. Em 23/10/2026 isso prendeu o -ign por 7h (206 RAs),
+            # sobrepondo os ciclos das 18h e 21h. Após alguns timeouts seguidos,
+            # interrompe — os RAs restantes ficam sem lembretes_lidos (falha fechada)
+            # e entram no próximo ciclo.
+            timeouts_seguidos = 0
             for idx, row in df.iterrows():
+                if timeouts_seguidos >= MAX_TIMEOUTS_SEGUIDOS:
+                    restantes = total_prontuarios - idx
+                    print(f"Chrome sem resposta após {timeouts_seguidos} timeouts seguidos — interrompendo; {restantes} RA(s) ficam para o próximo ciclo")
+                    logging.error(
+                        f"-ign: Chrome sem resposta após {timeouts_seguidos} timeouts seguidos — "
+                        f"{restantes} RA(s) restantes ficam para o próximo ciclo"
+                    )
+                    break
                 codigo = str(row['internacao'])  # usa a coluna 'internacao'
                 print(f"[{idx+1}/{total_prontuarios}] Acessando prontuário para código: {codigo}")
 
@@ -233,8 +249,11 @@ def internados_ghosp_nota():
                         print(f"RA anterior {ra_anterior} (mesma data/24h) já solicitado — RA {codigo} será descartado")
                         logging.info(f"-ign RA {codigo}: RA anterior {ra_anterior} na mesma data/24h já solicitado — RA {codigo} será descartado")
                     df.at[idx, COLUNA_RA_ANTERIOR] = ra_anterior
+                    timeouts_seguidos = 0
 
                 except Exception as e:
+                    if 'Read timed out' in str(e):
+                        timeouts_seguidos += 1
                     print(f"Erro ao acessar prontuário {codigo}: {e} — RA fica fora da solicitação neste ciclo")
                     logging.error(f"Erro ao acessar prontuário {codigo} — RA fica fora da solicitação neste ciclo: {e}")
                     df.at[idx, COLUNA_LEMBRETES_LIDOS] = ''

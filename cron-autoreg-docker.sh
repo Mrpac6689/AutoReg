@@ -10,6 +10,14 @@ if ! docker ps --format '{{.Names}}' | grep -q $CONTAINER_NAME; then
     exit 1
 fi
 
+# Não sobrepõe ciclos: todos compartilham os CSVs de ~/AutoReg. Em 23/10/2026
+# o ciclo das 15h travou até 22h45 e os das 18h e 21h rodaram em paralelo a ele.
+exec 9>/tmp/autoreg-cron.lock
+if ! flock -n 9; then
+    echo "$(date '+%F %T') ciclo anterior ainda em execução — pulando este" >> /tmp/docker_cron_error.log
+    exit 0
+fi
+
 # 1. Copia o script
 docker cp $SCRIPT_SOURCE $CONTAINER_NAME:$SCRIPT_DEST
 

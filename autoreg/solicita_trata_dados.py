@@ -83,7 +83,15 @@ def solicita_trata_dados():
         df_filtrado = df_filtrado.drop(columns=['data_temp'])
         
         print(f"Registros removidos (OBSERVAÇÃO ADULTO < 48h): {registros_observacao_removidos}")
-        
+
+        # Em DataFrame vazio, apply(axis=1) devolve um DataFrame (não uma Series)
+        # e a máscara abaixo some com as colunas → KeyError 'dados' (23/10/2026)
+        if df_filtrado.empty:
+            df_filtrado.to_csv(csv_path, index=False)
+            print(f"Nenhum registro restante após os filtros. Arquivo salvo vazio: {csv_path}")
+            logging.info("-std: 0 registro(s) seguem para solicitação")
+            return
+
         # Remove linhas onde a coluna "dados" contém datas próximas (±15 dias) da data de internação,
         # desconsiderando lembretes de UTI
         def verificar_datas_proximas(row):

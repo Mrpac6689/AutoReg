@@ -95,6 +95,15 @@ def resolver_captcha_automatico(driver, api_key, timeout=300):
 
         tempo_total = int(time.time() - tempo_inicio)
 
+        # O SISREG pode recusar o token com um alert JS ("Resolva o desafio do
+        # captcha."). Sem esta checagem isso era contado como sucesso, o -ip
+        # seguia e cada ficha seguinte batia no mesmo CAPTCHA, gastando um
+        # 2Captcha por ficha (40 fichas em 23/10/2026)
+        if resultado['sucesso']:
+            texto_alerta = _aceitar_alerta_pendente(driver)
+            if texto_alerta:
+                resultado = {'sucesso': False, 'mensagem': f'SISREG recusou o token: {texto_alerta!r}'}
+
         if resultado['sucesso']:
             logging.info(f"CAPTCHA resolvido automaticamente em {tempo_total}s")
             print(f"[2Captcha] CAPTCHA resolvido em {tempo_total}s!")
@@ -423,6 +432,17 @@ def _extrair_hcaptcha_sitekey(driver):
 
     except Exception as e:
         logging.error(f"Erro ao extrair sitekey hCaptcha: {e}")
+        return None
+
+
+def _aceitar_alerta_pendente(driver):
+    """Fecha um alert JS aberto e devolve o texto dele, ou None se não houver."""
+    try:
+        alerta = driver.switch_to.alert
+        texto = alerta.text
+        alerta.accept()
+        return texto
+    except Exception:
         return None
 
 
