@@ -166,8 +166,24 @@ def resumo_solicitacao(snapshots):
     if manual_pendente > 0:
         linhas.append(f"⏭️ {manual_pendente} pendente(s) de revisão manual (sem laudo compatível — rodar -spa)")
 
-    if restantes > 0:
-        linhas.append(f"❌ {restantes} ainda pendente(s) ao final do ciclo:")
+    # -snt mantém no CSV as linhas que só receberam nota de cadastro (CNS
+    # vazio / não encontrado no DATASUS) — aguardam a equipe, não são falha técnica.
+    if restantes > 0 and 'erro' in df_final.columns:
+        com_nota = df_final['erro'].fillna('').astype(str).str.contains('(nota registrada no G-HOSP)', regex=False)
+    else:
+        com_nota = pd.Series(False, index=df_final.index)
+    df_nota = df_final[com_nota]
+    df_final = df_final[~com_nota]
+
+    if len(df_nota) > 0:
+        linhas.append(f"📝 {len(df_nota)} aguardando correção de cadastro no G-HOSP:")
+        for _, row in df_nota.iterrows():
+            ra = row.get('ra', '?')
+            motivo = str(row.get('erro', '')).replace(' (nota registrada no G-HOSP)', '')
+            linhas.append(f"   • RA {ra}: {_truncar(motivo)}")
+
+    if len(df_final) > 0:
+        linhas.append(f"❌ {len(df_final)} ainda pendente(s) ao final do ciclo:")
         for _, row in df_final.iterrows():
             ra = row.get('ra', '?')
             erro_val = row.get('erro') if 'erro' in df_final.columns else None

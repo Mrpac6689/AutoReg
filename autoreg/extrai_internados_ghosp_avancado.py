@@ -281,9 +281,9 @@ def extrai_internados_ghosp_avancado():
         # Atualiza arquivo final
         df.to_csv(csv_path, index=False)
         print(f"\nProcessamento concluído. CSV atualizado em: {csv_path}")
-        
-        driver.quit()
-    
+        # driver.quit() fica só no finally: fechar aqui também fazia o segundo
+        # quit() bater num chromedriver morto (3x "Retrying ... Connection refused").
+
     except Exception as e:
         print(f"Erro ao extrair internados do GHOSP: {str(e)}")
         logging.error(f"Erro ao extrair internados do GHOSP: {str(e)}")

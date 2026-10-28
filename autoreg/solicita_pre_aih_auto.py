@@ -291,6 +291,7 @@ def _inserir_nota_lembrete(driver, caminho_ghosp, ra, texto):
     try:
         if _lembrete_ja_registrado(driver, caminho_ghosp, ra, texto):
             print(f"   ℹ️  Nota '{texto}' já registrada para RA {ra} — não duplicando")
+            logging.info(f"RA {ra}: nota {texto!r} já registrada no G-HOSP, não duplicada")
             return True
 
         url = f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}"
@@ -894,7 +895,7 @@ def solicita_pre_aih_auto():
 
                 elif resultado == FALTA_AIH:
                     print(f"   🗑️  RA {ra} removido do CSV (FALTA AIH registrada)")
-                    logging.info(f"RA {ra}: FALTA_AIH — nota registrada, removido do CSV")
+                    logging.info(f"RA {ra}: FALTA_AIH — nota registrada ou já existente, removido do CSV")
                     df = df.drop(index=i).reset_index(drop=True)
                     df.to_csv(csv_solicita, index=False)
                     contagem_falta_aih += 1
@@ -902,7 +903,7 @@ def solicita_pre_aih_auto():
 
                 elif resultado == IGNORAR_PEDIATRICA:
                     print(f"   🗑️  RA {ra} removido do CSV (Clínica Pediátrica — Solicitação Externa)")
-                    logging.info(f"RA {ra}: IGNORAR_PEDIATRICA — nota registrada, removido do CSV")
+                    logging.info(f"RA {ra}: IGNORAR_PEDIATRICA — nota registrada ou já existente, removido do CSV")
                     df = df.drop(index=i).reset_index(drop=True)
                     df.to_csv(csv_solicita, index=False)
                     contagem_pediatrica += 1

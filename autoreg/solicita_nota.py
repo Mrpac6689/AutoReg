@@ -15,6 +15,70 @@ import logging
 
 # Lembrete para CNS faltante
 TEXTO_LEMBRETE_CNS = "FALTA CNS/CPF, FAVOR PROVIDENCIAR PARA SOLICITAÇÃO DE AIH"
+# Lembrete para CNS/CPF que o -ssr não encontrou no SISREG (CNS provisório 898…,
+# CPF desatualizado). Sem ele o RA falhava em todo ciclo sem ninguém saber
+# (RAs 655475, 651857, 654398 em 19/10/2026).
+TEXTO_LEMBRETE_DATASUS = "CNS/CPF NÃO LOCALIZADO NO SISREG/DATASUS, FAVOR ATUALIZAR CADASTRO PARA SOLICITAÇÃO DE AIH"
+# Trecho do 'erro' gravado por -ssr (solicita_sisreg.py) nesse caso
+ERRO_DATASUS = "não encontrado na base do DATASUS"
+SUFIXO_NOTA_REGISTRADA = " (nota registrada no G-HOSP)"
+
+
+def _gravar_lembrete_fixo(driver, caminho_ghosp, ra, texto):
+    """
+    Grava um lembrete de texto fixo no prontuário, a menos que já exista.
+
+    Retorna 'gravado', 'ja_existia', 'nao_lido' (lembretes ilegíveis — não
+    grava, para não arriscar duplicar) ou 'falhou'.
+    """
+    lembretes = ler_lembretes_paciente(driver, caminho_ghosp, ra)
+    if lembretes is None:
+        return 'nao_lido'
+    if lembrete_ja_registrado(lembretes, texto):
+        return 'ja_existia'
+
+    url = f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}"
+    try:
+        driver.get(url)
+        time.sleep(1)
+
+        # Paciente em alta: G-HOSP redireciona para a página de
+        # justificativa. Preenche/envia e re-navega para o formulário.
+        if tratar_justificativa_acesso(driver):
+            driver.get(url)
+            time.sleep(1)
+        time.sleep(1)
+
+        botao_novo_lembrete = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, '//*[@id="paciente"]/div[3]/div/h6/small/a'))
+        )
+        botao_novo_lembrete.click()
+
+        campo_lembrete = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, '//*[@id="prlembrete_lembrete"]'))
+        )
+        print(f"Inserindo lembrete: {texto}")
+        campo_lembrete.clear()
+        campo_lembrete.send_keys(texto)
+
+        botao_salvar = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, '//*[@id="janela_modal"]/form/div[3]/input[1]'))
+        )
+        botao_salvar.click()
+        time.sleep(1)
+        return 'gravado'
+    except Exception as e:
+        print(f"Erro ao adicionar lembrete para RA {ra}: {e}")
+        logging.error(f"-snt RA {ra}: falha ao gravar lembrete {texto!r}: {e}")
+        return 'falhou'
+
+
+def _ra_str(valor):
+    ra = str(valor)
+    if ra.endswith('.0'):
+        ra = ra[:-2]
+    return ra.replace('.', '')
+
 
 def solicita_nota():
     print("\n---===> SOLICITA INSERE CODIGO SISREG NA NOTA <===---")
@@ -218,124 +282,85 @@ def solicita_nota():
             print(f"✅ {len(indices_sucesso)} registro(s) gravado(s) e removido(s). "
                   f"{len(df_restante)} mantido(s) (falhas de nota / revisão).")
             
-            # Verificação adicional: processa linhas com CNS vazio
-            print("\n🔍 Verificando linhas com CNS vazio...")
-            
+            # Verificação adicional: notas de cadastro (CNS vazio / CNS-CPF não
+            # encontrado no DATASUS). As linhas NÃO são removidas do CSV: o resumo
+            # do WhatsApp conta como sucesso toda linha que some entre -spb e o
+            # fim do ciclo (relatorio_execucao.resumo_solicitacao), e um RA que
+            # só recebeu nota não foi solicitado. -spaa recria o CSV no próximo
+            # ciclo, então nada se acumula.
+            print("\n🔍 Verificando notas de cadastro (CNS vazio / não encontrado no DATASUS)...")
+
             # Relê o CSV atualizado
             df_revisar = pd.read_csv(csv_path)
-            
-            # Verifica se a coluna 'cns' existe
-            if 'cns' not in df_revisar.columns:
-                print("⚠️  Coluna 'cns' não encontrada no CSV. Pulando verificação de CNS.")
-            elif len(df_revisar) == 0:
+
+            if len(df_revisar) == 0:
                 print("ℹ️  Nenhum registro para verificar CNS.")
             else:
-                # Filtra linhas onde CNS está vazio (NaN, None, string vazia ou só espaços)
-                mask_cns_vazio = df_revisar['cns'].isna() | (df_revisar['cns'].astype(str).str.strip() == '') | (df_revisar['cns'].astype(str) == 'nan')
+                if 'erro' not in df_revisar.columns:
+                    df_revisar['erro'] = ''
+                df_revisar['erro'] = df_revisar['erro'].astype(object)
+                erro_txt = df_revisar['erro'].fillna('').astype(str)
+
                 # Fail-closed: CNS vazio só vira nota quando o -sia confirmou que
                 # leu o fieldset "Documentos" (cns_lido = sim). Sem isso, um
                 # registro sem link ou com falha de leitura no -sia recebia a nota
                 # mesmo com CNS cadastrado (RA 653114, 16/10/2026). Coluna ausente
                 # (CSV antigo, -sia caiu antes de salvar) = nenhuma nota.
+                if 'cns' in df_revisar.columns:
+                    mask_cns_vazio = df_revisar['cns'].isna() | (df_revisar['cns'].astype(str).str.strip() == '') | (df_revisar['cns'].astype(str) == 'nan')
+                else:
+                    print("⚠️  Coluna 'cns' não encontrada no CSV. Pulando verificação de CNS vazio.")
+                    mask_cns_vazio = pd.Series(False, index=df_revisar.index)
                 if 'cns_lido' in df_revisar.columns:
                     mask_cns_lido = df_revisar['cns_lido'].astype(str).str.strip().str.lower() == 'sim'
                 else:
                     mask_cns_lido = pd.Series(False, index=df_revisar.index)
                 for _, row_nao_lido in df_revisar[mask_cns_vazio & ~mask_cns_lido].iterrows():
-                    ra_nao_lido = str(row_nao_lido['ra'])
-                    if ra_nao_lido.endswith('.0'):
-                        ra_nao_lido = ra_nao_lido[:-2]
+                    ra_nao_lido = _ra_str(row_nao_lido['ra'])
                     print(f"⚠️  CNS do RA {ra_nao_lido} não foi lido pelo -sia — nota CNS não gravada")
                     logging.warning(f"-snt RA {ra_nao_lido}: CNS não foi lido por -sia — nota CNS não gravada")
-                df_cns_vazio = df_revisar[mask_cns_vazio & mask_cns_lido]
 
-                if len(df_cns_vazio) > 0:
-                    print(f"📝 Encontradas {len(df_cns_vazio)} linha(s) com CNS vazio. Inserindo lembretes...")
-                    
-                    indices_processados = []
-                    
-                    for idx, row in df_cns_vazio.iterrows():
-                        ra = str(row['ra'])  # usando coluna 'ra'
-                        # Remove ".0" no final se existir
-                        if ra.endswith('.0'):
-                            ra = ra[:-2]
-                        # Remove qualquer ponto restante
-                        ra = ra.replace('.', '')
-                        # Sem essa checagem o mesmo RA recebia a nota a cada ciclo do
-                        # cron (-spaa volta a gerá-lo enquanto o CNS não é corrigido):
-                        # RA 649772 chegou a 18 notas iguais.
-                        lembretes = ler_lembretes_paciente(driver, caminho_ghosp, ra)
-                        if lembretes is None:
-                            print(f"⚠️  Não foi possível ler os lembretes do RA {ra} — nota CNS não gravada neste ciclo")
-                            logging.warning(f"-snt RA {ra}: lembretes não lidos — nota CNS não gravada para não arriscar duplicar")
+                mask_datasus = erro_txt.str.contains(ERRO_DATASUS, regex=False)
+                # (máscara, texto da nota, rótulo de log, erro padrão quando vazio)
+                notas = [
+                    (mask_cns_vazio & mask_cns_lido, TEXTO_LEMBRETE_CNS, 'CNS',
+                     'CNS e CPF não cadastrados no G-HOSP'),
+                    (mask_datasus & ~(mask_cns_vazio & mask_cns_lido), TEXTO_LEMBRETE_DATASUS, 'DATASUS', ''),
+                ]
+                alterado = False
+                for mask, texto, rotulo, erro_padrao in notas:
+                    if not mask.any():
+                        continue
+                    print(f"📝 {mask.sum()} linha(s) para nota {rotulo}...")
+                    for idx in df_revisar[mask].index:
+                        # Sem a checagem de duplicidade o mesmo RA recebia a nota a
+                        # cada ciclo do cron (-spaa volta a gerá-lo enquanto o
+                        # cadastro não é corrigido): RA 649772 chegou a 18 notas iguais.
+                        ra = _ra_str(df_revisar.at[idx, 'ra'])
+                        status = _gravar_lembrete_fixo(driver, caminho_ghosp, ra, texto)
+                        if status == 'nao_lido':
+                            print(f"⚠️  Não foi possível ler os lembretes do RA {ra} — nota {rotulo} não gravada neste ciclo")
+                            logging.warning(f"-snt RA {ra}: lembretes não lidos — nota {rotulo} não gravada para não arriscar duplicar")
                             continue
-                        if lembrete_ja_registrado(lembretes, TEXTO_LEMBRETE_CNS):
-                            print(f"ℹ️  Nota CNS já registrada para RA {ra} — não duplicando")
-                            logging.info(f"-snt RA {ra}: nota CNS já registrada no G-HOSP, não duplicada")
-                            indices_processados.append(idx)
+                        if status == 'falhou':
                             continue
+                        if status == 'ja_existia':
+                            print(f"ℹ️  Nota {rotulo} já registrada para RA {ra} — não duplicando")
+                            logging.info(f"-snt RA {ra}: nota {rotulo} já registrada no G-HOSP, não duplicada")
+                        else:
+                            print(f"Lembrete {rotulo} salvo com sucesso!")
+                            logging.info(f"-snt RA {ra}: lembrete {rotulo} gravado no G-HOSP: {texto!r}")
+                        erro_atual = str(df_revisar.at[idx, 'erro']) if pd.notna(df_revisar.at[idx, 'erro']) else ''
+                        erro_atual = erro_atual.strip() or erro_padrao
+                        if SUFIXO_NOTA_REGISTRADA not in erro_atual:
+                            df_revisar.at[idx, 'erro'] = erro_atual + SUFIXO_NOTA_REGISTRADA
+                            alterado = True
 
-                        print(f"Acessando formulário eletrônico para lembrete CNS (RA: {ra})...")
-
-                        try:
-                            # Acessa diretamente a URL do formulário eletrônico usando intern_id
-                            driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
-                            
-                            # Aguarda a página carregar
-                            time.sleep(1)
-
-                            # Paciente em alta: G-HOSP redireciona para a página de
-                            # justificativa. Preenche/envia e re-navega para o formulário.
-                            if tratar_justificativa_acesso(driver):
-                                driver.get(f"{caminho_ghosp}:4002/pr/formeletronicos?intern_id={ra}")
-                                time.sleep(1)
-
-                            # Aguarda um momento para garantir que a página carregou após o diálogo
-                            time.sleep(1)
-
-                            # Clica no botão para adicionar novo lembrete
-                            print("Clicando no botão de novo lembrete...")
-                            botao_novo_lembrete = WebDriverWait(driver, 10).until(
-                                EC.element_to_be_clickable((By.XPATH, '//*[@id="paciente"]/div[3]/div/h6/small/a'))
-                            )
-                            botao_novo_lembrete.click()
-
-                            # Aguarda o campo de lembrete aparecer
-                            campo_lembrete = WebDriverWait(driver, 10).until(
-                                EC.presence_of_element_located((By.XPATH, '//*[@id="prlembrete_lembrete"]'))
-                            )
-
-                            texto_lembrete_cns = TEXTO_LEMBRETE_CNS
-                            print(f"Inserindo lembrete CNS: {texto_lembrete_cns}")
-                            campo_lembrete.clear()  # Limpa o campo antes de inserir
-                            campo_lembrete.send_keys(texto_lembrete_cns)
-
-                            # Clica no botão para salvar o lembrete
-                            botao_salvar = WebDriverWait(driver, 10).until(
-                                EC.element_to_be_clickable((By.XPATH, '//*[@id="janela_modal"]/form/div[3]/input[1]'))
-                            )
-                            botao_salvar.click()
-                            print("Lembrete CNS salvo com sucesso!")
-                            logging.info(f"-snt RA {ra}: lembrete CNS gravado no G-HOSP: {texto_lembrete_cns!r}")
-                            
-                            # Aguarda um momento para garantir que o lembrete foi salvo
-                            time.sleep(1)
-                            
-                            # Marca o índice para remoção
-                            indices_processados.append(idx)
-
-                        except Exception as e:
-                            print(f"Erro ao adicionar lembrete CNS para RA {ra}: {e}")
-                            logging.error(f"-snt RA {ra}: falha ao gravar lembrete CNS: {e}")
-                    
-                    # Remove as linhas processadas do CSV
-                    if indices_processados:
-                        print(f"\n🗑️  Removendo {len(indices_processados)} linha(s) com lembretes CNS inseridos...")
-                        df_revisar = df_revisar.drop(index=indices_processados)
-                        df_revisar.to_csv(csv_path, index=False)
-                        print(f"✅ CSV atualizado. {len(df_revisar)} linha(s) restante(s).")
-                else:
-                    print("✅ Nenhuma linha com CNS vazio encontrada.")
+                if alterado:
+                    df_revisar.to_csv(csv_path, index=False)
+                    print("✅ CSV atualizado (linhas com nota de cadastro mantidas para o resumo).")
+                elif not (mask_cns_vazio & mask_cns_lido).any() and not mask_datasus.any():
+                    print("✅ Nenhuma nota de cadastro necessária.")
 
         except Exception as e:
             print(f"Erro ao acessar o menu de prontuários ou buscar internação: {e}")
