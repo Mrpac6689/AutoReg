@@ -1,10 +1,12 @@
 """Barra de status persistente — mostra o job em andamento (ou o resultado
-da última execução) em qualquer tela da TUI."""
+da última execução) e o estado do ciclo automático (cron) em qualquer tela
+da TUI."""
 
 from __future__ import annotations
 
 from textual.widgets import Static
 
+from .. import ciclo_cron
 from ..runner import JobRunner
 
 
@@ -33,7 +35,12 @@ class StatusBar(Static):
             return
         try:
             runner = self._runner
-            self.update(runner.resumo_curto())
+            linha_cron = ciclo_cron.resumo_curto()
+            if ciclo_cron.ciclo_ativo():
+                linha_cron = f"[bold yellow]{linha_cron}[/]"
+            else:
+                linha_cron = f"[dim]{linha_cron}[/]"
+            self.update(f"{runner.resumo_curto()}\n{linha_cron}")
             self.remove_class("rodando", "ocioso-sucesso", "ocioso-erro")
             if runner.is_busy():
                 self.add_class("rodando")

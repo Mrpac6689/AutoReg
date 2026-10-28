@@ -6,6 +6,7 @@ from __future__ import annotations
 from textual import work
 from textual.app import App
 
+from . import ciclo_cron
 from .runner import JobRunner
 from .screens.ajuda import AjudaScreen
 from .screens.comandos import ComandosScreen
@@ -84,6 +85,15 @@ class AutoRegApp(App):
                 return
             await self.runner.stop()
         self.exit()
+
+    async def confirmar_conflito_cron(self, flag: str | None) -> bool:
+        """Pede confirmação se o job colide com o ciclo automático (rodando
+        agora, ou começando antes de o job terminar). Precisa rodar dentro
+        de um worker, como confirmar_e_sair()."""
+        aviso = ciclo_cron.aviso_conflito(flag)
+        if aviso is None:
+            return True
+        return await self.push_screen_wait(ConfirmModal(aviso, confirmar="Iniciar", cancelar="Cancelar"))
 
     @work
     async def action_quit_app(self) -> None:

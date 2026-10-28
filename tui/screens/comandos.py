@@ -100,6 +100,8 @@ class ComandosScreen(Screen):
         if self.runner.is_busy():
             self.notify("Já existe um job em execução — aguarde ou pare o atual no Monitor.", severity="warning")
             return
+        if not await self.app.confirmar_conflito_cron(cmd.flag):
+            return
 
         if cmd.flag in CONFIRMAR_ANTES:
             ok = await self.app.push_screen_wait(
@@ -124,6 +126,9 @@ class ComandosScreen(Screen):
     async def _ciclo_completo(self) -> None:
         if self.runner.is_busy():
             self.notify("Já existe um job em execução — aguarde ou pare o atual no Monitor.", severity="warning")
+            return
+        # Interna + Alta, N vezes: sem estimativa de duração, vale a margem padrão
+        if not await self.app.confirmar_conflito_cron(None):
             return
         n = await self.app.push_screen_wait(
             IntPromptModal("Quantas vezes deseja executar o ciclo completo (Interna + Alta)?", padrao=1)

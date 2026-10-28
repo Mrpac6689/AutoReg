@@ -11,6 +11,7 @@ import logging
 import sys
 import os
 import configparser
+import json
 import subprocess
 import time
 from pathlib import Path
@@ -451,10 +452,29 @@ def abrir_diretorio():
         print(f"❌ Erro ao abrir diretório: {e}")
         print(f"📍 Caminho do diretório: {autoreg_dir}")
 
+def _marcar_subetapa_ciclo(func_name):
+    """Dentro do ciclo do cron, registra a subetapa atual no arquivo de
+    estado que docker-entry-script.sh mantém para a TUI (tui/ciclo_cron.py)."""
+    caminho = os.environ.get('AUTOREG_CICLO_STATUS')
+    if not caminho:
+        return
+    try:
+        with open(caminho, encoding='utf-8') as f:
+            estado = json.load(f)
+        estado['subetapa'] = func_name
+        estado['subetapa_inicio'] = time.time()
+        with open(caminho + '.tmp', 'w', encoding='utf-8') as f:
+            json.dump(estado, f)
+        os.replace(caminho + '.tmp', caminho)
+    except (OSError, ValueError):
+        pass
+
+
 def executar_funcao(func_name):
     """Executa uma função específica"""
     if func_name in FUNCOES:
         print(f"🚀 Executando: {FUNCOES[func_name]['desc']}")
+        _marcar_subetapa_ciclo(func_name)
         logging.info(f">>> Etapa {func_name} iniciada")
         inicio = time.time()
         try:

@@ -96,6 +96,23 @@ isn't a tty) and never stream live.
   an orphaned Chrome/chromedriver process; the TUI warns about this
   specifically when stopping a job flagged as risky
   (`catalogo.RISCO_CHROME_ORFAO`).
+- **Cron cycle status** (`tui/ciclo_cron.py`, second line of `StatusBar`):
+  the cron runs on the host and the cycle inside the container, while the TUI
+  may run in either, so the only shared state is `~/AutoReg`.
+  `docker-entry-script.sh` writes `ciclo_cron.json` at each of its 4 steps and
+  removes it on exit (`trap`). It also exports `AUTOREG_CICLO_STATUS`, so
+  `autoreg.py`'s `executar_funcao()` adds the current sub-step. ETA is the
+  median of recent `<<< Etapa X concluída (Ns)` durations in the last 8 MB of
+  `autoreg.log`. The schedule comes from `crontab -l` on the host, or from
+  `cron_agenda.txt` inside the container (rewritten by
+  `cron-autoreg-docker.sh` on every run). Times use `America/Rio_Branco`
+  explicitly, since the container is UTC. Dashboard and Comandos ask for
+  confirmation (`app.confirmar_conflito_cron`) when the cycle is running, or
+  when the job's typical duration (or a 30-min margin if unknown) reaches the
+  next run. `ciclo_cron.CICLO` duplicates the shortcut sequences from
+  `autoreg.py main()`, so keep it in sync by hand. A `docker kill`/crash
+  leaves a stale `ciclo_cron.json` (the `trap` doesn't run); the next cycle
+  overwrites it, or delete it by hand.
 - Screens (`tui/screens/`) are installed once via `App.install_screen()`
   and navigated with `AutoRegApp.goto(name)`, which collapses the stack
   back to the Dashboard before pushing the target — but Textual **unmounts
@@ -164,7 +181,7 @@ No build step, no test suite (only the two ad-hoc scripts above), no linter conf
 
 Workflow shortcuts are hardcoded sequences in `main()` (not composed from `FLAG_TO_FUNC`), each stops at the first failing step, and each `return`s, so a shortcut can't be combined with other flags on the same command line. Individual flags, on the other hand, run in the **exact order they appear in `sys.argv`** (`autoreg.py -eid -td` runs `-eid` first).
 
-`-sresg` (`solicita_resgate.py`) is a standalone flag outside every shortcut. It shares `correlacoes_aih.json` with `-spaa`. `-clc` wipes `~/AutoReg/` except `solicita_inf_aih.csv`, `internados_ghosp_avancado.csv` and `historico_solicitacoes.csv`.
+`-sresg` (`solicita_resgate.py`) is a standalone flag outside every shortcut. It shares `correlacoes_aih.json` with `-spaa`. `-clc` wipes `~/AutoReg/` except `solicita_inf_aih.csv`, `internados_ghosp_avancado.csv`, `historico_solicitacoes.csv` and the TUI's cron state files (`ciclo_cron.json`, `cron_agenda.txt`).
 
 **Adding a new flag** touches several places in `autoreg.py`, and nothing enforces that they stay in sync: the import, the `FUNCOES` dict (func + `desc`), `FLAG_TO_FUNC` (both short and long forms), the `flags` list in `mostrar_informacoes()`, `parser.add_argument(...)`, and the optional-positional-arg special case in the argv loop if the flag takes a path. Outside that file, also update `autoreg/__init__.py` exports and `tui/catalogo.py`.
 

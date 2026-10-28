@@ -23,11 +23,28 @@ echo "" >> $LOG_FILE
 mkdir -p "$WORKDIR"
 > "$RESUMO_FILE"
 
+# --- Estado do ciclo para a TUI (tui/ciclo_cron.py) ---
+# ~/AutoReg é o único diretório comum entre o host, o container e a TUI.
+# autoreg.py acrescenta a subetapa quando AUTOREG_CICLO_STATUS está definida.
+STATUS_FILE="$WORKDIR/ciclo_cron.json"
+export AUTOREG_CICLO_STATUS="$STATUS_FILE"
+CICLO_INICIO=$(date +%s)
+ETAPA_N=0
+trap 'rm -f "$STATUS_FILE"' EXIT
+
+marcar_etapa() {
+    ETAPA_N=$((ETAPA_N + 1))
+    printf '{"inicio": %s, "etapa": "%s", "etapa_n": %s, "etapa_total": 4, "etapa_inicio": %s}\n' \
+        "$CICLO_INICIO" "$1" "$ETAPA_N" "$(date +%s)" > "$STATUS_FILE.tmp" \
+        && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
+}
+
 # ----------------------------------------
 # Função para Executar e Capturar Log
 # ----------------------------------------
 execute_and_log() {
     local etapa=$1
+    marcar_etapa "$etapa"
     echo "## Etapa: -$etapa (Início em $(date))" >> $LOG_FILE
 
     # Executa o script e redireciona a saída para um arquivo temporário

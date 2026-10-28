@@ -18,6 +18,10 @@ if ! flock -n 9; then
     exit 0
 fi
 
+# Agenda para a TUI dentro do container, que não enxerga o crontab do host
+# (tui/ciclo_cron.py). ~/AutoReg do host é montado em ~/AutoReg do container.
+crontab -l 2>/dev/null | grep -F "cron-autoreg-docker.sh" | grep -v '^\s*#' > "$HOME/AutoReg/cron_agenda.txt"
+
 # 1. Copia o script
 docker cp $SCRIPT_SOURCE $CONTAINER_NAME:$SCRIPT_DEST
 

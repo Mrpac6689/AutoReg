@@ -60,7 +60,7 @@ class DashboardScreen(Screen):
         # aguardado de dentro de um worker do Textual.
         bid = event.button.id or ""
         if bid.startswith("wf-"):
-            self._disparar_workflow(f"-{bid[3:]}")
+            await self._disparar_workflow(f"-{bid[3:]}")
         elif bid == "nav-comandos":
             self.app.goto("comandos")
         elif bid == "nav-monitor":
@@ -72,12 +72,14 @@ class DashboardScreen(Screen):
         elif bid == "nav-sair":
             await self.app.confirmar_e_sair()
 
-    def _disparar_workflow(self, flag: str) -> None:
+    async def _disparar_workflow(self, flag: str) -> None:
         wf = next((w for w in PRINCIPAIS if w.flag == flag), None)
         if wf is None:
             return
         if self.runner.is_busy():
             self.notify("Já existe um job em execução — aguarde ou pare o atual no Monitor.", severity="warning")
+            return
+        if not await self.app.confirmar_conflito_cron(wf.flag):
             return
         self.runner.start([wf.flag], f"{wf.titulo} ({wf.flag})")
         self.app.goto("monitor")
