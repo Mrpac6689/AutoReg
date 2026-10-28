@@ -775,7 +775,13 @@ Exemplos de uso:
             print(f"\n[{i}/{len(seq)}] ", end="")
             if not executar_funcao(func_name):
                 print(f"❌ Parando execução devido ao erro em {func_name}")
-                break
+                # Sai com erro para o docker-entry-script.sh abortar o ciclo e
+                # mandar o resumo: seguir para -solicita-auto sem a lista de
+                # internados atualizada não solicitaria os novos internados.
+                relatorio_execucao.registrar_resumo(
+                    f"📋 *AIHS*\n❌ Falha em {func_name} — ciclo interrompido, nenhuma AIH solicitada nesta rodada"
+                )
+                sys.exit(1)
         return
 
     if args.duplicados:

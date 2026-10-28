@@ -10,6 +10,7 @@ from selenium.webdriver.chrome.options import Options
 from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
 from autoreg.chrome_options import get_chrome_options
+import logging
 import re
 
 setup_logging()
@@ -25,42 +26,64 @@ def linha_valida(linha):
     return False
 
 
-def internados_ghosp_avancado():
-    print("\n---===> EXTRAÇÃO DE INTERNADOS <===---")
-    usuario_ghosp, senha_ghosp, caminho_ghosp, usuario_sisreg, senha_sisreg = ler_credenciais()
+# Relatório rc001 com 0 internados nunca é real (o hospital tem ~200+):
+# indica relatório vazio/quebrado, e seguir com ele não solicitaria ninguém.
+MIN_INTERNADOS = 1
 
-    # Caminho para salvar o novo arquivo baixado
-    user_dir = os.path.expanduser('~/AutoReg')
+
+def _salvar_diagnostico(driver, user_dir):
+    """Salva URL, screenshot e HTML da página em que o -iga falhou.
+
+    Nas falhas de 13/10 e 28/10/2026 todas as etapas do G-HOSP falharam por
+    horas com durações fixas (login?), e o print() do cron já tinha sido
+    sobrescrito; sem a página não dava para saber onde travou.
+    """
+    if driver is None:
+        return
+    base = os.path.join(user_dir, 'diagnostico', f"iga_{time.strftime('%Y%m%d_%H%M%S')}")
+    try:
+        os.makedirs(os.path.dirname(base), exist_ok=True)
+        logging.error(f"-iga: página na falha: {driver.current_url!r} (título {driver.title!r})")
+        driver.save_screenshot(base + '.png')
+        with open(base + '.html', 'w', encoding='utf-8') as f:
+            f.write(driver.page_source)
+        logging.error(f"-iga: screenshot e HTML salvos em {base}.png/.html")
+    except Exception as e:
+        logging.error(f"-iga: não foi possível salvar diagnóstico: {e}")
+
+
+def internados_ghosp_avancado():
+    """Baixa o rc001 (internados por setor) e grava ~/AutoReg/internados_ghosp_avancado.csv.
+
+    Falha fechada: o CSV anterior é apagado antes de começar e qualquer falha
+    lança exceção. Até 28/10/2026 os erros eram só print()ados e a etapa
+    "concluía" sem regravar o CSV. Como -std sobrescreve esse mesmo arquivo com
+    os registros que filtrou, -ign/-std/-spaa reprocessavam a lista da rodada
+    anterior e nenhum paciente internado depois dela era solicitado (13/10 e
+    28/10, sempre com a etapa levando ~134s).
+    """
+    print("\n---===> EXTRAÇÃO DE INTERNADOS <===---")
     usuario_ghosp, senha_ghosp, caminho_ghosp, _, _ = ler_credenciais()
+
+    user_dir = os.path.expanduser('~/AutoReg')
+    os.makedirs(user_dir, exist_ok=True)
+    caminho_novo_arquivo = os.path.join(user_dir, 'internados_ghosp_avancado.csv')
     print(f"Diretório de download configurado: {user_dir}")
 
-    #download_path = os.path.join(user_dir, 'ghosp_download.csv')
-    #print(f"Pasta de Downloads: {download_path}")
-    
-    # Captura timestamp antes do download para identificar arquivos novos
-    antes_download = time.time()
+    if os.path.exists(caminho_novo_arquivo):
+        os.remove(caminho_novo_arquivo)
+        logging.info("-iga: internados_ghosp_avancado.csv anterior removido")
+    # Relatórios brutos antigos: com eles o Chrome salva o novo como "... (1).csv"
+    for arquivo in os.listdir(user_dir):
+        if arquivo.startswith('_home_inovadora') and arquivo.lower().endswith('.csv'):
+            os.remove(os.path.join(user_dir, arquivo))
 
-    # Inicializa o navegador (Chrome neste caso) usando o serviço
-    chrome_options = get_chrome_options()
-    driver = webdriver.Chrome(options=chrome_options)
-
-    print("Iniciando o Chromedriver...")
-    
-    # Minimizando a janela após iniciar o Chrome
-    #driver.minimize_window()
-
-    # Acesse a página de login do G-HOSP
-    driver.get(caminho_ghosp + ':4001/users/sign_in')
-
+    driver = None
     try:
-       # Caminho para salvar o novo arquivo baixado
-        user_dir = os.path.expanduser('~/AutoReg')
-        print(f"Diretório de download configurado: {user_dir}")
-        
-        # Inicializa o navegador
         chrome_options = get_chrome_options()
         driver = webdriver.Chrome(options=chrome_options)
         print("Iniciando o Chromedriver...")
+        logging.info("-iga: Chrome iniciado, abrindo login do G-HOSP")
 
         # Acesse a página de login do G-HOSP
         driver.get(caminho_ghosp + ':4001/users/sign_in')
@@ -88,8 +111,10 @@ def internados_ghosp_avancado():
             EC.element_to_be_clickable((By.XPATH, "//input[@value='Entrar']"))
         )
         login_button.click()
-        time.sleep(5)
+        # Ao logar, o G-HOSP sai de /users/sign_in
+        WebDriverWait(driver, 20).until(lambda d: "/users/sign_in" not in d.current_url)
         print("Login realizado com sucesso!")
+        logging.info("-iga: login confirmado, abrindo relatório rc001")
 
         # Acessar a página de relatórios
         print("Acessando a página de relatórios...")
@@ -135,8 +160,7 @@ def internados_ghosp_avancado():
         )
         imprimir_button.click()
         print("Relatório gerado! Aguardando download...")
-        
-        # --- REMOVIDO: driver.minimize_window() ---
+        logging.info("-iga: relatório solicitado, aguardando download do CSV")
         
         # Contador para timeout
         tentativas = 0
@@ -177,63 +201,57 @@ def internados_ghosp_avancado():
             tentativas += 1
             time.sleep(5)
 
+        if not arquivo_recente:
+            raise RuntimeError(f"download do rc001 não chegou em {max_tentativas * 5}s")
+        logging.info(f"-iga: CSV baixado ({os.path.basename(arquivo_recente)}), processando")
 
-        if arquivo_recente:
-            # Processa o arquivo encontrado
-            try:
-                # Carregar o arquivo CSV recém-baixado
-                original_df = pd.read_csv(arquivo_recente, header=None, dtype=str)
-                # Chamar a função para extrair os nomes do CSV recém-baixado
-                
-                
+        # Carregar o arquivo CSV recém-baixado
+        original_df = pd.read_csv(arquivo_recente, header=None, dtype=str)
 
-                    # Lista para armazenar os dados extraídos
-                dados_extraidos = []
+        # Lista para armazenar os dados extraídos
+        dados_extraidos = []
+        
+        # Percorre as linhas do DataFrame original
+        for i, row in original_df.iterrows():
+            # Verifica se a primeira coluna contém um número de internação (6 dígitos)
+            if re.match(r'^\d{6}$', str(row[0])):
+                internacao = str(row[0]).strip()
+                nome = row[1].strip() if pd.notna(row[1]) and row[1].strip() else row[2].strip()
+                # Procura a data de internação (formato dd/mm/yyyy)
+                data = None
+                for col in row:
+                    if pd.notna(col) and isinstance(col, str):
+                        data_match = re.search(r'\d{2}/\d{2}/\d{4}', col)
+                        if data_match:
+                            data = data_match.group(0)
+                            break
                 
-                # Percorre as linhas do DataFrame original
-                for i, row in original_df.iterrows():
-                    # Verifica se a primeira coluna contém um número de internação (6 dígitos)
-                    if re.match(r'^\d{6}$', str(row[0])):
-                        internacao = str(row[0]).strip()
-                        nome = row[1].strip() if pd.notna(row[1]) and row[1].strip() else row[2].strip()
-                        # Procura a data de internação (formato dd/mm/yyyy)
-                        data = None
-                        for col in row:
-                            if pd.notna(col) and isinstance(col, str):
-                                data_match = re.search(r'\d{2}/\d{2}/\d{4}', col)
-                                if data_match:
-                                    data = data_match.group(0)
-                                    break
-                        
-                        if internacao and nome and data:
-                            dados_extraidos.append({
-                                'internacao': internacao,
-                                'nome': nome,
-                                'data': data
-                            })
-                        else:
-                            print(f"Linha com dados incompletos ignorada: {row}")
-                
-                # Converte a lista de dados extraídos para um DataFrame
-                dados_df = pd.DataFrame(dados_extraidos)
-                
-                # Caminho para salvar o novo arquivo na pasta ~/AutoReg/
-                user_dir = os.path.expanduser('~/AutoReg')
-                os.makedirs(user_dir, exist_ok=True)
-                caminho_novo_arquivo = os.path.join(user_dir, 'internados_ghosp_avancado.csv')
-                dados_df.to_csv(caminho_novo_arquivo, index=False)
-                
-                print(f"Nomes extraídos e salvos em {caminho_novo_arquivo}.")
+                if internacao and nome and data:
+                    dados_extraidos.append({
+                        'internacao': internacao,
+                        'nome': nome,
+                        'data': data
+                    })
+                else:
+                    print(f"Linha com dados incompletos ignorada: {row}")
 
+        if len(dados_extraidos) < MIN_INTERNADOS:
+            raise RuntimeError(f"rc001 sem internados ({len(dados_extraidos)} registro(s) extraído(s))")
 
-                
-            except Exception as e:
-                print(f"Erro ao processar o arquivo CSV: {e}")
-        else:
-                # Defina ou importe a função extrair_nomes conforme necessário
-                print(original_df.head())
+        # Converte a lista de dados extraídos para um DataFrame
+        dados_df = pd.DataFrame(dados_extraidos)
+        dados_df.to_csv(caminho_novo_arquivo, index=False)
+        
+        print(f"Nomes extraídos e salvos em {caminho_novo_arquivo}.")
+        logging.info(f"-iga: {len(dados_df)} internado(s) gravado(s) em internados_ghosp_avancado.csv")
 
     except Exception as e:
+        # Propaga: executar_funcao() marca a etapa como falha e o -aihs para
+        # antes de -ign/-std rodarem sem lista de internados.
         print(f"Ocorreu um erro: {e}")
+        logging.exception(f"-iga: falha na extração de internados: {e}")
+        _salvar_diagnostico(driver, user_dir)
+        raise
     finally:
-        driver.quit()
+        if driver is not None:
+            driver.quit()

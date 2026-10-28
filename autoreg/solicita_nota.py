@@ -1,4 +1,5 @@
 import os
+import re
 import time
 from selenium import webdriver
 from autoreg.chrome_options import get_chrome_options
@@ -233,13 +234,12 @@ def solicita_nota():
                         EC.presence_of_element_located((By.XPATH, '//*[@id="prlembrete_lembrete"]'))
                     )
 
-                    # Trata o número da solicitação para remover o '.0' caso exista
-                    solsisreg = str(row['solsisreg']).rstrip('.0')
-
-                    # Verifica se solsisreg tem 9 dígitos, se não tiver adiciona 0 ao final
-                    if len(solsisreg) != 9:
-                        solsisreg = solsisreg + '0'
-                        print(f"⚠️  Número da solicitação ajustado para 9 dígitos: {solsisreg}")
+                    # Remove só o sufixo '.0' do float lido pelo pandas. O antigo
+                    # rstrip('.0') removia todo '0' final e um zero era "reposto":
+                    # 698814200 virou 69881420 na nota do RA 659289 (27/10/2026).
+                    solsisreg = _ra_str(row['solsisreg'])
+                    if not re.fullmatch(r'\d{9}', solsisreg):
+                        raise ValueError(f"número da solicitação inválido: {solsisreg!r}")
 
                     # Monta o texto do lembrete com as informações das colunas
                     # Data + nº de 9 dígitos: é o que ras_paciente.datas_solicitacoes_clinica()
