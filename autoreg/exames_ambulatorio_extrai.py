@@ -5,6 +5,7 @@ import re
 from selenium import webdriver
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
+from autoreg.justificativa_ghosp import XPATH_LINK_PACIENTE_BANNER
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
@@ -383,7 +384,7 @@ def exames_ambulatorio_extrai():
                     try:
                         # Clica no link para abrir o modal
                         paciente_link = WebDriverWait(driver, 10).until(
-                            EC.element_to_be_clickable((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/h4'))
+                            EC.element_to_be_clickable((By.XPATH, XPATH_LINK_PACIENTE_BANNER))
                         )
                         paciente_link.click()
                         time.sleep(1)  # Aguarda o modal abrir

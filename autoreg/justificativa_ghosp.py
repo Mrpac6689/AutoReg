@@ -33,6 +33,17 @@ from selenium.webdriver.support import expected_conditions as EC
 MOTIVO_PADRAO = "Enfermagem"
 TEXTO_PADRAO = "Acesso NIR Internação"
 
+# Link "NOME - PRONTUARIO" do banner #paciente (abre o modal com os Documentos
+# via data-remote). Ate 28/10/2026 era <h4><a>; desde 29/10/2026 o G-HOSP
+# renderiza <span><a><h4>, o que quebrou o XPath posicional
+# '//*[@id="paciente"]/div[2]/div/div[2]/h4/a' em -sia (CNS nao lido em todos
+# os RAs) e no historico de RAs do -ign. Aceita os dois layouts; o link da
+# foto, que tambem e data-remote, nao tem <h4> e fica de fora.
+XPATH_LINK_PACIENTE_BANNER = (
+    '//*[@id="paciente"]//*[contains(@class,"dados-pct")]'
+    '//a[@data-remote="true"][h4 or parent::h4]'
+)
+
 
 def em_pagina_justificativa(driver):
     """Retorna True se a pagina atual e a de justificativa de acesso.

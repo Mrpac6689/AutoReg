@@ -4,7 +4,7 @@ from datetime import datetime
 from selenium import webdriver
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
-from autoreg.justificativa_ghosp import tratar_justificativa_acesso
+from autoreg.justificativa_ghosp import tratar_justificativa_acesso, XPATH_LINK_PACIENTE_BANNER
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -23,10 +23,10 @@ def _url_historico_paciente(driver, caminho_ghosp):
     """
     Na página /pr/interns/{RA} já carregada, monta a URL /historicopacs/{prontuario}
     (lista de RAs do paciente) a partir do link do prontuário no banner do
-    paciente — mesmo XPath que -sia usa para ler o nº do prontuário.
+    paciente (XPATH_LINK_PACIENTE_BANNER, o mesmo que -sia usa para ler o nº do prontuário).
     """
     link = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/h4/a'))
+        EC.presence_of_element_located((By.XPATH, XPATH_LINK_PACIENTE_BANNER))
     )
     href = link.get_attribute('href') or ''
     if '/historicopacs/' in href:

@@ -3,7 +3,7 @@ import time
 from selenium import webdriver
 from autoreg.chrome_options import get_chrome_options
 from autoreg.ler_credenciais import ler_credenciais
-from autoreg.justificativa_ghosp import tratar_justificativa_acesso
+from autoreg.justificativa_ghosp import tratar_justificativa_acesso, XPATH_LINK_PACIENTE_BANNER
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -84,7 +84,7 @@ def ghosp_cns():
             # aba de informações do paciente. Esse link não tem id próprio, então
             # é ancorado no id da div #paciente (mesmo botão usado em ghosp_especial).
             link_h4 = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/h4/a'))
+                EC.element_to_be_clickable((By.XPATH, XPATH_LINK_PACIENTE_BANNER))
             )
             link_h4.click()
             print("Aba de informações do paciente aberta.")

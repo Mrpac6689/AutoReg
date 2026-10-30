@@ -10,7 +10,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from autoreg.logging import setup_logging
-from autoreg.justificativa_ghosp import tratar_justificativa_acesso
+from autoreg.justificativa_ghosp import tratar_justificativa_acesso, XPATH_LINK_PACIENTE_BANNER
 import logging
 
 def solicita_inf_aih():
@@ -105,7 +105,7 @@ def solicita_inf_aih():
                     # Obtém o número do prontuário
                     print("Extraindo número do prontuário...")
                     prontuario_element = WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/h4/a'))
+                        EC.presence_of_element_located((By.XPATH, XPATH_LINK_PACIENTE_BANNER))
                     )
                     prontuario_text = prontuario_element.text
                     prontuario = ''.join(filter(str.isdigit, prontuario_text))
@@ -176,7 +176,7 @@ def solicita_inf_aih():
                     etapa = "prontuário"
                     print("Extraindo número do prontuário...")
                     prontuario_element = WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.XPATH, '//*[@id="paciente"]/div[2]/div/div[2]/h4/a'))
+                        EC.presence_of_element_located((By.XPATH, XPATH_LINK_PACIENTE_BANNER))
                     )
                     prontuario_text = prontuario_element.text
                     prontuario = ''.join(filter(str.isdigit, prontuario_text))
@@ -278,7 +278,7 @@ def solicita_inf_aih():
                 etapa = "modal do paciente (Documentos)"
                 print("Clicando no elemento do paciente...")
                 paciente_element = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, '#paciente .dados-pct h4 a[data-remote="true"]'))
+                    EC.presence_of_element_located((By.XPATH, XPATH_LINK_PACIENTE_BANNER))
                 )
                 # Usa JS click para garantir disparo do evento data-remote (Rails UJS)
                 driver.execute_script("arguments[0].click();", paciente_element)
