@@ -13,6 +13,10 @@ from autoreg.sessao_sisreg import login_sisreg
 import logging
 
 setup_logging()
+
+URL_CONFIG_INTERNAR = "https://sisregiii.saude.gov.br/cgi-bin/config_internar"
+MAX_RENAVEGACOES = 3
+
 def extrai_codigos_internacao():
     nomes_fichas = []
     navegador = None
@@ -31,25 +35,48 @@ def extrai_codigos_internacao():
         logging.info("Login realizado com sucesso!")
 
         # Navega diretamente para a página de Internação (elimina navegação por iframe)
-        navegador.get("https://sisregiii.saude.gov.br/cgi-bin/config_internar")
+        navegador.get(URL_CONFIG_INTERNAR)
         print("Login realizado e navegação para página de Internação...\n")
         logging.info("Login realizado e navegação para página de Internação...\n")
         time.sleep(2)
 
+        # Após resolver o CAPTCHA o SISREG não volta para a lista de internação:
+        # sem re-navegar, a página vista tem 0 linhas e o ciclo reporta
+        # "nenhum paciente a internar" (12/11/2026 15h). Reinicia da 1ª página,
+        # e fichas_vistas evita duplicar as páginas já lidas.
+        fichas_vistas = set()
+        renavegacoes = 0
+
         # Localiza e extrai os dados dos pacientes
         while True:
             # Verifica se há CAPTCHA antes de processar
+            url_antes = navegador.current_url
             resultado_captcha = detecta_captcha(navegador)
-            if resultado_captcha != 'ok':
+            if resultado_captcha == 'relogin' and renavegacoes < MAX_RENAVEGACOES:
+                logging.warning("-eci: sessão expirou após CAPTCHA - refazendo login")
+                login_sisreg(navegador, usuario_sisreg, senha_sisreg)
+            elif resultado_captcha != 'ok':
                 print(f"CAPTCHA não resolvido ({resultado_captcha}). Abortando extração.")
                 logging.error(f"Extração abortada por CAPTCHA não resolvido: {resultado_captcha}")
                 break
+            if resultado_captcha == 'relogin' or navegador.current_url != url_antes:
+                if renavegacoes >= MAX_RENAVEGACOES:
+                    logging.error("-eci: página mudou após CAPTCHA repetidas vezes. Abortando extração.")
+                    break
+                renavegacoes += 1
+                logging.info("-eci: página mudou após CAPTCHA - re-navegando para config_internar")
+                navegador.get(URL_CONFIG_INTERNAR)
+                time.sleep(2)
+                continue
 
             linhas_pacientes = navegador.find_elements(By.XPATH, "//tr[contains(@class, 'linha_selecionavel')]")
             for linha in linhas_pacientes:
                 nome_paciente = linha.find_element(By.XPATH, "./td[2]").text
                 ficha_onclick = linha.get_attribute("onclick")
                 ficha = ficha_onclick.split("'")[1]
+                if ficha in fichas_vistas:
+                    continue
+                fichas_vistas.add(ficha)
                 nomes_fichas.append((nome_paciente, ficha))
                 print(f"Nome: {nome_paciente}, Ficha: {ficha}\n")
                 logging.info(f"Nome: {nome_paciente}, Ficha: {ficha}\n")
