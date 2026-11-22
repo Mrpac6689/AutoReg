@@ -13,6 +13,7 @@ from selenium.webdriver.support.ui import Select
 from autoreg.chrome_options import get_chrome_options
 from autoreg.logging import setup_logging
 from autoreg.detecta_capchta import detecta_captcha
+from autoreg.sessao_sisreg import verificar_acesso_sisreg, pagina_senha_expirada, AcessoSisregNegado
 import logging
 import random
 from datetime import datetime
@@ -73,6 +74,13 @@ def consulta_solicitacao_sisreg():
     time.sleep(5)
     print("Login realizado com sucesso!")
     logging.info("Login realizado com sucesso no SISREG")
+    # Senha expirada não barra o login: só as páginas seguintes redirecionam
+    # para a troca de senha. Confere aqui, antes de qualquer registro.
+    try:
+        verificar_acesso_sisreg(navegador, "sol", usuario_sisreg)
+    except AcessoSisregNegado:
+        navegador.quit()
+        raise
 
 
     # Lê o arquivo CSV com as informações

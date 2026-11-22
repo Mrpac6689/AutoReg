@@ -34,8 +34,110 @@ _ASSINATURAS_SESSAO_EXPIRADA = [
 ]
 
 
+URL_PERFIL_SISREG = "https://sisregiii.saude.gov.br/cgi-bin/config_perfil"
+URL_INDEX_SISREG = "https://sisregiii.saude.gov.br/cgi-bin/index"
+
+
 class SessaoSisregAbortada(Exception):
     """Lancada quando o numero de re-logins excede o teto global da rotina."""
+
+
+class AcessoSisregNegado(Exception):
+    """Login nao deu acesso de fato: senha expirada ou login recusado.
+
+    Senha expirada e silenciosa no SISREG: o login cai no index normalmente e
+    SO as outras paginas redirecionam para config_perfil ("Senha expirada,
+    informe uma nova senha"). Sem esta checagem a rotina so falhava depois,
+    num TimeoutException vazio a cada registro (caso de 21-22/11/2026, operador
+    SOL-MICHEL: dois dias sem nenhuma AIH solicitada).
+    """
+
+    def __init__(self, rotulo, operador, motivo):
+        self.rotulo = rotulo
+        self.operador = operador
+        self.motivo = motivo
+        super().__init__(f"SISREG: {motivo} — operador {operador} ({rotulo})")
+
+
+def _texto_pagina(driver):
+    try:
+        return driver.find_element(By.TAG_NAME, "body").text
+    except Exception:
+        return ""
+
+
+def _registrar_alerta_acesso(erro):
+    """Poe o alerta no resumo do ciclo (WhatsApp), uma vez por operador/motivo."""
+    try:
+        from autoreg import relatorio_execucao
+        bloco = (
+            f"🔐 *SISREG — {erro.motivo.upper()}*\n"
+            f"Operador {erro.operador} ({erro.rotulo}): as etapas que usam este login "
+            f"não rodaram neste ciclo. Acertar a senha no SISREG e, se mudar, "
+            f"atualizar o config.ini."
+        )
+        import os
+        caminho = os.path.join(relatorio_execucao._user_dir(), 'resumo_execucao.txt')
+        if os.path.exists(caminho):
+            with open(caminho, encoding='utf-8') as f:
+                if bloco.splitlines()[1] in f.read():
+                    return
+        relatorio_execucao.registrar_resumo(bloco)
+    except Exception as e:
+        logging.warning(f"Nao foi possivel registrar o alerta de acesso no resumo: {e}")
+
+
+def verificar_acesso_sisreg(driver, rotulo, usuario=""):
+    """Confere, logo depois do login, se o operador tem acesso de fato.
+
+    1. Ainda na tela de login (campo 'usuario' presente) -> login recusado.
+    2. config_perfil com "senha expirada" -> senha expirada.
+    Se estiver tudo certo, volta ao index (o estado normal pos-login).
+    Levanta AcessoSisregNegado e registra o alerta no resumo do ciclo.
+    """
+    # A tela de login tambem tem o rotulo "Operador:" — o que distingue e o
+    # campo 'usuario'. Pagina lenta: da ate ~10 s para ele sumir.
+    for _ in range(10):
+        if not driver.find_elements(By.NAME, "usuario"):
+            break
+        time.sleep(1)
+    texto_index = _texto_pagina(driver)
+    na_tela_login = bool(driver.find_elements(By.NAME, "usuario"))
+    operador = usuario or "?"
+    if not na_tela_login and "Operador:" in texto_index:
+        operador = texto_index.split("Operador:", 1)[1].split()[0]
+
+    erro = None
+    if na_tela_login:
+        motivo = "login recusado"
+        if "incorreto" in texto_index.lower():
+            motivo = "login recusado (login ou senha incorretos)"
+        erro = AcessoSisregNegado(rotulo, operador, motivo)
+    else:
+        driver.get(URL_PERFIL_SISREG)
+        time.sleep(2)
+        if "senha expirada" in _texto_pagina(driver).lower():
+            erro = AcessoSisregNegado(rotulo, operador, "senha expirada")
+
+    if erro:
+        logging.critical(str(erro))
+        print(f"\n🔐 {erro}\n")
+        _registrar_alerta_acesso(erro)
+        raise erro
+
+    driver.get(URL_INDEX_SISREG)
+    time.sleep(1)
+    logging.info(f"Acesso SISREG conferido: operador {operador} ({rotulo}), senha válida")
+
+
+def pagina_senha_expirada(driver):
+    """True se o navegador foi redirecionado para a troca de senha (meio da rotina)."""
+    try:
+        if "config_perfil" not in driver.current_url:
+            return False
+    except Exception:
+        return False
+    return "senha expirada" in _texto_pagina(driver).lower()
 
 
 class ControleSessao:
@@ -65,11 +167,14 @@ def sessao_expirada(driver):
     return any(assinatura in page for assinatura in _ASSINATURAS_SESSAO_EXPIRADA)
 
 
-def login_sisreg(driver, usuario, senha, timeout=20, espera_pre_click=10, espera_pos_login=5):
+def login_sisreg(driver, usuario, senha, timeout=20, espera_pre_click=10, espera_pos_login=5,
+                 rotulo="exec"):
     """Executa o login no SISREG III com as credenciais informadas.
 
     Navega para a pagina de login antes de preencher, entao serve tanto para o
-    login inicial quanto para o re-login apos sessao expirada.
+    login inicial quanto para o re-login apos sessao expirada. Ao final confere
+    o acesso (verificar_acesso_sisreg): senha expirada ou login recusado
+    levantam AcessoSisregNegado. rotulo = conta do config.ini (exec / sol).
     """
     wait = WebDriverWait(driver, timeout)
     driver.get(URL_LOGIN_SISREG)
@@ -91,6 +196,7 @@ def login_sisreg(driver, usuario, senha, timeout=20, espera_pre_click=10, espera
     login_button.click()
     time.sleep(espera_pos_login)
     logging.info("Login SISREG realizado.")
+    verificar_acesso_sisreg(driver, rotulo, usuario)
 
 
 def garantir_sessao_sisreg(driver, url_retomar, usuario, senha, controle):

@@ -13,6 +13,7 @@ from selenium.webdriver.support.ui import Select
 from autoreg.chrome_options import get_chrome_options
 from autoreg.logging import setup_logging
 from autoreg.detecta_capchta import detecta_captcha
+from autoreg.sessao_sisreg import verificar_acesso_sisreg, pagina_senha_expirada, AcessoSisregNegado
 from autoreg.historico_solicitacoes import registrar_solicitacao
 import logging
 import random
@@ -478,6 +479,13 @@ def solicita_sisreg():
     time.sleep(5)
     print("Login realizado com sucesso!")
     logging.info("Login realizado com sucesso no SISREG")
+    # Senha expirada não barra o login: só as páginas seguintes redirecionam
+    # para a troca de senha. Confere aqui, antes de qualquer registro.
+    try:
+        verificar_acesso_sisreg(navegador, "sol", usuario_sisreg)
+    except AcessoSisregNegado:
+        navegador.quit()
+        raise
 
 
     # Lê o arquivo CSV com as informações
@@ -717,6 +725,11 @@ def solicita_sisreg():
                 print(f"Erro ao processar registro {index + 1}: {str(e)}")
                 logging.error(f"Erro ao processar registro {index + 1}: {str(e)}")
 
+                # Senha expirou no meio da rodada: o SISREG redireciona para a
+                # troca de senha e todo registro seguinte falharia igual.
+                if pagina_senha_expirada(navegador):
+                    verificar_acesso_sisreg(navegador, "sol", usuario_sisreg)
+
                 # Tenta capturar o texto do alert se houver
                 erro_texto = str(e)
                 if "Alert Text" in erro_texto:
@@ -748,6 +761,8 @@ def solicita_sisreg():
 
                 navegador.switch_to.default_content()
                 continue
+    except AcessoSisregNegado:
+        raise  # sobe para o executar_funcao: etapa falha e o alerta já está no resumo
     except Exception as e:
         print(f"Erro geral durante o processamento: {str(e)}")
         logging.error(f"Erro geral durante o processamento: {str(e)}")
