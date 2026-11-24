@@ -15,6 +15,26 @@ from autoreg.justificativa_ghosp import tratar_justificativa_acesso
 from datetime import datetime
 import logging
 
+# Acima desta fração de erros, o problema é da rodada (sessão, layout), não do
+# paciente: em 24/11/2026 os 86 RAs deram erro e o ciclo terminou com 0 altas, sem aviso.
+FRACAO_FALHA_EM_MASSA = 0.5
+MINIMO_FALHA_EM_MASSA = 5
+
+
+def texto_resumo_valido(texto):
+    """
+    Texto do resumo de alta sem o rótulo do botão "INSERIR", que a seção exibe
+    quando NÃO há resumo (RA 669835 foi lido como alta em 24/11/2026).
+    """
+    linhas = [l.strip() for l in str(texto or '').splitlines()]
+    limpo = '\n'.join(l for l in linhas if l and l.upper() != 'INSERIR')
+    return limpo if len(limpo) >= 5 else ''
+
+
+def falha_em_massa(erros, verificados):
+    return verificados >= MINIMO_FALHA_EM_MASSA and erros / verificados >= FRACAO_FALHA_EM_MASSA
+
+
 def motivo_alta_avancado():
     print("\n---===> ACESSO AO GHOSP <===---")
     driver = None 
@@ -76,6 +96,7 @@ def motivo_alta_avancado():
             if col not in df.columns:
                 df[col] = ''
 
+        verificados = erros = 0
         for index, row in df.iterrows():
             ra = str(row['RA']).strip()
             # Remove '.0' se o RA tiver sido interpretado como float
@@ -88,6 +109,7 @@ def motivo_alta_avancado():
 
             print(f"\n🔍 [{index+1}/{len(df)}] Verificando RA: {ra} ({row.get('Nome', 'N/A')})")
             
+            verificados += 1
             try:
                 # Navega para a página de alta do internado
                 url_alta = f"{caminho_ghosp}:4002/pr/altas?intern_id={ra}"
@@ -110,9 +132,9 @@ def motivo_alta_avancado():
                     
                     # Verifica se há conteúdo na seção
                     # Pode-se verificar se há texto relevante ou se existem campos preenchidos
-                    texto_resumo = resumo_content.text.strip()
+                    texto_resumo = texto_resumo_valido(resumo_content.text)
                     
-                    if not texto_resumo or len(texto_resumo) < 5:
+                    if not texto_resumo:
                         print(f"   ℹ️ Sem resumo de alta. Segue internado.")
                         df.at[index, 'situacao'] = 'Segue internado'
                     else:
@@ -149,18 +171,26 @@ def motivo_alta_avancado():
                 except Exception as e:
                     print(f"   ⚠️ Erro ao verificar seção de resumo: {str(e)}")
                     df.at[index, 'situacao'] = 'Erro ao verificar'
+                    erros += 1
                 
                 # Salva a cada linha para evitar perdas em caso de erro no meio do processo
                 df.to_csv(csv_path, index=False)
 
             except Exception as e:
                 print(f"   ❌ Erro ao processar paciente {ra}: {str(e)}")
+                df.at[index, 'situacao'] = 'Erro ao verificar'
+                erros += 1
 
+        df.to_csv(csv_path, index=False)
+        logging.info(f"-maa: {verificados} RA(s) verificado(s), {erros} com erro")
+        if falha_em_massa(erros, verificados):
+            raise RuntimeError(f"falha em massa: {erros} de {verificados} RAs com erro ao verificar a alta")
         print("\n✅ Processamento concluído!")
 
 
     except Exception as e:
         print(f"Erro ao processar o CSV: {str(e)}")
+        raise  # sem isto a etapa "concluía" e o -eaa rodava sobre nada, em silêncio
     finally:
         if driver:
             driver.quit()

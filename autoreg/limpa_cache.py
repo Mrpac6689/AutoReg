@@ -7,7 +7,8 @@ def limpa_cache():
     # Arquivos que devem ser mantidos
     # ciclo_cron.json/cron_agenda.txt: estado e agenda do cron lidos pela TUI
     arquivos_protegidos = ['solicita_inf_aih.csv', 'internados_ghosp_avancado.csv', 'historico_solicitacoes.csv',
-                           'ciclo_cron.json', 'cron_agenda.txt']
+                           'ciclo_cron.json', 'cron_agenda.txt',
+                           'vinculos_ghosp.csv', 'vinculos_manuais.csv', 'altas_pendentes.csv']
     
     # Verifica se o diretório existe
     if not os.path.exists(user_dir):

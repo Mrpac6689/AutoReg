@@ -74,3 +74,29 @@ def solicitacoes_recentes(dias=DIAS_BLOQUEIO_RESOLICITACAO):
     except Exception as e:
         logging.error(f"Histórico de solicitações: falha ao ler {caminho}: {e}")
     return recentes
+
+
+def solicitacoes_por_numero():
+    """
+    Retorna {nº da solicitação: {'ra', 'documento'}}, sem limite de dias.
+    'documento' é o CPF (11 dígitos) ou CNS (15) lido no G-HOSP e usado na
+    solicitação ('' se malformado). Arquivo ausente/ilegível → {}.
+    """
+    caminho = _caminho()
+    if not os.path.exists(caminho):
+        return {}
+    por_numero = {}
+    try:
+        with open(caminho, newline='', encoding='utf-8') as f:
+            for linha in csv.DictReader(f):
+                numero = _normalizar_ra(linha.get('solsisreg', ''))
+                ra = _normalizar_ra(linha.get('ra', ''))
+                documento = _normalizar_ra(linha.get('cns', ''))
+                if not (documento.isdigit() and len(documento) in (11, 15)):
+                    documento = ''
+                if numero and ra:
+                    por_numero[numero] = {'ra': ra, 'documento': documento}
+    except Exception as e:
+        logging.error(f"Histórico de solicitações: falha ao ler {caminho}: {e}")
+        return {}
+    return por_numero

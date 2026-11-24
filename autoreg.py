@@ -58,6 +58,7 @@ from autoreg import exames_ambulatorio_solicita  # Importa a função exames_amb
 from autoreg import exames_ambulatorio_relatorio  # Importa a função exames_ambulatorio_relatorio
 from autoreg import exames_ambulatoriais_consulta  # Importa a função exames_ambulatoriais_consulta
 from autoreg import motivo_alta_avancado  # Importa a função motivo_alta_avancado
+from autoreg.vinculos import atualiza_altas_pendentes, resumo_pendentes
 from autoreg import executa_alta_avancado  # Importa a função executa_alta_avancado
 from autoreg import producao_relatorio  # Registro de produção via AUTOREG-API
 from autoreg import relatorio_execucao  # Resumo de execução + envio WhatsApp
@@ -239,6 +240,10 @@ FUNCOES = {
     'executa_alta_avancado': {
         'func': executa_alta_avancado,
         'desc': 'Execução de altas no SISREG - versão avançada'
+    },
+    'atualiza_altas_pendentes': {
+        'func': atualiza_altas_pendentes,
+        'desc': 'Atualiza a fila de altas pendentes (altas_pendentes.csv)'
     }
 }
 
@@ -255,6 +260,7 @@ FLAG_TO_FUNC = {
     '-ecsa':'extrai_codigos_sisreg_alta',       '--extrai-codigos-sisreg-alta': 'extrai_codigos_sisreg_alta',
     '-ea':  'executa_alta',                     '--executa-alta': 'executa_alta',
     '-eaa': 'executa_alta_avancado',            '--executa-alta-avancado': 'executa_alta_avancado',
+    '-rap': 'atualiza_altas_pendentes',         '--altas-pendentes': 'atualiza_altas_pendentes',
     '-ar':  'atualiza_restos',                  '--atualiza-restos': 'atualiza_restos',
     '-eid': 'extrai_internacoes_duplicadas',    '--extrai-internacoes-duplicadas': 'extrai_internacoes_duplicadas',
     '-td':  'trata_duplicados',                 '--trata-duplicados': 'trata_duplicados',
@@ -300,7 +306,7 @@ def mostrar_informacoes():
 ║                    Automatização de Sistemas de Saúde                         ║
 ║                               SISREG & G-HOSP                                 ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║ Versão: 10.0.0 - Universe                                                     ║
+║ Versão: 10.1.0 - Universe                                                     ║
 ║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║
 ║ Contato: michelrpaes@gmail.com                                                ║
 ║ Repositório: https://github.com/Mrpac6689/AutoReg                             ║
@@ -324,6 +330,7 @@ FUNÇÕES DISPONÍVEIS:
         ('-maa', '--motivo-alta-avancado', 'motivo_alta_avancado'),
         ('-ecsa', '--extrai-codigos-sisreg-alta', 'extrai_codigos_sisreg_alta'),
         ('-eaa', '--executa-alta-avancado', 'executa_alta_avancado'),
+        ('-rap', '--altas-pendentes', 'atualiza_altas_pendentes'),
         ('-td', '--trata-duplicados', 'trata_duplicados'),
         ('-clc', '--limpa-cache', 'limpa_cache'),
         ('-dev', '--devolvidos', 'devolvidos'),
@@ -365,7 +372,7 @@ FUNÇÕES DISPONÍVEIS:
         elif short == '-interna':
             desc = 'Executa sequência de internação: -eci -ip'
         elif short == '-alta':
-            desc = 'Executa sequência de alta: -eis -eiga -maa -eaa'
+            desc = 'Executa sequência de alta: -eis -eiga -maa -eaa -rap'
         elif short == '-solicita':
             desc = 'Executa rotina de Solicitação: -spa -sia -ssr -snt'
         elif short == '-solicita-auto':
@@ -547,7 +554,7 @@ def executar_todas():
         print("\n" + "="*80)
         print(f"CICLO {ciclo}/{repeticoes} - SEQUÊNCIA 2/2: ALTA (-eis -eiga -maa -eaa)")
         print("="*80)
-        seq_alta = ['extrai_internados_sisreg', 'extrai_internados_ghosp_avancado', 'motivo_alta_avancado', 'executa_alta_avancado']
+        seq_alta = ['extrai_internados_sisreg', 'extrai_internados_ghosp_avancado', 'motivo_alta_avancado', 'executa_alta_avancado', 'atualiza_altas_pendentes']
         for i, func_name in enumerate(seq_alta, 1):
             print(f"\n[CICLO {ciclo} | ALTA {i}/{len(seq_alta)}] ", end="")
             if not executar_funcao(func_name):
@@ -604,6 +611,8 @@ Exemplos de uso:
                        help='Verifica altas e extrai motivos')
     parser.add_argument('-ecsa', '--extrai-codigos-sisreg-alta', action='store_true',
                        help='Extrai códigos SISREG para alta')
+    parser.add_argument('-rap', '--altas-pendentes', action='store_true',
+                       help='Atualiza a fila de altas pendentes (altas_pendentes.csv)')
     parser.add_argument('-ea', '--executa-alta', action='store_true',
                        help=argparse.SUPPRESS)  # OBSOLETO: substituído por -eaa; ver CHANGELOG.md
     parser.add_argument('-eaa', '--executa-alta-avancado', action='store_true',
@@ -679,7 +688,7 @@ Exemplos de uso:
     parser.add_argument('-interna', '--interna', action='store_true',
                        help='Executa sequência de internação: -eci -ip')
     parser.add_argument('-alta', '--alta', action='store_true',
-                       help='Executa sequência de alta: -eis -eiga -maa -eaa')
+                       help='Executa sequência de alta: -eis -eiga -maa -eaa -rap')
     parser.add_argument('-solicita', '--solicita', action='store_true',
                        help='Executa rotina de Solicitação: -spa -sia -ssr -snt')
     parser.add_argument('-solicita-auto', '--solicita-auto', action='store_true',
@@ -750,8 +759,16 @@ Exemplos de uso:
             print(f"\n[{i}/{len(seq)}] ", end="")
             if not executar_funcao(func_name):
                 print(f"❌ Parando execução devido ao erro em {func_name}")
+                relatorio_execucao.registrar_resumo(
+                    f"🚨 *ALTA*\n❌ Falha em {func_name} — altas NÃO processadas nesta rodada (ver autoreg.log)"
+                )
                 break
+        # Fora da sequência: roda mesmo se uma etapa acima falhar
+        executar_funcao('atualiza_altas_pendentes')
         relatorio_execucao.registrar_resumo(relatorio_execucao.resumo_alta())
+        bloco_pendentes = resumo_pendentes()
+        if bloco_pendentes:
+            relatorio_execucao.registrar_resumo(bloco_pendentes)
         return
 
     if args.solicita:

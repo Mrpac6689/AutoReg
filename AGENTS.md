@@ -34,7 +34,9 @@ python test_detecta_captcha.py
 - **`-R` is obsolete** (hidden from `--help`): it used to report production to AUTOREG-API; for `-alta`/`-solicita` before the sequence, for `-interna` after.
 - **Exam dedup (`-eas`)**: rows with non-empty `solicitacao` column are skipped unless `solicita='s'`. Column cleared after success.
 - **Optional PDF path**: `-p2c`, `-especial-prepara` and `-especial-med-prepara` take an optional positional PDF path; all other flags are boolean.
-- **Workflows differ slightly**: `--all` = `-interna` (2 steps) then `-alta` (4 steps). Workflow shortcuts are hardcoded in `main()` of `autoreg.py`, not composed from `FLAG_TO_FUNC`.
+- **Workflows differ slightly**: `--all` = `-interna` (2 steps) then `-alta` (5 steps). Workflow shortcuts are hardcoded in `main()` of `autoreg.py`, not composed from `FLAG_TO_FUNC`.
 - **Environment**: standard Python `venv` + `requirements.txt` (pip) — no conda; the repo has a `venv/` directory locally.
 - **Docker**: cron entry injects `docker-entry-script.sh` into container, runs with `DISPLAY=:1` for Xvnc. See `cron-autoreg-docker.sh`.
-- **No test infrastructure** beyond the two ad-hoc scripts above.
+- **Discharges** (docs/ALTAS.md): never discharge a patient just because G-HOSP lookup failed; unresolved ones go to `altas_pendentes.csv` (`-rap`).
+- **Every behavior change**: follow docs/MANUTENCAO.md (changelog, version, docs).
+- **No test infrastructure** beyond ad-hoc scripts: the two above plus `test_vinculos.py` and `test_versao.py` (offline).

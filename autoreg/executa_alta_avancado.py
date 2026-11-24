@@ -18,6 +18,7 @@ from autoreg.sessao_sisreg import (
     ControleSessao,
     SessaoSisregAbortada,
 )
+from autoreg.motivos_alta import codigo_motivo
 from datetime import datetime
 import logging
 
@@ -67,18 +68,6 @@ def executa_alta_avancado():
 
         print(f"📋 Encontradas {len(altas_pendentes)} altas para processar.")
 
-        # Mapeamento simplificado de motivos para facilitar a busca
-        # O script tentará encontrar substring desses termos no 'motivo_alta' vindo do GHOSP
-        mapa_motivos = {
-            "CURADO": "37",
-            "MELHORADO": "38",
-            "PEDIDO": "40",
-            "EVASAO": "42",
-            "TRANSFERIDO": "53",
-            "OBITO": "54",
-            "ADMINISTRATIVO": "38"
-        }
-
         for index, row in altas_pendentes.iterrows():
             # Verifica se há CAPTCHA antes de cada alta
             resultado_captcha = detecta_captcha(navegador)
@@ -93,10 +82,19 @@ def executa_alta_avancado():
                 continue
 
             solicitacao = str(row['solicitacao_sisreg']).split('.')[0] # Remove .0 se houver
-            motivo_ghosp = str(row['motivo_alta']).upper()
+            motivo_ghosp = str(row['motivo_alta']).upper() if pd.notna(row['motivo_alta']) else ''
             
             print(f"\n🚀 [{index+1}] Processando Solicitação: {solicitacao} | Motivo GHOSP: {motivo_ghosp}")
             
+            # Motivo desconhecido não vira "melhorado": fica pendente de conferência
+            valor_motivo = codigo_motivo(motivo_ghosp)
+            if not valor_motivo:
+                print(f"   ⚠️ Motivo não reconhecido — alta não executada: {motivo_ghosp!r}")
+                logging.warning(f"-eaa solicitação {solicitacao}: motivo não reconhecido {motivo_ghosp!r} — alta não executada")
+                df.at[index, 'resultado_sisreg'] = f"Erro: motivo não reconhecido ({motivo_ghosp or 'vazio'})"
+                df.to_csv(csv_path, index=False)
+                continue
+
             try:
                 # 1. Navega para a página de Saída de Permanência
                 url_saida = "https://sisregiii.saude.gov.br/cgi-bin/config_saida_permanencia"
@@ -126,15 +124,7 @@ def executa_alta_avancado():
                 navegador.execute_script(f"configFicha('{solicitacao}')")
                 time.sleep(3)
                 
-                # 3. Seleciona o motivo baseado no texto do GHOSP
-                valor_motivo = "38" # Default: ALTA MELHORADO
-                
-                for chave, codigo in mapa_motivos.items():
-                    if chave in motivo_ghosp:
-                        valor_motivo = codigo
-                        print(f"   Motivo mapeado: {chave} -> {codigo}")
-                        break
-                
+                # 3. Motivo já validado acima (motivos_alta.codigo_motivo)
                 try:
                     # Seleciona no dropdown
                     select_motivo = Select(wait.until(EC.presence_of_element_located((By.NAME, "co_motivo"))))

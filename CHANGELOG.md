@@ -7,12 +7,29 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Não lançado]
 
+## [10.1.0] - 2026-11
+
 ### Adicionado
+- **Fila de altas pendentes (`-rap`, último passo de `-alta`)**: `altas_pendentes.csv` lista toda internação do SISREG sem RA, com alta não efetivada ou fora da lista do G-HOSP; o resumo do WhatsApp avisa em 24 h e destaca em 72 h. Antes, quem não era achado repetia a mesma busca a cada ciclo sem ninguém saber (15 pacientes em 24/11/2026, o mais antigo no log desde 04/08)
+- **Vínculos solicitação → RA** (`autoreg/vinculos.py`): `-ign` guarda RAs vistos em `vinculos_ghosp.csv`; `vinculos_manuais.csv` permite informar o RA à mão
+- **`-eiga`**: prontuário da ficha do SISREG, desempate de homônimos por nascimento e memória de vínculos. `-eis` passa a extrair data de internação, nascimento, mãe e prontuário
+- **Documentação e versão**: `docs/ALTAS.md`, `docs/MANUTENCAO.md`, `autoreg/versao.py`, `test_vinculos.py`, `test_versao.py`
+- **TUI mostra o ciclo do cron** (etapa, ETA, próxima rodada) e avisa antes de colidir (28/10/2026)
+- **Detector de senha expirada/login recusado no SISREG** (22/11/2026): bloco no resumo do ciclo e `-ssr` aborta
 - **Filtro de RA duplicado na mesma data/24h (`-aihs` e `-solicita`/`-solicita-auto`)**: quando o paciente tem um RA HUERB anterior com entrada no mesmo dia **ou** até 24h antes, e os lembretes do paciente mostram uma solicitação de clínica (CM, CC etc. — **UTI não conta**) datada entre a entrada desse RA anterior e 15 dias depois (mesma janela do `-std`; sem o limite, pacientes de longa permanência com solicitação recente ficariam bloqueados para sempre), o RA atual deixa de ser solicitado (mantém-se só o mais antigo). Como os lembretes são do paciente, e não do RA, é a data de cada lembrete que o liga a uma internação. A lista de RAs vem de `/historicopacs/{prontuario}`, aberta pelo `-ign` só para pacientes com lembrete de solicitação de clínica datado. `-ign` grava o RA anterior na nova coluna `ra_anterior_solicitado` de `internados_ghosp_avancado.csv`; `-std` e `-spaa` removem essas linhas. Fail-open: falha ao ler a lista de RAs não descarta nada
 - **`autoreg/ras_paciente.py`**: novo módulo compartilhado com a extração da lista de RAs HUERB do paciente (antes privada em `especial_extrai.py`), a regra de janela, o parser de lembretes de solicitação (um lembrete por bloco de texto; nº SISREG de 9 dígitos + data; ignora UTI e lembretes sem data), e `tem_data_proxima()` — o critério de ±15 dias que `-std` já usava, extraído sem mudança de comportamento
 - **`autoreg/historico_solicitacoes.py` e `~/AutoReg/historico_solicitacoes.csv`**: `-ssr` registra cada solicitação criada com sucesso (data/hora, RA, nº SISREG, procedimento, CNS) e `-spaa` não reenvia um RA solicitado nos últimos 15 dias (`DIAS_BLOQUEIO_RESOLICITACAO`), independente dos lembretes do G-HOSP. `-clc` preserva o arquivo
 
 ### Corrigido
+- **`-maa` lia o botão "INSERIR" como resumo de alta** (RA 669835, 24/11/2026): paciente sem resumo entrava na fila de saída
+- **`-eaa` gravava "ALTA MELHORADO" para motivo não mapeado** (transferência e alta com previsão de retorno, 24/11/2026): os códigos agora seguem o texto do SISREG (`autoreg/motivos_alta.py`) e motivo desconhecido não é executado, vira pendência
+- **`-maa` falhava em silêncio** (24/11/2026: 1 s às 10:51 e 86 de 86 erros às 15:16, ambas com 0 altas): erro fatal ou metade dos RAs com erro interrompe a alta e avisa no WhatsApp
+- **`-eci` lia a página errada após CAPTCHA** (12/11/2026): re-navega e recomeça da 1ª página
+- **G-HOSP mudou o banner do paciente** (29/10/2026): `-sia` e `-ign` voltam a ler o prontuário
+- **`-iga` falha fechado e `-aihs` aborta o ciclo; `-snt` não trunca o número da solicitação** (28/10/2026)
+- **`-snt` mantém no CSV os RAs que só receberam nota de cadastro** (28/10/2026)
+- **Travamento do `-ign`, token de CAPTCHA recusado e ciclos sobrepostos** mitigados (26/10/2026)
+- **`-eiga` não localizava paciente cujo CNS do SISREG não abre no G-HOSP** (RA 657487): antes da busca por nome, tenta em `/prontuarios` o CPF (ou CNS) do `historico_solicitacoes.csv`, aceito só se o RA solicitado estiver na lista do paciente; se nada localizar, usa o RA do histórico. Divergência entre o RA mais recente e o solicitado é registrada no log
 - **`-spa` não gravava nenhum link quando rodado pela TUI** (19/10/2026, RAs 655540, 653246, 650553, 651691, 653114): a TUI roda o processo sem terminal (`stdin=DEVNULL`), o `input()` levantava `EOFError` e o erro engolido pulava todos os registros em segundos. Sem terminal, o `-spa` agora cria `pause.flag` e espera Gravar/Pular; remove `grava.flag`/`pula.flag` órfãos ao iniciar e registra no `autoreg.log` cada link gravado, registro pulado ou deixado sem link
 - **`-spa` apagava do CSV os registros aprovados pelo `-spaa`**: o `DataFrame` era filtrado para as linhas sem link e gravado inteiro por cima de `solicita_inf_aih.csv` no primeiro Gravar/Pular. Agora só a linha revisada é alterada
 - **"Procedimento nao habilitado!" no SISREG** (0401010058, 0401010031 em 19/10/2026): `-ssr` passa a refazer a solicitação automaticamente com o procedimento curinga da clínica (Cirúrgica 0301060070, Médica 0301060088), como já fazia para "solicitação pendente", e registra a troca em `obs_substituicao`. O erro só fica no CSV se o curinga também for recusado ou a clínica não tiver curinga. `correlacoes_aih.json` converte esses dois códigos já no `-spaa`

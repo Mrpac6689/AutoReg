@@ -50,7 +50,7 @@ PRINCIPAIS: tuple[Workflow, ...] = (
         flag="-alta",
         titulo="Alta",
         descricao="Ciclo completo de alta de pacientes internados",
-        passos="-eis → -eiga → -maa → -eaa",
+        passos="-eis → -eiga → -maa → -eaa → -rap",
     ),
     Workflow(
         flag="-td",
@@ -108,6 +108,7 @@ CATEGORIAS: tuple[Categoria, ...] = (
             Comando("-maa", "Verifica altas e extrai motivos", csvs=("internados_sisreg.csv",)),
             Comando("-ecsa", "Extrai códigos SISREG para alta"),
             Comando("-eaa", "Execução de altas no SISREG - versão avançada", csvs=("internados_sisreg.csv",)),
+            Comando("-rap", "Atualiza a fila de altas pendentes", csvs=("altas_pendentes.csv", "vinculos_manuais.csv")),
             Comando("-ea", "Executa altas no SISREG (substituído por -eaa)", obsoleto=True),
             Comando("-ar", "Atualiza arquivo de pacientes restantes", csvs=("restos.csv", "restos-atualizado.csv"), obsoleto=True),
             Comando("-tat", "Trata Motivos de Alta capturados (substituído por -maa)", obsoleto=True),

@@ -23,6 +23,22 @@ import re
 
 setup_logging()
 
+def _dados_ficha(texto):
+    """
+    Nascimento, mãe e prontuário G-HOSP da ficha. 'mae' vem seguida da
+    naturalidade na mesma linha (comparar por prefixo). O prontuário é o que o -ssr
+    escreve em "Condições que Justificam a Internação" ("22/10/2026 - 1234567").
+    """
+    def achar(padrao):
+        m = re.search(padrao, texto)
+        return m.group(1).strip() if m else ""
+    return {
+        "nascimento": achar(r"Data de Nascimento:[^\n]*\n\s*(\d{2}/\d{2}/\d{4})"),
+        "mae": achar(r"Nome da Mãe[^\n]*\n([^\n]+)"),
+        "prontuario": achar(r"Condições que Justificam a Internação:\s*\d{2}/\d{2}/\d{4} - (\d{5,8})\b"),
+    }
+
+
 def extrai_internados_sisreg():
     print("\n---===> EXTRAÇÃO DE INTERNADOS <===---")
     logging.info("---===> EXTRAÇÃO DE INTERNADOS <===---")
@@ -149,7 +165,8 @@ def extrai_internados_sisreg():
                     solicitacoes_vistas.add(solicitacao)
                 dados.append({
                     "Nome": nome,
-                    "solicitacao_sisreg": solicitacao
+                    "solicitacao_sisreg": solicitacao,
+                    "data_internacao": linha.find_element(By.XPATH, './td[1]').text.strip()
                 })
 
             # Tenta localizar o botão "Próxima página"
@@ -228,6 +245,12 @@ def extrai_internados_sisreg():
                     cns_xpath = "//b[contains(text(), 'CNS:')]/ancestor::tr/following-sibling::tr[1]/td"
                     cns_element = WebDriverWait(navegador, 10).until(EC.presence_of_element_located((By.XPATH, cns_xpath)))
                     cns = cns_element.text.strip()
+
+                    # Dados de desempate para o -eiga; falha aqui não afeta o CNS
+                    try:
+                        item.update(_dados_ficha(navegador.find_element(By.TAG_NAME, 'body').text))
+                    except Exception as e:
+                        logging.warning(f"Solicitação {solicitacao}: dados complementares não lidos: {e}")
 
                     print(f"CNS obtido: {cns}")
                     logging.info(f"CNS para solicitação {solicitacao}: {cns}")

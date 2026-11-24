@@ -15,6 +15,7 @@ from autoreg.ras_paciente import (
     tem_solicitacao_desde,
 )
 import logging
+from autoreg.vinculos import registrar_vistos
 
 MAX_TIMEOUTS_SEGUIDOS = 3
 
@@ -259,6 +260,13 @@ def internados_ghosp_nota():
                     df.at[idx, COLUNA_LEMBRETES_LIDOS] = ''
                     df.at[idx, 'setor'] = ''
                     df.at[idx, 'dados'] = ''
+
+            # Memória de vínculos: depois da alta o RA some do censo (ver vinculos.py)
+            lidos = df[df[COLUNA_LEMBRETES_LIDOS] == 'sim']
+            registrar_vistos([
+                {'ra': r['internacao'], 'nome': r.get('nome'), 'data': r.get('data'), 'lembretes': r['dados']}
+                for _, r in lidos.iterrows()
+            ])
 
             # Ordena o DataFrame pelo setor antes de salvar
             print("\nOrdenando dados por setor...")

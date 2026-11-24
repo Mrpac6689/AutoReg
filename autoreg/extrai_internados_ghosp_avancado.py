@@ -1,6 +1,7 @@
 import os
 import time
 import pandas as pd
+from bs4 import BeautifulSoup
 import traceback
 import re
 from selenium import webdriver
@@ -12,6 +13,9 @@ from autoreg.ler_credenciais import ler_credenciais
 from autoreg.logging import setup_logging
 from autoreg.chrome_options import get_chrome_options
 from autoreg.justificativa_ghosp import tratar_justificativa_acesso
+from autoreg.historico_solicitacoes import solicitacoes_por_numero
+from autoreg.ras_paciente import extrair_ras_huerb
+from autoreg.vinculos import vinculos_manuais, resolver, limpar, ler_data, na_janela, normalizar_nome
 from datetime import datetime
 import logging
 
@@ -58,6 +62,22 @@ def _navega_prontuarios(driver, caminho_ghosp, usuario_ghosp, senha_ghosp):
         _refaz_login_ghosp(driver, caminho_ghosp, usuario_ghosp, senha_ghosp)
         driver.get(url)
         time.sleep(2)
+
+
+def _url_homonimo(html, nome, nascimento):
+    """
+    Em /listar_prontuarios, retorna o href do ÚNICO homônimo cuja linha traz o
+    nome e a data de nascimento do SISREG; '' se nenhum ou mais de um.
+    """
+    if not nome or not ler_data(nascimento):
+        return ''
+    achados = set()
+    for tr in BeautifulSoup(html, 'html.parser').select('table.tableFixedHead tbody tr'):
+        texto = tr.get_text(' ', strip=True)
+        link = tr.select_one("a[href^='/historicopacs/']")
+        if link and nascimento in texto and normalizar_nome(nome) in normalizar_nome(texto):
+            achados.add(link['href'])
+    return achados.pop() if len(achados) == 1 else ''
 
 
 def extrai_internados_ghosp_avancado():
@@ -167,6 +187,9 @@ def extrai_internados_ghosp_avancado():
             paciente_divs = driver.find_elements(By.ID, "paciente")
             return paciente_divs, tem_historico
 
+        historico = solicitacoes_por_numero()
+        manuais = vinculos_manuais()
+
         print(f"\nIniciando processamento de {len(df)} pacientes...")
 
         for index, row in df.iterrows():
@@ -177,6 +200,24 @@ def extrai_internados_ghosp_avancado():
                 cns_csv = cns_csv[:-2]
             
             print(f"\n[{index+1}/{len(df)}] Processando: {nome_csv}")
+
+            # RA e documento (CPF ou CNS do G-HOSP) com que o -ssr fez a solicitação
+            solicitacao = str(row.get('solicitacao_sisreg', '')).strip()
+            if solicitacao.endswith('.0'):
+                solicitacao = solicitacao[:-2]
+            registro = historico.get(solicitacao, {})
+            ra_historico = registro.get('ra', '')
+            documento = registro.get('documento', '')
+            ra_recente = ""
+
+            # 0. RA informado por uma pessoa em vinculos_manuais.csv: prioridade total
+            if solicitacao in manuais:
+                df.at[index, 'RA'] = manuais[solicitacao]
+                df.at[index, 'erro'] = ""
+                print(f"RA {manuais[solicitacao]} informado em vinculos_manuais.csv")
+                logging.info(f"-eiga solicitação {solicitacao}: RA {manuais[solicitacao]} de vinculos_manuais.csv")
+                df.to_csv(csv_path, index=False)
+                continue
 
             found = False
             # Reavaliação: limpa erro antigo para não manter "não encontrado" obsoleto
@@ -198,8 +239,48 @@ def extrai_internados_ghosp_avancado():
                             found = True
                             print(f"Sucesso: Paciente localizado por CNS ({nome_ghosp})")
 
-                # 2. Tentar busca por Nome se não encontrou por CNS
-                if not found:
+                # 2. Tentar pelo documento do G-HOSP guardado no histórico: o CNS
+                # do SISREG pode não estar cadastrado no G-HOSP (RA 657487).
+                # Só aceita se o RA solicitado estiver na lista do paciente.
+                if not found and documento and documento != cns_csv:
+                    campo_doc = "cpf" if len(documento) == 11 else "cns"
+                    print(f"Tentando busca por {campo_doc.upper()} do histórico")
+                    try:
+                        _buscar_e_liberar(campo_doc, documento)
+                        if ra_historico in [str(r['ra']) for r in extrair_ras_huerb(driver, timeout=5)]:
+                            found = True
+                            print(f"Sucesso: paciente localizado por {campo_doc.upper()} (RA {ra_historico} confirmado)")
+                        else:
+                            logging.warning(f"-eiga solicitação {solicitacao}: busca por {campo_doc} não confirmou o RA {ra_historico}")
+                    except Exception as e:
+                        logging.warning(f"-eiga solicitação {solicitacao}: falha na busca por {campo_doc}: {e}")
+
+                # 2b. Prontuário escrito na ficha do SISREG. É texto livre: só vale
+                # com o nome na página e um RA HUERB na época da internação.
+                prontuario = limpar(row.get('prontuario'))
+                if not found and not ra_historico and prontuario.isdigit():
+                    try:
+                        url = f"{caminho_ghosp}:4002/historicopacs/{prontuario}"
+                        driver.get(url)
+                        time.sleep(2)
+                        if tratar_justificativa_acesso(driver):
+                            driver.get(url)
+                            time.sleep(1)
+                        internacao = ler_data(row.get('data_internacao'))
+                        nome_ok = normalizar_nome(nome_csv) in normalizar_nome(
+                            driver.find_element(By.TAG_NAME, 'body').text)
+                        found = nome_ok and any(
+                            na_janela(r['data_entrada'], internacao)
+                            for r in extrair_ras_huerb(driver, timeout=5))
+                        logging.info(f"-eiga solicitação {solicitacao}: prontuário {prontuario} "
+                                     f"{'confirmado' if found else 'não confirmado'}")
+                    except Exception as e:
+                        found = False
+                        logging.warning(f"-eiga solicitação {solicitacao}: falha no prontuário {prontuario}: {e}")
+
+                # 3. Tentar busca por Nome se não encontrou por CNS
+                # Com RA no histórico o nome é dispensável (e sujeito a homônimos).
+                if not found and not ra_historico:
                     print(f"Tentando busca por Nome: {nome_csv}")
                     paciente_divs, tem_historico = _buscar_e_liberar("nome", nome_csv)
                     if tem_historico:
@@ -211,7 +292,26 @@ def extrai_internados_ghosp_avancado():
                             found = True
                             print(f"Sucesso: Paciente localizado por Nome ({nome_ghosp})")
                 
-                # 3. Se encontrou o paciente, extrair o RA mais recente
+                # 3b. Homônimos: desempata pelo nascimento e confere um RA HUERB na
+                # época da internação
+                if not found and not ra_historico and "listar_prontuarios" in (driver.current_url or ""):
+                    href = _url_homonimo(driver.page_source, nome_csv, limpar(row.get('nascimento')))
+                    if href:
+                        try:
+                            driver.get(caminho_ghosp + ':4002' + href)
+                            time.sleep(2)
+                            if tratar_justificativa_acesso(driver):
+                                driver.get(caminho_ghosp + ':4002' + href)
+                                time.sleep(1)
+                            internacao = ler_data(row.get('data_internacao'))
+                            found = any(na_janela(r['data_entrada'], internacao)
+                                        for r in extrair_ras_huerb(driver, timeout=5))
+                        except Exception as e:
+                            logging.warning(f"-eiga solicitação {solicitacao}: falha ao abrir homônimo: {e}")
+                    logging.info(f"-eiga solicitação {solicitacao}: homônimos, desempate por nascimento "
+                                 f"{'confirmado' if found else 'sem decisão'}")
+
+                # 4. Se encontrou o paciente, extrair o RA mais recente
                 if found:
                     try:
                         print("Extraindo RA mais recente...")
@@ -266,7 +366,7 @@ def extrai_internados_ghosp_avancado():
                     except Exception as e:
                         print(f"Aviso: Falha ao extrair dados de RA: {str(e)}")
                 
-                if not found:
+                if not found and not ra_historico:
                     msg_erro = "Paciente não encontrado no GHOSP ou Homônimos, revisar manualmente"
                     df.at[index, 'erro'] = msg_erro
                     print(f"Aviso: {msg_erro}")
@@ -274,6 +374,28 @@ def extrai_internados_ghosp_avancado():
             except Exception as e:
                 print(f"Erro ao processar linha {index+1}: {str(e)}")
                 df.at[index, 'erro'] = f"Erro técnico: {str(e)}"
+
+            # 5. Último recurso: RA gravado pelo -ssr para esta solicitação
+            if not ra_recente and ra_historico:
+                ra_recente = ra_historico
+                df.at[index, 'RA'] = ra_recente
+                df.at[index, 'erro'] = ""
+                print(f"RA {ra_recente} obtido do histórico de solicitações")
+                logging.info(f"-eiga solicitação {solicitacao}: RA {ra_recente} obtido do histórico de solicitações")
+            elif not ra_recente:
+                # 6. Memória do -ign (lembrete ou nome + data), só sem ambiguidade
+                ra_vinculo, origem, candidatos = resolver(
+                    solicitacao, nome_csv, limpar(row.get('data_internacao')))
+                if ra_vinculo:
+                    ra_recente = ra_vinculo
+                    df.at[index, 'RA'] = ra_recente
+                    df.at[index, 'erro'] = ""
+                    print(f"RA {ra_recente} obtido dos vínculos ({origem})")
+                    logging.info(f"-eiga solicitação {solicitacao}: RA {ra_recente} dos vínculos ({origem})")
+                elif candidatos:
+                    logging.info(f"-eiga solicitação {solicitacao}: candidatos sem decisão: {', '.join(candidatos)}")
+            elif ra_historico and str(ra_recente) != ra_historico:
+                logging.warning(f"-eiga solicitação {solicitacao}: RA mais recente {ra_recente} difere do solicitado {ra_historico}")
 
             # Salva o progresso a cada linha
             df.to_csv(csv_path, index=False)

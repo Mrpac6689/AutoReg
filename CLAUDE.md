@@ -168,7 +168,7 @@ No build step, no test suite (only the two ad-hoc scripts above), no linter conf
 | Shortcut | Flags in sequence | Description |
 |----------|------------------|-------------|
 | `-interna` | `-eci` → `-ip` | Full admission cycle |
-| `-alta` | `-eis` → `-eiga` → `-maa` → `-eaa` | Full discharge cycle |
+| `-alta` | `-eis` → `-eiga` → `-maa` → `-eaa` → `-rap` | Full discharge cycle |
 | `-solicita` | `-spaa` → `-spa` → `-sia` → `-ssr` → `-snt` | AIH solicitation (`-spa` is interactive: human reviews what `-spaa` couldn't auto-approve) |
 | `-solicita-auto` | `-spaa` → `-spb` → `-sia` → `-ssr` → `-snt` | AIH solicitation with no human interaction (cron-safe): `-spb` replaces `-spa`, dropping any record `-spaa` couldn't auto-approve |
 | `-aihs` | `-iga` → `-ign` → `-std` | AIH pre-processing (GHOSP notes → SISREG data) |
@@ -181,7 +181,7 @@ No build step, no test suite (only the two ad-hoc scripts above), no linter conf
 
 Workflow shortcuts are hardcoded sequences in `main()` (not composed from `FLAG_TO_FUNC`), each stops at the first failing step, and each `return`s, so a shortcut can't be combined with other flags on the same command line. Individual flags, on the other hand, run in the **exact order they appear in `sys.argv`** (`autoreg.py -eid -td` runs `-eid` first).
 
-`-sresg` (`solicita_resgate.py`) is a standalone flag outside every shortcut. It shares `correlacoes_aih.json` with `-spaa`. `-clc` wipes `~/AutoReg/` except `solicita_inf_aih.csv`, `internados_ghosp_avancado.csv`, `historico_solicitacoes.csv` and the TUI's cron state files (`ciclo_cron.json`, `cron_agenda.txt`).
+`-sresg` (`solicita_resgate.py`) is a standalone flag outside every shortcut. It shares `correlacoes_aih.json` with `-spaa`. `-clc` wipes `~/AutoReg/` except `solicita_inf_aih.csv`, `internados_ghosp_avancado.csv`, `historico_solicitacoes.csv`, `vinculos_ghosp.csv`, `vinculos_manuais.csv`, `altas_pendentes.csv` and the TUI's cron state files (`ciclo_cron.json`, `cron_agenda.txt`).
 
 **Adding a new flag** touches several places in `autoreg.py`, and nothing enforces that they stay in sync: the import, the `FUNCOES` dict (func + `desc`), `FLAG_TO_FUNC` (both short and long forms), the `flags` list in `mostrar_informacoes()`, `parser.add_argument(...)`, and the optional-positional-arg special case in the argv loop if the flag takes a path. Outside that file, also update `autoreg/__init__.py` exports and `tui/catalogo.py`.
 
@@ -253,6 +253,7 @@ AutoReg includes automatic CAPTCHA detection and resolution:
 - **`-spa` writes the whole CSV**: it works only on the rows without `link`, but must save the full `solicita_inf_aih.csv`. Filtering the `DataFrame` and saving it, as it did until 19/10/2026, deleted every row `-spaa` had approved on the first Gravar/Pular.
 - **`-ssr` tries CPF before CNS, and falls back to the clinic's wildcard procedure** (`_documentos_para_solicitar`, `SUBSTITUICAO_PROCEDIMENTO_PENDENTE`): CNS numbers in G-HOSP are often provisional (`898…`) and SISREG doesn't find them, so `-sia` stores `cpf` too and `-ssr` only tries the CNS if the CPF isn't found. Both "solicitação pendente" and the "Procedimento nao habilitado!" alert trigger one retry with 0301060070 (cirúrgica) / 0301060088 (médica). The `erro` text keeps "Procedimento nao habilitado!" verbatim because `-sresg` matches on it. The `cns` column still gets the CPF when the CNS is empty, since `-snt` writes the "FALTA CNS/CPF" note only when `cns` is empty.
 - **`sessao_sisreg.sessao_expirada()` false positive**: it detects expired sessions by looking for the substring "erro de sistema" anywhere in `driver.page_source` — but that's also the exact business-error message SISREG shows for a single ficha that can't be internada/dada alta (not a session problem). `internacao_sisreg.internar_ficha_sisreg()` avoids the collision by always doing `driver.get()` to a fresh page *before* calling `garantir_sessao_sisreg()`, so a leftover error div from a previous ficha is never on screen when the check runs. Keep that ordering in any new loop that checks session state.
+- **SISREG→G-HOSP links and pending queue** (`autoreg/vinculos.py`, docs/ALTAS.md): every open SISREG admission must have an RA or appear in `altas_pendentes.csv`. Never discharge because a patient wasn't found. `-rap` runs at the end of `-alta` even if a step failed, and raises (keeping the queue) when `internados_sisreg.csv` is empty. `-eiga` keeps using the most recent HUERB RA even when it differs from the solicited one (user decision, 24/11/2026: may be a second admission). `-maa` raises on fatal/mass failure, ignores the "INSERIR" button text, and `-eaa` never defaults an unknown motive to "ALTA MELHORADO" (`motivos_alta.codigo_motivo` returns '' → pending).
 
 ## Important Files
 
@@ -261,6 +262,9 @@ AutoReg includes automatic CAPTCHA detection and resolution:
 | `config.ini` | Runtime credentials — **gitignored**, never commit |
 | `config.ini.example` | Template for `config.ini` (includes `[2CAPTCHA]` section) |
 | `correlacoes_aih.json` | Procedure×clinic correlation/conversion rules for `-spaa` (`solicita_pre_aih_auto.py`) and `-sresg` (`solicita_resgate.py`) — lives in the project root next to `autoreg.py` and **is committed to git**, unlike other `~/AutoReg` runtime data, because it's tuned over time through real use and must survive a machine loss. Both modules resolve its path from `__file__` (two `dirname()` calls up from `autoreg/`), not from `~/AutoReg` |
+| `docs/ALTAS.md` | Discharge routine, RA lookup order, pending queue |
+| `docs/MANUTENCAO.md` | Versioning/changelog/documentation rules — follow on every behavior change |
+| `autoreg/versao.py` | Version source of truth (`test_versao.py` checks sync) |
 | `autoreg/__init__.py` | Exports all public functions (source of truth for available API) |
 | `~/AutoReg/*.csv` | Runtime data files (inter-module exchange, not in repo) |
 | `~/AutoReg/autoreg.log` | Runtime log file |

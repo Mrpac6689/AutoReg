@@ -4,7 +4,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-GPL%20v3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/Version-10.0.0-orange.svg)](https://github.com/Mrpac6689/AutoReg)
+[![Version](https://img.shields.io/badge/Version-10.1.0-orange.svg)](https://github.com/Mrpac6689/AutoReg)
 
 ---
 
@@ -53,9 +53,9 @@ Desenvolvido com uma arquitetura modular e interface de linha de comando intuiti
 
 - **Comparação de Sistemas** (`-ci`): Compara listas de internados entre SISREG e G-HOSP
 - **Captura de Motivos** (`-ma`): Extrai automaticamente motivos de alta do G-HOSP
-- **Tratamento de Altas** (`-tat`): Processa e organiza motivos de alta capturados
-- **Execução de Altas** (`-ea`): Realiza altas no SISREG de forma automatizada
-- **Gestão de Pendências** (`-ar`): Atualiza e gerencia pacientes restantes
+- **Localização no G-HOSP** (`-eiga`): Vincula cada internação do SISREG a um RA
+- **Execução de Altas** (`-maa` → `-eaa`): Lê o resumo de alta e efetua a saída no SISREG
+- **Fila de Pendências** (`-rap`): Lista quem está sem vínculo ou sem alta conferida — ver [docs/ALTAS.md](docs/ALTAS.md)
 
 ### 📊 Módulo de Dados e Relatórios
 
@@ -536,6 +536,9 @@ Contribuições são bem-vindas! Se você deseja contribuir com o projeto:
 
 ## 📚 Documentação Adicional
 
+- [docs/ALTAS.md](docs/ALTAS.md) - Rotina de alta, vínculos e fila de pendências
+- [docs/MANUTENCAO.md](docs/MANUTENCAO.md) - Versionamento, changelog e documentação
+- [CLAUDE.md](CLAUDE.md) / [AGENTS.md](AGENTS.md) - Guias para IAs
 - [CHANGELOG.md](CHANGELOG.md) - Histórico completo de versões e mudanças
 - [LICENSE](LICENSE) - Texto completo da licença GNU GPL v3
 
@@ -547,7 +550,7 @@ O AutoReg foi desenvolvido para facilitar e automatizar processos hospitalares, 
 
 ---
 
-**AutoReg v10.0.0 Universe** - *Automatização inteligente para sistemas de saúde* 🚀
+**AutoReg v10.1.0 Universe** - *Automatização inteligente para sistemas de saúde* 🚀
 
 *Esperamos que o AutoReg continue facilitando sua rotina e contribuindo para processos hospitalares mais eficientes!*
 
@@ -561,7 +564,7 @@ O AutoReg foi desenvolvido para facilitar e automatizar processos hospitalares, 
 
 [![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-GPL%20v3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/Version-10.0.0-orange.svg)](https://github.com/Mrpac6689/AutoReg)
+[![Version](https://img.shields.io/badge/Version-10.1.0-orange.svg)](https://github.com/Mrpac6689/AutoReg)
 
 ---
 
@@ -610,9 +613,9 @@ Developed with a modular architecture and intuitive command-line interface, Auto
 
 - **System Comparison** (`-ci`): Compares lists of admitted patients between SISREG and G-HOSP
 - **Reason Capture** (`-ma`): Automatically extracts discharge reasons from G-HOSP
-- **Discharge Processing** (`-tat`): Processes and organizes captured discharge reasons
-- **Discharge Execution** (`-ea`): Performs discharges in SISREG automatically
-- **Pending Management** (`-ar`): Updates and manages remaining patients
+- **G-HOSP lookup** (`-eiga`): Links each SISREG admission to a G-HOSP RA
+- **Discharge Execution** (`-maa` → `-eaa`): Reads the discharge summary and discharges in SISREG
+- **Pending Queue** (`-rap`): Lists admissions with no link or unverified discharge — see [docs/ALTAS.md](docs/ALTAS.md)
 
 ### 📊 Data and Reports Module
 
@@ -1139,6 +1142,6 @@ AutoReg was developed to facilitate and automate hospital processes, contributin
 
 ---
 
-**AutoReg v10.0.0 Universe** - *Intelligent automation for healthcare systems* 🚀
+**AutoReg v10.1.0 Universe** - *Intelligent automation for healthcare systems* 🚀
 
 *We hope AutoReg continues to facilitate your routine and contribute to more efficient hospital processes!*
