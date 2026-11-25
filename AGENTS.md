@@ -39,4 +39,4 @@ python test_detecta_captcha.py
 - **Docker**: cron entry injects `docker-entry-script.sh` into container, runs with `DISPLAY=:1` for Xvnc. See `cron-autoreg-docker.sh`.
 - **Discharges** (docs/ALTAS.md): never discharge a patient just because G-HOSP lookup failed; unresolved ones go to `altas_pendentes.csv` (`-rap`). Unknown/blank motive → wildcard ALTA MELHORADO unless `bloqueio_coringa` objects. RA = the solicited one plus continuations (`cadeia_internacao`), never the most recent.
 - **Every behavior change**: follow docs/MANUTENCAO.md (changelog, version, docs).
-- **No test infrastructure** beyond ad-hoc scripts: the two above plus `test_vinculos.py` and `test_versao.py` (offline).
+- **No test infrastructure** beyond ad-hoc scripts: the two above plus `test_vinculos.py`, `test_internacao.py` and `test_versao.py` (offline).

@@ -1,2 +1,2 @@
 """Fonte única da versão. Ao mudar, siga docs/MANUTENCAO.md (test_versao.py confere)."""
-VERSAO = "10.2.0"
+VERSAO = "10.3.0"

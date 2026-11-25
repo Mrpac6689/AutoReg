@@ -21,6 +21,7 @@ try:
 except ImportError:
     urllib = None
 
+from .internacao_sisreg import INTERNADO
 from .producao_relatorio import contar_registros_csv
 
 
@@ -71,12 +72,15 @@ def resumo_interna():
         return (f"🏥 *INTERNAÇÃO*\n"
                 f"ℹ️ {total} ficha(s) processada(s) (detalhamento indisponível — coluna 'resultado' ausente)")
 
-    resultado = df['resultado'].astype(str)
-    sucesso = df[resultado == 'Internado com sucesso']
-    erros = df[resultado.str.startswith('Erro', na=False)]
-    sem_processar = total - len(sucesso) - len(erros)
+    resultado = df['resultado'].fillna('').astype(str).str.strip()
+    erros = df[resultado.str.startswith('Erro')]
+    sem_processar = int((resultado == '').sum())
+    # Demais respostas do SISREG, com o texto dele: quantas de cada
+    pendencias = resultado[(resultado != '') & (resultado != INTERNADO) & ~resultado.str.startswith('Erro')]
 
-    linhas = ["🏥 *INTERNAÇÃO*", f"✅ {len(sucesso)}/{total} internado(s) com sucesso"]
+    linhas = ["🏥 *INTERNAÇÃO*", f"✅ {int((resultado == INTERNADO).sum())}/{total} internado(s)"]
+    for texto, quantos in pendencias.value_counts().items():
+        linhas.append(f"⚠️ {quantos} {_truncar(texto)}")
     if len(erros) > 0:
         linhas.append(f"❌ {len(erros)} erro(s):")
         for _, row in erros.iterrows():

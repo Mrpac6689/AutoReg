@@ -306,7 +306,7 @@ def mostrar_informacoes():
 ║                    Automatização de Sistemas de Saúde                         ║
 ║                               SISREG & G-HOSP                                 ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║ Versão: 10.2.0 - Universe                                                     ║
+║ Versão: 10.3.0 - Universe                                                     ║
 ║ Autor: Michel Ribeiro Paes (MrPaC6689)                                        ║
 ║ Contato: michelrpaes@gmail.com                                                ║
 ║ Repositório: https://github.com/Mrpac6689/AutoReg                             ║
@@ -746,7 +746,7 @@ Exemplos de uso:
                 print(f"❌ Parando execução devido ao erro em {func_name}")
                 break
         if args.registro_producao:
-            producao_relatorio.registrar_producao('Internar Pacientes', 'codigos_internacao.csv')
+            producao_relatorio.registrar_producao_internacoes('Internar Pacientes', 'codigos_internacao.csv')
         relatorio_execucao.registrar_resumo(relatorio_execucao.resumo_interna())
         return
 

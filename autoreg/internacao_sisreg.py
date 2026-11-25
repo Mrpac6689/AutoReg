@@ -17,6 +17,27 @@ from autoreg.sessao_sisreg import garantir_sessao_sisreg
 
 URL_CONFIG_INTERNAR = "https://sisregiii.saude.gov.br/cgi-bin/config_internar"
 
+# Texto do 2º popup quando a internação foi aceita (lido em 25/11/2026). Os outros
+# vistos: 'Sem leito disponivel.' e 'Paciente ja se encontra internado com outra
+# autorizacao.'
+INTERNADO = 'Paciente Internado'
+SEM_RESPOSTA = 'Sem resposta do SISREG'
+
+
+def resultado_internacao(popups, erro_de_sistema=False):
+    """
+    Resultado a partir dos textos dos popups, na ordem. O 1º só pede confirmação
+    ('Confirma Operação?'); a resposta é o 2º. Sem ele nunca é sucesso.
+    """
+    textos = [' '.join(str(t or '').split()).rstrip('.') for t in popups]
+    if len(textos) > 1 and textos[1]:
+        return textos[1]
+    if erro_de_sistema:
+        return 'Erro: Erro de Sistema detectado no SISREG'
+    if textos and textos[0] and not textos[0].lower().startswith('confirma'):
+        return f'Erro: {textos[0]}'  # recusa antes da confirmação
+    return f'Erro: {SEM_RESPOSTA}'
+
 
 def internar_ficha_sisreg(navegador, ficha, usuario_sisreg, senha_sisreg, controle):
     """
@@ -34,7 +55,7 @@ def internar_ficha_sisreg(navegador, ficha, usuario_sisreg, senha_sisreg, contro
     Propaga exceções Selenium não tratadas para o chamador decidir como
     registrar o resultado.
 
-    Retorna 'Internado com sucesso' ou 'Erro: Erro de Sistema detectado no SISREG'.
+    Retorna o resultado dado pelo próprio SISREG: ver resultado_internacao().
     """
     wait = WebDriverWait(navegador, 10)
 
@@ -89,28 +110,18 @@ def internar_ficha_sisreg(navegador, ficha, usuario_sisreg, senha_sisreg, contro
     ))
     botao_internar.click()
 
-    # Até dois popups de confirmação, cada um tratado separadamente —
-    # mais rastreável que um único "while True / except: pass" genérico.
-    try:
-        WebDriverWait(navegador, 10).until(EC.alert_is_present())
+    # 1º popup pede confirmação; 2º traz a resposta do SISREG.
+    popups = []
+    for _ in range(2):
+        try:
+            WebDriverWait(navegador, 10).until(EC.alert_is_present())
+        except TimeoutException:
+            break
         alert = navegador.switch_to.alert
-        print(f"   Popup detectado: {alert.text}")
+        popups.append(alert.text)
+        print(f"   Popup detectado: {popups[-1]}")
         alert.accept()
         time.sleep(2)
-    except TimeoutException:
-        pass
 
-    try:
-        WebDriverWait(navegador, 10).until(EC.alert_is_present())
-        segundo_alert = navegador.switch_to.alert
-        print(f"   Segundo popup detectado: {segundo_alert.text}")
-        segundo_alert.accept()
-    except TimeoutException:
-        pass
-
-    try:
-        navegador.find_element(By.XPATH, "//div[contains(text(), 'Erro de Sistema')]")
-        return 'Erro: Erro de Sistema detectado no SISREG'
-    except NoSuchElementException:
-        time.sleep(3)
-        return 'Internado com sucesso'
+    erro_de_sistema = bool(navegador.find_elements(By.XPATH, "//div[contains(text(), 'Erro de Sistema')]"))
+    return resultado_internacao(popups, erro_de_sistema)

@@ -7,6 +7,15 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Não lançado]
 
+## [10.3.0] - 2026-11-25
+
+### Corrigido
+- **`-ip` e `-td`: o resultado da internação é a resposta do SISREG (2º popup)**, não mais "Internado com sucesso" por ausência de "Erro de Sistema". Em 25/11/2026, de 98 "sucessos", 6 eram `Paciente Internado`, 61 `Sem leito disponivel` e 31 `Paciente ja se encontra internado com outra autorizacao`. Sem 2º popup: `Erro: Sem resposta do SISREG`
+- **Produção (`-interna -R`)** conta só as fichas internadas
+
+### Alterado
+- **Resumo do WhatsApp**: internados e quantas fichas de cada resposta do SISREG; resposta nova aparece com o próprio texto
+
 ## [10.2.0] - 2026-11-24
 
 ### Alterado

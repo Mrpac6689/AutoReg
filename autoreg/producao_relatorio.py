@@ -112,6 +112,17 @@ def registrar_producao(rotina, nome_arquivo_csv):
     return enviar_relatorio_producao(rotina, registros)
 
 
+def registrar_producao_internacoes(rotina, nome_arquivo_csv):
+    """Envia à AUTOREG-API só as fichas que o SISREG confirmou como internadas."""
+    from .internacao_sisreg import INTERNADO
+    caminho_csv = os.path.join(os.path.expanduser('~'), 'AutoReg', nome_arquivo_csv)
+    registros = 0
+    if os.path.isfile(caminho_csv):
+        with open(caminho_csv, 'r', encoding='utf-8', newline='') as f:
+            registros = sum(1 for row in csv.DictReader(f) if row.get('resultado') == INTERNADO)
+    return enviar_relatorio_producao(rotina, registros)
+
+
 def contar_altas_efetivadas(caminho_arquivo):
     """
     Conta o número de linhas no CSV onde a coluna 'resultado_sisreg' é 'Alta efetivada'.

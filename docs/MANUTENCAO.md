@@ -18,6 +18,6 @@ Para humanos e IAs. Vale para toda mudança de comportamento.
 | Nova flag | `autoreg.py` (6 pontos, ver CLAUDE.md) e `tui/catalogo.py` |
 
 ## Antes de concluir
-1. `python test_vinculos.py && python test_versao.py`
+1. `python test_vinculos.py && python test_internacao.py && python test_versao.py`
 2. O container lê `~/code/AutoReg` ao vivo: não edite durante um ciclo (`/tmp/autoreg-cron.lock`).
 3. Nunca pôr nome, CNS ou CPF de paciente em documento versionado; use RA/solicitação.
