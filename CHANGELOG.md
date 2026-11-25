@@ -7,6 +7,16 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Não lançado]
 
+## [10.2.0] - 2026-11-24
+
+### Alterado
+- **`-eiga` usa o RA que gerou a solicitação e segue sua continuação** (novo RA de internação até 24 h após a saída do anterior = mesma internação, por troca de setor), no lugar do RA HUERB mais recente, que em 15 casos de 24/11/2026 era um retorno/PS. Segunda internação não segura mais a alta da primeira. Sem RA solicitado: única internação da época ou memória do `-ign`; dúvida ou lista ilegível fica pendente
+- `extrair_ras_huerb` devolve também o `tipo` do RA (1 = internação, 2 = PS/ambulatório)
+
+### Corrigido
+- **Cadastro duplicado no G-HOSP** (solicitação 699718318: alta lida de um RA de 2024): se o RA solicitado não está na lista aberta, usa o prontuário dono do RA
+- **`-maa` gravava o texto do resumo em `data_alta`**: lê o campo "Alta médica:"
+
 ## [10.1.1] - 2026-11-24
 
 ### Alterado

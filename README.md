@@ -4,7 +4,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-GPL%20v3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/Version-10.1.1-orange.svg)](https://github.com/Mrpac6689/AutoReg)
+[![Version](https://img.shields.io/badge/Version-10.2.0-orange.svg)](https://github.com/Mrpac6689/AutoReg)
 
 ---
 
@@ -550,7 +550,7 @@ O AutoReg foi desenvolvido para facilitar e automatizar processos hospitalares, 
 
 ---
 
-**AutoReg v10.1.1 Universe** - *Automatização inteligente para sistemas de saúde* 🚀
+**AutoReg v10.2.0 Universe** - *Automatização inteligente para sistemas de saúde* 🚀
 
 *Esperamos que o AutoReg continue facilitando sua rotina e contribuindo para processos hospitalares mais eficientes!*
 
@@ -564,7 +564,7 @@ O AutoReg foi desenvolvido para facilitar e automatizar processos hospitalares, 
 
 [![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-GPL%20v3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/Version-10.1.1-orange.svg)](https://github.com/Mrpac6689/AutoReg)
+[![Version](https://img.shields.io/badge/Version-10.2.0-orange.svg)](https://github.com/Mrpac6689/AutoReg)
 
 ---
 
@@ -1142,6 +1142,6 @@ AutoReg was developed to facilitate and automate hospital processes, contributin
 
 ---
 
-**AutoReg v10.1.1 Universe** - *Intelligent automation for healthcare systems* 🚀
+**AutoReg v10.2.0 Universe** - *Intelligent automation for healthcare systems* 🚀
 
 *We hope AutoReg continues to facilitate your routine and contribute to more efficient hospital processes!*

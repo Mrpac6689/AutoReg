@@ -14,7 +14,7 @@ from autoreg.logging import setup_logging
 from autoreg.chrome_options import get_chrome_options
 from autoreg.justificativa_ghosp import tratar_justificativa_acesso
 from autoreg.historico_solicitacoes import solicitacoes_por_numero
-from autoreg.ras_paciente import extrair_ras_huerb
+from autoreg.ras_paciente import cadeia_internacao, extrair_ras_huerb, ra_da_internacao
 from autoreg.vinculos import vinculos_manuais, resolver, limpar, ler_data, na_janela, normalizar_nome
 from datetime import datetime
 import logging
@@ -78,6 +78,38 @@ def _url_homonimo(html, nome, nascimento):
         if link and nascimento in texto and normalizar_nome(nome) in normalizar_nome(texto):
             achados.add(link['href'])
     return achados.pop() if len(achados) == 1 else ''
+
+
+def _abre(driver, url):
+    driver.get(url)
+    time.sleep(1.5)
+    if tratar_justificativa_acesso(driver):
+        driver.get(url)
+        time.sleep(1.5)
+
+
+def _ras_do_prontuario_do_ra(driver, caminho_ghosp, ra):
+    """RAs HUERB do paciente dono do RA: a busca pode abrir um cadastro duplicado."""
+    _abre(driver, f"{caminho_ghosp}:4002/pr/interns/{ra}")
+    banner = driver.find_elements(By.ID, "paciente")
+    m = re.search(r' - (\d{4,8})\b', banner[0].text) if banner else None
+    if not m:
+        return []
+    _abre(driver, f"{caminho_ghosp}:4002/historicopacs/{m.group(1)}")
+    return extrair_ras_huerb(driver)
+
+
+def _saida_do_ra(driver, caminho_ghosp, ra):
+    """datetime da "Alta médica" do RA, ou None se aberto. Lança se a página não abrir."""
+    _abre(driver, f"{caminho_ghosp}:4002/pr/altas?intern_id={ra}")
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "div.section-content.cor-sec03")))
+    for rotulo in ('Alta médica:', 'Liberação quarto:'):
+        for el in driver.find_elements(By.XPATH, f"//label[normalize-space()='{rotulo}']/following-sibling::div"):
+            m = re.search(r'\d{2}/\d{2}/\d{4} \d{2}:\d{2}', el.text)
+            if m:
+                return datetime.strptime(m.group(0), '%d/%m/%Y %H:%M')
+    return None
 
 
 def extrai_internados_ghosp_avancado():
@@ -208,7 +240,6 @@ def extrai_internados_ghosp_avancado():
             registro = historico.get(solicitacao, {})
             ra_historico = registro.get('ra', '')
             documento = registro.get('documento', '')
-            ra_recente = ""
 
             # 0. RA informado por uma pessoa em vinculos_manuais.csv: prioridade total
             if solicitacao in manuais:
@@ -311,61 +342,6 @@ def extrai_internados_ghosp_avancado():
                     logging.info(f"-eiga solicitação {solicitacao}: homônimos, desempate por nascimento "
                                  f"{'confirmado' if found else 'sem decisão'}")
 
-                # 4. Se encontrou o paciente, extrair o RA mais recente
-                if found:
-                    try:
-                        print("Extraindo RA mais recente...")
-                        # Aguarda a div principal de procedimentos
-                        container = WebDriverWait(driver, 10).until(
-                            EC.presence_of_element_located((By.CLASS_NAME, "container-procedimentos"))
-                        )
-                        
-                        # Localiza todos os itens de RA
-                        ra_items = container.find_elements(By.CLASS_NAME, "RAitem")
-                        
-                        ras_encontradas = []
-                        
-                        for item in ra_items:
-                            try:
-                                # Filtra somente RAs da unidade HUERB
-                                if 'HUERB' not in item.text.upper():
-                                    continue
-
-                                # Extrai o número do RA do valor do checkbox
-                                ra_checkbox = item.find_element(By.CLASS_NAME, "ra")
-                                ra_numero = ra_checkbox.get_attribute("value")
-                                
-                                # Extrai a data e hora do span ml5
-                                span_data = item.find_element(By.CLASS_NAME, "ml5").text
-                                # Limpa espaços e quebras de linha para extrair data dd/mm/yyyy hh:mm
-                                data_texto = span_data.replace('\n', ' ').strip()
-                                # Normaliza espaços duplos e tenta extrair os números
-                                # Exemplo: "24/02/2026 16:  10" -> "24/02/2026 16:10"
-                                data_match = re.search(r'(\d{2}/\d{2}/\d{4})\s*(\d{2}):\s*(\d{2})', data_texto)
-                                
-                                if data_match:
-                                    data_str = f"{data_match.group(1)} {data_match.group(2)}:{data_match.group(3)}"
-                                    data_obj = datetime.strptime(data_str, "%d/%m/%Y %H:%M")
-                                    
-                                    ras_encontradas.append({
-                                        'ra': ra_numero,
-                                        'data': data_obj
-                                    })
-                            except Exception:
-                                continue
-                        
-                        if ras_encontradas:
-                            # Ordena pela data mais recente (decrescente)
-                            ras_encontradas.sort(key=lambda x: x['data'], reverse=True)
-                            ra_recente = ras_encontradas[0]['ra']
-                            df.at[index, 'RA'] = ra_recente
-                            print(f"RA mais recente identificado: {ra_recente} ({ras_encontradas[0]['data']})")
-                        else:
-                            print("Aviso: Nenhuma RA da unidade HUERB encontrada na lista.")
-                            
-                    except Exception as e:
-                        print(f"Aviso: Falha ao extrair dados de RA: {str(e)}")
-                
                 if not found and not ra_historico:
                     msg_erro = "Paciente não encontrado no GHOSP ou Homônimos, revisar manualmente"
                     df.at[index, 'erro'] = msg_erro
@@ -375,27 +351,42 @@ def extrai_internados_ghosp_avancado():
                 print(f"Erro ao processar linha {index+1}: {str(e)}")
                 df.at[index, 'erro'] = f"Erro técnico: {str(e)}"
 
-            # 5. Último recurso: RA gravado pelo -ssr para esta solicitação
-            if not ra_recente and ra_historico:
-                ra_recente = ra_historico
-                df.at[index, 'RA'] = ra_recente
-                df.at[index, 'erro'] = ""
-                print(f"RA {ra_recente} obtido do histórico de solicitações")
-                logging.info(f"-eiga solicitação {solicitacao}: RA {ra_recente} obtido do histórico de solicitações")
-            elif not ra_recente:
-                # 6. Memória do -ign (lembrete ou nome + data), só sem ambiguidade
-                ra_vinculo, origem, candidatos = resolver(
-                    solicitacao, nome_csv, limpar(row.get('data_internacao')))
-                if ra_vinculo:
-                    ra_recente = ra_vinculo
-                    df.at[index, 'RA'] = ra_recente
+            # 4. RA que gerou a solicitação e os que o continuam (troca de setor).
+            # Nunca o mais recente: pode ser retorno/PS depois da alta (11 casos em
+            # 24/11/2026) ou cadastro duplicado (sol. 699718318). Sem conseguir ler a
+            # lista de RAs não há como saber se a internação continuou: fica pendente.
+            try:
+                ras = extrair_ras_huerb(driver, timeout=10) if found else []
+
+                def saida_de(ra):
+                    return _saida_do_ra(driver, caminho_ghosp, ra)
+
+                inicial, origem, candidatos = ra_historico, 'solicitação', []
+                if not inicial:
+                    inicial, origem = ra_da_internacao(ras, ler_data(row.get('data_internacao')), saida_de), 'época'
+                if not inicial:
+                    # Memória do -ign (lembrete ou nome + data), só sem ambiguidade
+                    inicial, origem, candidatos = resolver(
+                        solicitacao, nome_csv, limpar(row.get('data_internacao')))
+                if inicial and inicial not in [r['ra'] for r in ras]:
+                    ras = _ras_do_prontuario_do_ra(driver, caminho_ghosp, inicial)
+                cadeia = [r['ra'] for r in cadeia_internacao(ras, inicial, saida_de)] if inicial else []
+                if cadeia:
+                    df.at[index, 'RA'] = cadeia[-1]
                     df.at[index, 'erro'] = ""
-                    print(f"RA {ra_recente} obtido dos vínculos ({origem})")
-                    logging.info(f"-eiga solicitação {solicitacao}: RA {ra_recente} dos vínculos ({origem})")
-                elif candidatos:
-                    logging.info(f"-eiga solicitação {solicitacao}: candidatos sem decisão: {', '.join(candidatos)}")
-            elif ra_historico and str(ra_recente) != ra_historico:
-                logging.warning(f"-eiga solicitação {solicitacao}: RA mais recente {ra_recente} difere do solicitado {ra_historico}")
+                    print(f"RA da internação ({origem}): {' -> '.join(cadeia)}")
+                    logging.info(f"-eiga solicitação {solicitacao}: RA {' -> '.join(cadeia)} ({origem})")
+                elif inicial or ras:
+                    df.at[index, 'RA'] = None  # não herdar RA de rodada anterior
+                    df.at[index, 'erro'] = "RA da internação não identificado entre os RAs do paciente"
+                    logging.warning(f"-eiga solicitação {solicitacao}: RA da internação não identificado "
+                                    f"(inicial: {inicial or '-'}; RAs {', '.join(r['ra'] for r in ras[:8])}; "
+                                    f"candidatos {', '.join(candidatos)})")
+            except Exception as e:
+                print(f"Erro ao identificar o RA da internação: {str(e)}")
+                logging.warning(f"-eiga solicitação {solicitacao}: falha ao ler os RAs, fica pendente: {e}")
+                df.at[index, 'RA'] = None
+                df.at[index, 'erro'] = f"Erro técnico: {str(e)}"
 
             # Salva o progresso a cada linha
             df.to_csv(csv_path, index=False)

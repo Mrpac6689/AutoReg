@@ -65,10 +65,64 @@ def extrair_ras_huerb(driver, timeout=10):
             if not m:
                 continue
             data_obj = datetime.strptime(f"{m.group(1)} {m.group(2)}:{m.group(3)}", "%d/%m/%Y %H:%M")
-            ras.append({'ra': ra_numero, 'data_entrada': data_obj})
+            tipo = re.search(r'RA:\s*(\d+)\s*-', item.text.replace('\xa0', ' '))
+            ras.append({'ra': ra_numero, 'data_entrada': data_obj, 'tipo': tipo.group(1) if tipo else ''})
         except Exception:
             continue
     return ras
+
+
+# "RA: 1 - 600001" no histórico = internação (sempre com leito); 2 = PS/ambulatório.
+# Medido em 24/11/2026: 119 de 119 RAs tipo 1 com leito, 161 de 161 tipo 2 sem.
+TIPO_INTERNACAO = '1'
+# Novo RA de internação até 24 h após a saída do anterior = mesma internação
+# (troca de setor). Em 168 pares reais: 2 com 1,6 h e o seguinte só com 48,2 h.
+INTERVALO_MESMA_INTERNACAO = timedelta(hours=24)
+
+
+def cadeia_internacao(ras, ra_inicial, saida_de):
+    """
+    RAs da mesma internação, a partir do RA que gerou a solicitação, em ordem.
+    O último é o que vale para a alta. `saida_de(ra)` → datetime da saída, ou
+    None se ainda aberto; só é chamada quando há RA de internação posterior.
+    RA inicial de PS segue para a internação que começar até 24 h depois dele.
+    Exceção de saida_de é propagada: sem a saída não dá para decidir.
+    """
+    numero = _ra_int(ra_inicial)
+    atual = next((r for r in ras if _ra_int(r['ra']) == numero), None)
+    if atual is None:
+        return []
+    cadeia = [atual]
+    for proximo in sorted((r for r in ras if r.get('tipo') == TIPO_INTERNACAO),
+                          key=lambda r: (r['data_entrada'], _ra_int(r['ra']) or 0)):
+        atual = cadeia[-1]
+        if proximo is atual or proximo['data_entrada'] < atual['data_entrada']:
+            continue
+        saida = saida_de(atual['ra']) if atual.get('tipo') == TIPO_INTERNACAO else atual['data_entrada']
+        # Internação ainda aberta: o paciente não saiu; o novo RA a continua
+        if saida is None or proximo['data_entrada'] - saida <= INTERVALO_MESMA_INTERNACAO:
+            cadeia.append(proximo)
+        else:
+            break
+    return cadeia
+
+
+def ra_da_internacao(ras, internacao, saida_de):
+    """
+    Sem RA solicitado conhecido: o RA de internação da época do SISREG (15 dias
+    antes a 3 depois). Com mais de uma internação, só o único a até 3 dias da
+    data; '' se não houver ou houver dúvida.
+    """
+    if not internacao:
+        return ''
+    na_epoca = [r for r in ras if r.get('tipo') == TIPO_INTERNACAO and
+                internacao - timedelta(days=15) <= r['data_entrada'] <= internacao + timedelta(days=4)]
+    seguintes = {c['ra'] for r in na_epoca for c in cadeia_internacao(ras, r['ra'], saida_de)[1:]}
+    inicios = [r for r in na_epoca if r['ra'] not in seguintes]
+    if len(inicios) > 1:
+        inicios = [r for r in inicios
+                   if abs((r['data_entrada'].date() - internacao.date()).days) <= 3]
+    return inicios[0]['ra'] if len(inicios) == 1 else ''
 
 
 def _ra_int(ra):

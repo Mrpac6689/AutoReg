@@ -99,6 +99,27 @@ for texto, codigo in (
     ('', ''), ('nan', ''), (None, ''), ('QUALQUER', ''),
 ):
     assert codigo_motivo(texto) == codigo, (texto, codigo_motivo(texto))
+from autoreg.ras_paciente import cadeia_internacao, ra_da_internacao  # noqa: E402
+
+
+def r_(ra, tipo, dia, hora=0):
+    return {'ra': ra, 'tipo': tipo, 'data_entrada': datetime(2026, 11, dia, hora)}
+
+
+saidas = {'2': datetime(2026, 11, 5, 10), '3': datetime(2026, 11, 8, 10), '5': None}
+ras = [r_('1', '2', 1, 8), r_('2', '1', 1, 12), r_('3', '1', 5, 12), r_('4', '2', 10), r_('5', '1', 20)]
+ids = lambda c: [x['ra'] for x in c]  # noqa: E731
+assert ids(cadeia_internacao(ras, '2', saidas.get)) == ['2', '3']       # troca de setor; retorno e 2ª internação fora
+assert ids(cadeia_internacao(ras, '1', saidas.get)) == ['1', '2', '3']  # solicitado no PS
+assert ids(cadeia_internacao(ras, '5', saidas.get)) == ['5']
+assert ids(cadeia_internacao(ras, '4', saidas.get)) == ['4']            # PS sem internação em seguida
+assert cadeia_internacao(ras, '9', saidas.get) == []
+assert ids(cadeia_internacao(ras, '2', lambda ra: None)) == ['2', '3', '5']  # aberto: continua
+assert ra_da_internacao(ras, datetime(2026, 11, 1), saidas.get) == '2'
+assert ra_da_internacao(ras, datetime(2026, 11, 20), saidas.get) == '5'
+assert ra_da_internacao(ras, datetime(2026, 10, 1), saidas.get) == ''
+assert ra_da_internacao([r_('6', '1', 10), r_('7', '1', 12)], datetime(2026, 11, 11), {'6': datetime(2026, 11, 10, 2)}.get) == ''
+
 from autoreg.motivos_alta import bloqueio_coringa  # noqa: E402
 with open(os.path.join(PASTA, '_home_inovadora_x.csv'), 'w') as arq:
     arq.write(',,,G-HOSP\nN Intern,,Nome\n100001,,Fulano De Tál,,\n')

@@ -166,8 +166,8 @@ def motivo_alta_avancado():
                             
                         # Captura Alta médica:
                         try:
-                            # O label para a data de alta médica tem for="resumoalta"
-                            data_el = driver.find_element(By.XPATH, "//label[@for='resumoalta']/following-sibling::div")
+                            # for="resumoalta" também é o label do texto do resumo: usar o rótulo
+                            data_el = driver.find_element(By.XPATH, "//label[normalize-space()='Alta médica:']/following-sibling::div")
                             df.at[index, 'data_alta'] = data_el.text.strip()
                         except:
                             pass
