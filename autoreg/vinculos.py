@@ -140,8 +140,8 @@ def resolver(solicitacao, nome, data_internacao, vistos=None):
     return '', '', candidatos
 
 
-def censo_ghosp(agora=None):
-    """RAs do último relatório bruto do -iga, ou None se ausente/velho."""
+def censo_ghosp_nomes(agora=None):
+    """{ra: nome normalizado} do último relatório bruto do -iga, ou None se ausente/velho."""
     arquivos = glob.glob(_caminho('_home_inovadora*.csv'))
     if not arquivos:
         return None
@@ -149,8 +149,16 @@ def censo_ghosp(agora=None):
     if (agora or datetime.now()) - datetime.fromtimestamp(os.path.getmtime(recente)) > CENSO_VALIDADE:
         return None
     with open(recente, encoding='utf-8', errors='replace') as f:
-        ras = {m[1] for m in (re.match(r'"?(\d{5,7})"?,', l) for l in f) if m}
-    return ras or None
+        # N Intern,,Nome,... — o nome fica na 3ª coluna
+        censo = {l[0].strip(): normalizar_nome(l[2]) if len(l) > 2 else ''
+                 for l in csv.reader(f) if l and re.fullmatch(r'\d{5,7}', l[0].strip())}
+    return censo or None
+
+
+def censo_ghosp(agora=None):
+    """RAs do último relatório bruto do -iga, ou None se ausente/velho."""
+    censo = censo_ghosp_nomes(agora)
+    return set(censo) if censo else None
 
 
 def motivo_pendencia(linha, censo):

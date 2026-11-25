@@ -1,8 +1,8 @@
 """
 Motivo de alta do G-HOSP → código do SISREG (select co_motivo, lido em
-24/11/2026). Motivo não reconhecido devolve '': a alta vira pendência. Nunca
-assumir "ALTA MELHORADO" — até 24/11/2026 o padrão era esse, e transferência e
-alta com previsão de retorno saíam como melhorado.
+24/11/2026). codigo_motivo devolve '' para o que não reconhece; aí o -eaa usa o
+coringa ALTA MELHORADO (decisão do usuário, 24/11/2026), com as travas de
+bloqueio_coringa.
 """
 import re
 import unicodedata
@@ -34,3 +34,26 @@ def codigo_motivo(texto):
     # Sufixo opcional da sigla ("... LEGAL" sem "IML")
     iniciados = {c for m, c in MOTIVOS_SISREG.items() if chave.startswith('OBITO COM') and len(chave) > 45 and m.startswith(chave)}
     return iniciados.pop() if len(iniciados) == 1 else ''
+
+
+CORINGA = '38'  # ALTA MELHORADO
+
+
+def bloqueio_coringa(ra, nome, textos, censo):
+    """
+    Por que o coringa NÃO pode ser usado, ou '' se pode. `censo` é o retorno de
+    vinculos.censo_ghosp_nomes: {ra: nome normalizado}, ou None.
+
+    O RA mais recente pode ser um atendimento de PS encerrado enquanto o
+    paciente segue internado em outro RA; por isso confere também o nome.
+    """
+    from autoreg.vinculos import limpar, normalizar_nome
+    for texto in textos:
+        chave = normalizar_nome(limpar(texto))
+        if 'OBITO' in chave or 'PERMANENCIA' in chave:
+            return f'motivo exige conferência ({limpar(texto)})'
+    if censo is None:
+        return 'sem lista recente de internados do G-HOSP'
+    if limpar(ra) in censo or normalizar_nome(nome) in censo.values():
+        return 'consta na lista de internados do G-HOSP'
+    return ''

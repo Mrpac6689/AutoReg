@@ -7,6 +7,15 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Não lançado]
 
+## [10.1.1] - 2026-11-24
+
+### Alterado
+- **`-eaa`: motivo não reconhecido ou vazio sai com o coringa ALTA MELHORADO** em vez de ficar pendente (9 altas presas no ciclo das 18h de 24/11/2026). Travas: texto de óbito/permanência, RA ou nome na lista de internados do G-HOSP, lista ausente ou velha. O uso fica em `obs_motivo` e no log
+- **`-maa` grava `tipo_saida`**: layout de atendimento de PS/retorno, usado só pelas travas
+
+### Documentação
+- `docs/ALTAS.md`: coringa e travas, como tratar `Segue internado` fora da lista e a limitação do RA mais recente; `CLAUDE.md`, `AGENTS.md` e `README.md` (PT/EN) acompanham
+
 ## [10.1.0] - 2026-11
 
 ### Adicionado

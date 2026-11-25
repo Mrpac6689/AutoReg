@@ -92,7 +92,7 @@ def motivo_alta_avancado():
         df = pd.read_csv(csv_path)
 
         # Garante que as novas colunas existam
-        for col in ['situacao', 'motivo_alta', 'medico_alta', 'data_alta']:
+        for col in ['situacao', 'motivo_alta', 'medico_alta', 'data_alta', 'tipo_saida']:
             if col not in df.columns:
                 df[col] = ''
 
@@ -149,6 +149,14 @@ def motivo_alta_avancado():
                         except:
                             pass
                             
+                        # Atendimento de PS/retorno usa outro layout ("Tipo de saída").
+                        # NÃO vira motivo_alta: é a saída do retorno, não da internação
+                        # (24/11/2026: 4 "evasões" de retorno; internações MELHORADO).
+                        # Serve só às travas do coringa no -eaa.
+                        tipo_el = resumo_content.find_elements(By.XPATH, ".//div[contains(@class,'dcampo')][normalize-space()='Tipo de saída']/following-sibling::div[contains(@class,'vcampo')]")
+                        if tipo_el:
+                            df.at[index, 'tipo_saida'] = tipo_el[0].text.strip()
+
                         # Captura Médico:
                         try:
                             medico_el = driver.find_element(By.XPATH, "//label[@for='medico']/following-sibling::div")

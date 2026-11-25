@@ -99,6 +99,18 @@ for texto, codigo in (
     ('', ''), ('nan', ''), (None, ''), ('QUALQUER', ''),
 ):
     assert codigo_motivo(texto) == codigo, (texto, codigo_motivo(texto))
+from autoreg.motivos_alta import bloqueio_coringa  # noqa: E402
+with open(os.path.join(PASTA, '_home_inovadora_x.csv'), 'w') as arq:
+    arq.write(',,,G-HOSP\nN Intern,,Nome\n100001,,Fulano De Tál,,\n')
+censo = v.censo_ghosp_nomes()
+assert censo == {'100001': 'FULANO DE TAL'} and v.censo_ghosp() == {'100001'}
+assert bloqueio_coringa('100002.0', 'BELTRANO', ('', float('nan')), censo) == ''
+assert bloqueio_coringa('100002.0', 'BELTRANO', ('QUALQUER', 'ALTA POR EVASAO'), censo) == ''
+assert bloqueio_coringa('100001.0', 'BELTRANO', ('',), censo)  # RA internado
+assert bloqueio_coringa('100002', 'FULANO DE TAL', ('',), censo)  # internado em outro RA
+assert bloqueio_coringa('100002', 'BELTRANO', ('', 'PERMANÊNCIA POR OUTROS MOTIVOS'), censo)
+assert bloqueio_coringa('100002', 'BELTRANO', ('ÓBITO SEM DECLARACAO',), censo)
+assert bloqueio_coringa('100002', 'BELTRANO', ('',), None)
 assert texto_resumo_valido('INSERIR') == '' and texto_resumo_valido(' Inserir \n') == '' and texto_resumo_valido('') == ''
 assert texto_resumo_valido('INSERIR\nPaciente em alta') == 'Paciente em alta'
 assert falha_em_massa(86, 86) and not falha_em_massa(1, 86) and not falha_em_massa(2, 3) and not falha_em_massa(0, 0)

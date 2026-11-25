@@ -18,7 +18,8 @@ from autoreg.sessao_sisreg import (
     ControleSessao,
     SessaoSisregAbortada,
 )
-from autoreg.motivos_alta import codigo_motivo
+from autoreg.motivos_alta import CORINGA, bloqueio_coringa, codigo_motivo
+from autoreg.vinculos import censo_ghosp_nomes
 from datetime import datetime
 import logging
 
@@ -58,6 +59,8 @@ def executa_alta_avancado():
         # Garante a existência da coluna de resultado
         if 'resultado_sisreg' not in df.columns:
             df['resultado_sisreg'] = ''
+        df['obs_motivo'] = df['obs_motivo'].astype(object) if 'obs_motivo' in df.columns else ''
+        censo = censo_ghosp_nomes()
 
         # Filtra apenas registros com situacao 'Alta'
         altas_pendentes = df[df['situacao'] == 'Alta']
@@ -86,14 +89,21 @@ def executa_alta_avancado():
             
             print(f"\n🚀 [{index+1}] Processando Solicitação: {solicitacao} | Motivo GHOSP: {motivo_ghosp}")
             
-            # Motivo desconhecido não vira "melhorado": fica pendente de conferência
+            # Motivo não reconhecido ou vazio: coringa ALTA MELHORADO, com travas
             valor_motivo = codigo_motivo(motivo_ghosp)
             if not valor_motivo:
-                print(f"   ⚠️ Motivo não reconhecido — alta não executada: {motivo_ghosp!r}")
-                logging.warning(f"-eaa solicitação {solicitacao}: motivo não reconhecido {motivo_ghosp!r} — alta não executada")
-                df.at[index, 'resultado_sisreg'] = f"Erro: motivo não reconhecido ({motivo_ghosp or 'vazio'})"
-                df.to_csv(csv_path, index=False)
-                continue
+                bloqueio = bloqueio_coringa(row.get('RA'), row.get('Nome', ''),
+                                            (motivo_ghosp, row.get('tipo_saida', '')), censo)
+                if bloqueio:
+                    print(f"   ⚠️ Motivo {motivo_ghosp or 'vazio'!r} — alta não executada: {bloqueio}")
+                    logging.warning(f"-eaa solicitação {solicitacao}: motivo {motivo_ghosp or 'vazio'!r}, alta não executada: {bloqueio}")
+                    df.at[index, 'resultado_sisreg'] = f"Erro: {bloqueio}"
+                    df.to_csv(csv_path, index=False)
+                    continue
+                valor_motivo = CORINGA
+                print(f"   🃏 Motivo {motivo_ghosp or 'vazio'!r} — usando coringa ALTA MELHORADO")
+                logging.warning(f"-eaa solicitação {solicitacao}: motivo {motivo_ghosp or 'vazio'!r}, usado coringa ALTA MELHORADO")
+                df.at[index, 'obs_motivo'] = f"coringa ALTA MELHORADO (motivo: {motivo_ghosp or 'vazio'})"
 
             try:
                 # 1. Navega para a página de Saída de Permanência
